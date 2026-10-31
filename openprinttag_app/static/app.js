@@ -397,6 +397,7 @@
     $("inventory-toggle").classList.toggle("primary", !inStock);
     setText("remaining-value", grams(tag.remaining_weight));
     setText("remaining-note", tag.remaining_weight == null ? msg("Poids initial ou consommation non renseigné.") : tag.remaining_estimated ? msg("Estimation à partir du poids initial nominal.") : msg("Calcul à partir du poids initial réel et du consommé."));
+    if (tag.inventory?.rfid_sync_pending) $("remaining-note").append(node("br"), node("span", "", msg("Ce sont les données du tag. La fiche d’inventaire contient des corrections locales à reporter sur le RFID.")));
     const initial = initialWeight(tag);
     const ratio = typeof initial === "number" && initial > 0 && typeof tag.remaining_weight === "number" ? Math.min(100, Math.max(0, tag.remaining_weight / initial * 100)) : 0;
     $("remaining-bar").style.width = `${ratio}%`;
@@ -685,6 +686,7 @@
         I18n.attribute(identityButton, "aria-label", msg("Détail de {0}", spoolTitle(item)));
         const description = node("span"); description.append(node("span", "spool-number", item.spool_number), node("strong", "", spoolName(item)), node("small", "", item.main?.brand_name || msg("Marque non renseignée")));
         if (item.notes) description.append(node("small", "spool-notes-indicator", msg("Notes disponibles")));
+        if (item.rfid_sync_pending) description.append(node("small", "spool-notes-indicator", msg("RFID à actualiser")));
         description.append(node("span", `status-chip ${item.usage_state === "stock" ? "qr-stock" : "in-stock"}`, usageState(item)), node("small", "", identification(item)));
         identityButton.append(swatch(item.main?.primary_color), description); identityButton.addEventListener("click", () => showDetail(item)); identityCell.append(identityButton);
         const materialCell = node("td", "", item.main?.material_type == null ? "—" : displayValue("main", "material_type", item.main.material_type));
@@ -749,6 +751,7 @@
     }
     content.append(summary, node("p", "mono muted", item.uid || ""));
     if (item.label_state === "rfid") content.append(node("p", "notice", msg("Un tag RFID existe déjà pour cette bobine.")));
+    if (item.rfid_sync_pending) content.append(node("p", "notice", msg("Les corrections de cette fiche sont locales. Le tag RFID reste inchangé. Une nouvelle lecture conserve ces corrections ; recréez le tag pour les y reporter.")));
     if (item.completed_at) {
       const ended = node("div"); ended.append(node("span", "", msg("Terminée le")), node("strong", "", formatDate(item.completed_at))); summary.append(ended);
       content.append(node("p", "fine-print", msg("Fiche archivée : les dernières données connues sont conservées. Le tag RFID reste inchangé.")));

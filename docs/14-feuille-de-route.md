@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.18.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.18.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.19.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.19.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -12,7 +12,7 @@ La dernière version publiée est **[v0.18.0](https://github.com/Cyril-E/OPT-sta
 - PrusaLink en lecture seule et jusqu’à quatre caméras d’imprimante.
 - HTTPS local, aide pour approuver le certificat, démarrage en plein écran et commandes d’alimentation du Pi.
 - Notifications Chrome de fin d’impression et d’intervention avec un onglet ouvert en arrière-plan.
-- Douze outils MCP pour consulter le stock et le schéma et gérer la bibliothèque, sans accès aux commandes matérielles.
+- Treize outils MCP pour consulter le stock et le schéma, modifier les fiches de bobines existantes et gérer la bibliothèque, sans accès aux commandes matérielles.
 - Sauvegardes manuelles/planifiées avec protection par mot de passe facultative et indication des nouvelles versions GitHub avec leurs nouveautés, sans installation automatique de mise à jour.
 - Assistant IA par clé API : photo, recherche Web facultative et propositions avec sources à vérifier avant remplissage d’une fiche. Voir le [guide de l’assistant](34-assistant-ia-etiquettes.md).
 - Sommaire de Configuration : accès direct aux douze rubriques, menu latéral sur grand écran et repliable sur les petits écrans, sans perte des saisies.
@@ -23,7 +23,7 @@ La dernière version publiée est **[v0.18.0](https://github.com/Cyril-E/OPT-sta
 
 Demandes ouvertes relevées le 31 octobre 2026; cette liste ne remplace pas une nouvelle consultation :
 
-- [#1 — Filtres d’inventaire Tout / Stock / Production / Terminée](https://github.com/Cyril-E/OPT-station/issues/1).
+- [#1 — Filtres d’inventaire Tout / Stock / Production / Terminée, et sélections par marque et matière présentes dans le stock](https://github.com/Cyril-E/OPT-station/issues/1).
 - [#2 — Photos dans les fiches et modèles, depuis la caméra ou un fichier](https://github.com/Cyril-E/OPT-station/issues/2).
 - [#3 — Ordre du menu : Inventaire / Imprimante / Lecture / Écriture / Paramètres](https://github.com/Cyril-E/OPT-station/issues/3).
 
@@ -38,6 +38,10 @@ Demandes ouvertes relevées le 31 octobre 2026; cette liste ne remplace pas une 
 - **Aperçu QR** : améliorer la taille et la visibilité de l’image existante et qualifier le placement avec une caméra adaptée.
 - **Bibliothèque de photos** : enregistrement volontaire des captures et consultation après redémarrage.
 - **Interface** : ajustements graphiques ciblés et qualification du tactile selon l’écran utilisé.
+
+## Validations récentes
+
+- Édition des fiches de bobines et de modèles par MCP confirmée par un essai utilisateur. Les contrôles automatisés sur données isolées couvrent aussi les conflits, la sauvegarde/restauration et les relectures RFID; les appels de contrôle sur le stock réel restent sans changement de valeurs.
 
 ## Essais matériels complémentaires
 

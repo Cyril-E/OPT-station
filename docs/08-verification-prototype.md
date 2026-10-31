@@ -2,7 +2,7 @@
 
 ## Vérifications logicielles
 
-La suite de la version **v0.18.0** comprend **719 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **720 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées.
+La suite de la version **v0.19.0** comprend **751 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **752 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées.
 
 Depuis les sources, avec les dépendances de test installées :
 
@@ -34,6 +34,8 @@ Sans Caddy, ce test est ignoré. La qualification complète indiquée ci-dessus 
 | Notifications Chrome | HTTPS, certificat approuvé, Chrome sur macOS | Notification de test et déclenchement sur une vraie fin d’impression validés. Intervention réelle encore à qualifier. |
 | Démarrage et alimentation | Raspberry Pi OS 64 bits, session graphique et services systemd | Plein écran, arrêt et redémarrage vérifiés. Le tactile dépend de l’écran retenu. |
 | Sauvegardes planifiées | Moteur testé sur destinations temporaires; sauvegarde manuelle USB et aperçu de restauration validés | Exécution nocturne planifiée sur support externe encore à qualifier. |
+
+L’édition des fiches par MCP est confirmée par un essai utilisateur. Les tests d’écriture utilisent des données isolées et couvrent les corrections de consommation, les conflits de version, la sauvegarde/restauration et les relectures RFID. Les contrôles automatisés sur le stock réel utilisent des appels sans changement et ne réécrivent aucun tag.
 
 ## Contrôles d’une installation
 

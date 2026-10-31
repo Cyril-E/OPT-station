@@ -3,14 +3,15 @@ import json
 from pathlib import Path
 import sqlite3
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
 from fastapi.testclient import TestClient
 import pytest
 
 from openprinttag_app.app import create_app
 from openprinttag_app.config import Settings
-from openprinttag_app.mcp_server import MCPConfiguration
+from openprinttag_app.domain import spool_snapshot
+from openprinttag_app.mcp_server import MCPConfiguration, MCPTransport
 
 MAIN = {"material_class": "FFF", "brand_name": "Example", "material_type": "PETG", "material_name": "Reusable model", "nominal_netto_full_weight": 1000}
 HEADERS = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-11-25"}
@@ -46,6 +47,15 @@ def structured(result):
     return result.get("structuredContent") or json.loads(result["content"][0]["text"])
 
 
+def rfid_spool(store, aux=None, factory=False):
+    snapshot = spool_snapshot(MAIN, aux or {"consumed_weight": 100})
+    if factory:
+        snapshot["main"].pop("instance_uuid")
+    snapshot.update(uid="E004010000001234", revision="observed-tag-revision", protections={"main": False, "aux": False},
+                    unknown_fields={"main": [900], "aux": [901]}, warnings=["Unsupported tag fields retained"])
+    return store.add(snapshot), snapshot
+
+
 def test_mcp_is_off_by_default_and_opt_in_persists(station):
     app, client = station
     result = client.get("/api/configuration/mcp").json()
@@ -68,7 +78,7 @@ def test_legacy_initialize_and_exact_bounded_tool_catalog(station):
     response = rpc(client, "tools/list")
     assert response.headers["cache-control"] == "no-store"
     catalog = response.json()["result"]["tools"]
-    assert {item["name"] for item in catalog} == {"list_inventory", "get_spool", "get_inventory_notes", "get_material_schema", "list_favorites", "list_spool_models", "create_favorite", "create_spool_model", "update_favorite", "update_spool_model", "delete_favorite", "delete_spool_model"}
+    assert {item["name"] for item in catalog} == {"list_inventory", "get_spool", "update_spool", "get_inventory_notes", "get_material_schema", "list_favorites", "list_spool_models", "create_favorite", "create_spool_model", "update_favorite", "update_spool_model", "delete_favorite", "delete_spool_model"}
     for item in catalog:
         assert item["annotations"]["destructiveHint"] == item["name"].startswith(("update_", "delete_"))
         assert item["annotations"]["readOnlyHint"] == item["name"].startswith(("list_", "get_"))
@@ -301,3 +311,248 @@ def test_wrong_kind_missing_id_and_duplicate_name_cannot_change_other_entries(st
     for name in ("favorite", "  ", "a" * 121):
         assert tool(client, "update_spool_model", {"identifier": model["id"], "version": 1, "name": name}).get("isError")
     assert app.state.store.favorites() == before and app.state.store.library_revision() == revision
+
+
+def test_spool_update_by_number_merges_known_fields_and_preserves_identity(station, monkeypatch):
+    app, client = station
+    item = client.post('/api/inventory/packaged', json={'main': MAIN, 'aux': {}}).json()
+    enable(client)
+    monkeypatch.setattr(app.state.reader, 'read', lambda: pytest.fail('No NFC read for inventory editing'))
+    monkeypatch.setattr(app.state.reader, 'write', lambda *a: pytest.fail('No NFC write for inventory editing'))
+    before_revision = app.state.store.inventory_revision()
+    changed = structured(tool(client, 'update_spool', {'identifier': item['spool_number'], 'version': item['version'],
+        'main': {'empty_container_weight': 278, 'actual_netto_full_weight': 1025},
+        'aux': {'consumed_weight': 637}, 'usage_state': 'in_service'}))
+    assert changed['updated'] and not changed['rfid_written']
+    after = changed['item']
+    assert after['main']['brand_name'] == item['main']['brand_name']
+    assert after['remaining_weight'] == 388 and not after['remaining_estimated']
+    assert after['usage_state'] == 'in_service'
+    for field in ('id', 'instance_uuid', 'uid', 'spool_number', 'added_at', 'last_seen_at', 'label_state', 'in_stock', 'completed_at'):
+        assert after[field] == item[field]
+    assert after['version'] == item['version'] + 1 and app.state.store.inventory_revision() == before_revision + 1
+    assert client.get('/api/inventory/' + item['id']).json() == after
+    assert structured(tool(client, 'get_spool', {'identifier': item['spool_number']})) == after
+    assert not after.get('rfid_sync_pending') and app.state.store.favorites() == []
+
+
+def test_spool_unknowns_nulls_and_noop_do_not_invent_consumption(station):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    before_revision = app.state.store.inventory_revision()
+    same = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 1}))
+    assert same['updated'] is False and same['item'] == item
+    assert app.state.store.inventory_revision() == before_revision
+    changed = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 1,
+        'main': {'density': 1.27}}))['item']
+    assert changed['remaining_weight'] is None and 'consumed_weight' not in changed['aux']
+    consumed = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': changed['version'],
+        'aux': {'consumed_weight': 250}}))['item']
+    assert consumed['remaining_weight'] == 750
+    cleared = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': consumed['version'],
+        'main': {'density': None}, 'aux': {'consumed_weight': None}}))['item']
+    assert 'density' not in cleared['main'] and 'consumed_weight' not in cleared['aux'] and cleared['remaining_weight'] is None
+
+
+@pytest.mark.parametrize('changes', [
+    {'main': {'instance_uuid': None}}, {'main': {'write_protection': 1}},
+    {'main': {'material_type': 'invented'}}, {'main': {'material_class': None}},
+    {'main': {'uid': 'foreign'}}, {'main': {'spool_number': 'B9999'}},
+    {'aux': {'consumed_weight': -1}}, {'aux': {'consumed_weight': 1001}},
+    {'main': {'actual_netto_full_weight': 0}}, {'main': {'density': True}},
+    {'notes': 'Replacement without current notes revision'}, {'notes_revision': 0},
+    {'usage_state': 'completed'}, {'reset_tag_overrides': 'yes'},
+])
+def test_invalid_spool_updates_are_atomic(station, changes):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    revision = app.state.store.inventory_revision()
+    result = tool(client, 'update_spool', {'identifier': item['id'], 'version': 1, **changes})
+    assert result.get('isError'), result
+    assert app.state.store.get_spool(item['id']) == item and app.state.store.inventory_revision() == revision
+
+
+@pytest.mark.parametrize('version', [0, -1, True, 1.5, '1', 99])
+def test_spool_update_rejects_invalid_or_stale_versions(station, version):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    assert tool(client, 'update_spool', {'identifier': item['id'], 'version': version, 'main': {'density': 1.27}}).get('isError')
+    assert app.state.store.get_spool(item['id']) == item
+
+
+def test_notes_revision_guards_a_combined_spool_correction(station):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    ui = client.put('/api/inventory/' + item['id'] + '/notes', json={'text': 'New UI note', 'revision': 0}).json()
+    assert ui['version'] == item['version'] and ui['notes_revision'] == 1
+    result = tool(client, 'update_spool', {'identifier': item['id'], 'version': 1,
+        'main': {'empty_container_weight': 278}, 'notes': 'Stale MCP note', 'notes_revision': 0})
+    assert result.get('isError') and app.state.store.get_spool(item['id']) == ui
+    after = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 1,
+        'main': {'empty_container_weight': 278}, 'notes': 'Known empty spool: 278 g', 'notes_revision': 1}))['item']
+    assert after['notes_revision'] == 2 and after['version'] == 2 and after['main']['empty_container_weight'] == 278
+    same = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 2,
+        'notes': after['notes'], 'notes_revision': 2}))
+    assert same['updated'] is False and same['item'] == after
+
+
+def test_rfid_corrections_survive_rereads_and_reset_is_explicit(station):
+    app, client = station
+    item, observed = rfid_spool(app.state.store, factory=True)
+    enable(client)
+    changed = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': item['version'],
+        'main': {'empty_container_weight': 278}, 'aux': {'consumed_weight': 200}}))['item']
+    assert changed['rfid_sync_pending'] and set(changed['rfid_pending_fields']) == {'main.empty_container_weight', 'aux.consumed_weight'}
+    assert changed['last_rfid_data']['aux']['consumed_weight'] == 100
+    assert changed['remaining_weight'] == 800
+    after = app.state.store.observe(observed)
+    assert after['main'] == changed['main'] and after['aux'] == changed['aux']
+    assert after['unknown_fields'] == observed['unknown_fields'] and after['protections'] == observed['protections']
+    newer = {**observed, 'aux': {'consumed_weight': 300}, 'remaining_weight': 700}
+    after = app.state.store.observe(newer)
+    assert after['aux']['consumed_weight'] == 200 and after['last_rfid_data']['aux']['consumed_weight'] == 300
+    reset = structured(tool(client, 'update_spool', {'identifier': item['spool_number'], 'version': after['version'],
+        'reset_tag_overrides': True}))['item']
+    assert not reset.get('rfid_sync_pending') and reset['remaining_weight'] == 700
+    assert reset['main'] == observed['main'] and reset['unknown_fields'] == observed['unknown_fields']
+    assert reset['uid'] == item['uid'] and reset['added_at'] == item['added_at']
+
+
+def test_matching_physical_tag_acknowledges_only_matching_local_fields(station):
+    app, client = station
+    item, observed = rfid_spool(app.state.store)
+    enable(client)
+    structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 1,
+        'main': {'empty_container_weight': 278}, 'aux': {'consumed_weight': 200}}))
+    partial = {**observed, 'main': {**observed['main'], 'empty_container_weight': 278}}
+    after = app.state.store.observe(partial)
+    assert after['rfid_pending_fields'] == ['aux.consumed_weight']
+    matched = {**partial, 'aux': {'consumed_weight': 200}, 'remaining_weight': 800}
+    after = app.state.store.observe(matched)
+    assert not after.get('rfid_sync_pending') and after['aux']['consumed_weight'] == 200
+    with app.state.store.connect() as db:
+        raw = json.loads(db.execute('SELECT snapshot FROM spools WHERE id=?', (item['id'],)).fetchone()[0])
+    assert 'local_edits' not in raw
+
+
+def test_physical_reread_cannot_silently_replace_incompatible_local_weights(station):
+    app, client = station
+    item, observed = rfid_spool(app.state.store)
+    enable(client)
+    before = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 1,
+        'main': {'actual_netto_full_weight': 500}}))['item']
+    with pytest.raises(ValueError, match='conflit'):
+        app.state.store.observe({**observed, 'aux': {'consumed_weight': 600}, 'remaining_weight': 400})
+    assert app.state.store.get_spool(item['id']) == before
+
+
+def test_archives_keep_identity_and_counter_and_only_allow_note_edits(station):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    item = app.state.store.complete(item['id'], item['version'])
+    enable(client)
+    count = app.state.store.completed_count()
+    assert tool(client, 'update_spool', {'identifier': item['id'], 'version': item['version'],
+        'aux': {'consumed_weight': 1}}).get('isError')
+    after = structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': item['version'],
+        'notes': 'Archived reference', 'notes_revision': item['notes_revision']}))['item']
+    assert after['completed_at'] == item['completed_at'] and not after['in_stock']
+    assert app.state.store.completed_count() == count and after['notes'] == 'Archived reference'
+
+
+def test_pending_rfid_association_prevents_inventory_correction(station):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    app.state.store.begin_operation('E004010000001234', 'revision', item['id'], item['version'], 'new-image')
+    enable(client)
+    assert tool(client, 'update_spool', {'identifier': item['id'], 'version': item['version'],
+        'main': {'empty_container_weight': 278}}).get('isError')
+    assert app.state.store.get_spool(item['id']) == item
+
+
+def test_concurrent_spool_patches_reject_the_second_stale_version(station):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    def change(value):
+        return tool(client, 'update_spool', {'identifier': item['id'], 'version': 1, 'main': {'empty_container_weight': value}})
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        result = list(pool.map(change, [200, 278]))
+    assert sum(bool(r.get('isError')) for r in result) == 1
+    after = app.state.store.get_spool(item['id'])
+    assert after['version'] == 2 and after['main']['empty_container_weight'] in {200, 278}
+
+
+def test_spool_update_uses_existing_lan_and_power_boundaries(station):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    with TestClient(app, client=('192.0.2.42', 1)) as remote:
+        after = structured(tool(remote, 'update_spool', {'identifier': item['id'], 'version': 1,
+            'aux': {'consumed_weight': 250}}))['item']
+        assert after['remaining_weight'] == 750
+        client.put('/api/configuration/network', json={'mode': 'disabled'})
+        assert rpc(remote, 'tools/call', {'name': 'update_spool', 'arguments': {'identifier': item['id'],
+            'version': after['version'], 'aux': {'consumed_weight': 500}}}).status_code == 403
+    app.state.station_power.phase = 'requested'
+    assert rpc(client, 'tools/call', {'name': 'update_spool', 'arguments': {'identifier': item['id'],
+        'version': after['version'], 'notes': 'Blocked', 'notes_revision': 0}}).status_code == 503
+    assert app.state.store.get_spool(item['id']) == after
+
+
+def test_pending_rfid_corrections_are_validated_in_backup_preview(station):
+    from openprinttag_app.backups import decrypt, encode_backup
+    app, client = station
+    item, observed = rfid_spool(app.state.store)
+    enable(client)
+    structured(tool(client, 'update_spool', {'identifier': item['id'], 'version': 1,
+        'aux': {'consumed_weight': 250}}))
+    archive = client.post('/api/backups/download', json={'scope': 'inventory'}).content
+    import base64
+    preview = client.post('/api/backups/restore/preview', json={'content': base64.b64encode(archive).decode()})
+    assert preview.status_code == 200, preview.text
+    restored = client.post('/api/backups/restore/commit', json={'preview_id': preview.json()['preview_id'], 'confirmed': True})
+    assert restored.status_code == 200, restored.text
+    # Actual restore/reopen and another hardware observation must retain the
+    # correction; this database is the temporary test fixture, never real stock.
+    after = app.state.store.observe(observed)
+    assert after['rfid_sync_pending'] and after['aux']['consumed_weight'] == 250
+    assert after['last_rfid_data']['aux']['consumed_weight'] == 100
+    record = decrypt(archive)
+    table = record['inventory']['tables']['spools']
+    index = table['columns'].index('snapshot')
+    snapshot = json.loads(table['rows'][0][index])
+    snapshot['local_edits']['aux']['consumed_weight'] = 500
+    table['rows'][0][index] = json.dumps(snapshot)
+    tampered = encode_backup(record)
+    invalid = client.post('/api/backups/restore/preview', json={'content': base64.b64encode(tampered).decode()})
+    assert invalid.status_code == 422
+    assert app.state.store.get_spool(item['id'])['aux']['consumed_weight'] == 250
+
+
+def test_inventory_correction_waits_for_the_active_reader_operation(station, monkeypatch):
+    app, client = station
+    item = app.state.store.create_packaged(MAIN, {})
+    enable(client)
+    entered = threading.Event()
+    original = MCPTransport.__call__
+
+    async def observe_request(self, scope, receive, send):
+        entered.set()
+        return await original(self, scope, receive, send)
+
+    monkeypatch.setattr(MCPTransport, '__call__', observe_request)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with app.state.reader.lock:
+            future = pool.submit(tool, client, 'update_spool', {'identifier': item['id'], 'version': 1,
+                'main': {'empty_container_weight': 278}})
+            assert entered.wait(timeout=2)
+            with pytest.raises(FutureTimeout):
+                future.result(timeout=.2)
+            assert app.state.store.get_spool(item['id']) == item
+        result = structured(future.result(timeout=5))
+    assert result['item']['main']['empty_container_weight'] == 278

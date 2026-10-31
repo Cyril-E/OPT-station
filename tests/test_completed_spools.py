@@ -228,7 +228,7 @@ def test_mcp_can_read_archives_without_exposing_completion(station):
     def rpc(method, params):
         return client.post('/mcp',headers=headers,json={'jsonrpc':'2.0','id':1,'method':method,'params':params}).json()['result']
     tools=rpc('tools/list',{})['tools']
-    assert len(tools)==12 and not any('complete' in t['name'] for t in tools)
+    assert len(tools)==13 and not any('complete' in t['name'] for t in tools)
     def inventory(arguments):
         result=rpc('tools/call',{'name':'list_inventory','arguments':arguments})
         return result.get('structuredContent') or json.loads(result['content'][0]['text'])

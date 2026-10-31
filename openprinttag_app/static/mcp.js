@@ -18,7 +18,7 @@
     if ($("mcp-copy")) $("mcp-copy").disabled = copying || !endpoint;
     text("mcp-access", !access ? msg("Le réglage MCP nécessite l’accès local ou complet. Les informations restent consultables ici.")
       : configuration?.enabled ? msg("Le MCP est activé. Ajoutez cette adresse dans votre client IA compatible, depuis le même réseau que le Pi.")
-      : msg("Le MCP est désactivé. Activez-le pour autoriser les IA de votre réseau à consulter le stock et gérer les favoris et modèles."));
+      : msg("Le MCP est désactivé. Activez-le pour autoriser les IA de votre réseau à consulter et modifier les fiches de bobines, et gérer les favoris et modèles."));
   }
   async function request(body) {
     const response = await fetch("/api/configuration/mcp", {method: body ? "PUT" : "GET", cache: "no-store", credentials: "same-origin",

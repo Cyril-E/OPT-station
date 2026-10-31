@@ -1306,7 +1306,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         return {"items": store.operations()}
 
     app.mount("/static", StaticFiles(directory=STATIC, check_dir=False), name="static")
-    mcp_transport = MCPTransport(store, settings.allowed_hosts)
+    mcp_transport = MCPTransport(store, settings.allowed_hosts, inventory_lock=reader.lock)
     for path in ("/mcp", "/mcp/"):
         app.router.routes.append(Route(path, endpoint=mcp_transport, methods=["GET", "POST", "DELETE"]))
     app.add_middleware(HTTPSProxyMiddleware, enabled=bool(https.url))

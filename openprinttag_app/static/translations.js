@@ -1475,5 +1475,10 @@ window.OPT_EN = Object.freeze({
   "12 rubriques": "12 sections",
   "Station": "Station",
   "Connexions et IA": "Connections and AI",
-  "Maintenance": "Maintenance"
+  "Maintenance": "Maintenance",
+  "Ce sont les données du tag. La fiche d’inventaire contient des corrections locales à reporter sur le RFID.": "These are the tag values. The inventory record contains local corrections that still need to be written to the RFID tag.",
+  "RFID à actualiser": "RFID update pending",
+  "Les corrections de cette fiche sont locales. Le tag RFID reste inchangé. Une nouvelle lecture conserve ces corrections ; recréez le tag pour les y reporter.": "Corrections to this record are local. The RFID tag is unchanged. Reading it again keeps these corrections; recreate the tag to write them to it.",
+  "Le MCP est désactivé. Activez-le pour autoriser les IA de votre réseau à consulter et modifier les fiches de bobines, et gérer les favoris et modèles.": "MCP is disabled. Enable it to allow AI clients on your network to read and edit spool records and manage favorites and models.",
+  "Modifier les informations produit, les poids connus, la consommation, les notes et l’utilisation d’une bobine existante, sans écrire son tag RFID.": "Edit product information, known weights, consumption, notes and the usage state of an existing spool without writing its RFID tag."
 });

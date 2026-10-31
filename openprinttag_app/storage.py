@@ -9,7 +9,8 @@ import time
 import uuid
 
 from .domain import spool_snapshot, validate_favorite_main
-from .spool_qr import stock_date
+from .inventory_edits import observe_with_edits, patch_snapshot, validate_local_edits
+from .spool_qr import encode_spool, stock_date
 
 MAX_NOTES_LENGTH = 16000
 
@@ -151,6 +152,14 @@ class Store:
         if row is None:
             return None
         result = json.loads(row["snapshot"])
+        validate_local_edits(result)
+        edits = result.pop("local_edits", None)
+        if edits:
+            if row["label_state"] != "rfid":
+                raise ValueError("Les corrections RFID ne s’appliquent pas à une fiche QR.")
+            result.update(rfid_sync_pending=True,
+                          rfid_pending_fields=[region + "." + name for region in ("main", "aux") for name in edits[region]],
+                          last_rfid_data={"main": edits["tag_main"], "aux": edits["tag_aux"]})
         result.pop("inventory", None)
         result.update(id=row["id"], in_stock=bool(row["in_stock"]), version=row["version"], last_seen_at=row["last_seen_at"])
         result.update(added_at=row["added_at"], label_state=row["label_state"], age_days=None)
@@ -180,7 +189,15 @@ class Store:
             # Association stays explicit; completed archives retain their snapshot.
             return existing
         with self.connect() as db:
-            cursor = db.execute("UPDATE spools SET snapshot=?, last_seen_at=?, version=version+1 WHERE id=? AND completed_at IS NULL", (dumps(snapshot), now(), existing["id"]))
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM spools WHERE id=?", (existing["id"],)).fetchone()
+            if row["completed_at"]:
+                return self._spool(row)
+            try:
+                observed = observe_with_edits(snapshot, json.loads(row["snapshot"]))
+            except ValueError:
+                raise ConflictError("La lecture RFID entre en conflit avec les corrections locales. Vérifiez la fiche avant de synchroniser le tag.") from None
+            cursor = db.execute("UPDATE spools SET snapshot=?, last_seen_at=?, version=version+1 WHERE id=? AND completed_at IS NULL", (dumps(observed), now(), existing["id"]))
             if cursor.rowcount:
                 self._bump_inventory(db)
             return self._spool(db.execute("SELECT * FROM spools WHERE id=?", (existing["id"],)).fetchone())
@@ -328,6 +345,47 @@ class Store:
     def _validate_notes(text):
         if not isinstance(text, str) or len(text) > MAX_NOTES_LENGTH or "\x00" in text:
             raise ValueError("Les notes doivent être un texte de 16 000 caractères maximum, sans caractère nul.")
+
+    def patch_spool(self, identifier, version, main=None, aux=None, notes=None, notes_revision=None,
+                    usage_state=None, reset_tag_overrides=False):
+        """Atomic inventory-only correction; NFC identity and observations remain separate."""
+        identifier = self.get_spool(identifier)["id"]
+        if notes is not None:
+            self._validate_notes(notes)
+            if type(notes_revision) is not int or notes_revision < 0:
+                raise ValueError("Indiquez la révision actuelle des notes pour les modifier.")
+        elif notes_revision is not None:
+            raise ValueError("La révision des notes accompagne un texte de notes.")
+        if usage_state is not None and usage_state not in {"stock", "in_service"}:
+            raise ValueError("État d’utilisation inconnu.")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM spools WHERE id=?", (identifier,)).fetchone()
+            if row is None:
+                raise KeyError("Bobine introuvable.")
+            if row["version"] != version:
+                raise ConflictError("La fiche de bobine a changé. Relisez sa version avant de la modifier.")
+            if notes is not None and row["notes_revision"] != notes_revision:
+                raise ConflictError("Les notes ont changé. Relisez leur révision avant de les modifier.")
+            if (main or aux or usage_state is not None or reset_tag_overrides) and (not row["in_stock"] or row["completed_at"]):
+                raise ConflictError("Seules les notes d’une bobine retirée ou terminée restent modifiables.")
+            if db.execute("SELECT 1 FROM operations WHERE inventory_id=? AND status IN ('pending','uncertain','tag_verified') LIMIT 1", (identifier,)).fetchone():
+                raise ConflictError("Cette bobine attend la confirmation d’une écriture RFID. Terminez sa réconciliation avant de modifier la fiche.")
+            before = json.loads(row["snapshot"])
+            after = patch_snapshot(before, main, aux, rfid=row["label_state"] == "rfid", reset_tag_overrides=reset_tag_overrides)
+            if row["label_state"] == "qr" and after != before:
+                encode_spool({**after, "added_at": row["added_at"]})
+            next_usage = row["usage_state"] if usage_state is None else usage_state
+            next_notes = row["notes"] if notes is None else notes
+            notes_changed = next_notes != row["notes"]
+            if after == before and next_usage == row["usage_state"] and not notes_changed:
+                return {"updated": False, "item": self._spool(row), "rfid_written": False}
+            db.execute("""UPDATE spools SET snapshot=?,usage_state=?,notes=?,
+                notes_revision=notes_revision+?,notes_updated_at=?,version=version+1 WHERE id=?""",
+                (dumps(after), next_usage, next_notes, int(notes_changed), now() if notes_changed else row["notes_updated_at"], identifier))
+            self._bump_inventory(db)
+            return {"updated": True, "item": self._spool(db.execute("SELECT * FROM spools WHERE id=?", (identifier,)).fetchone()),
+                    "rfid_written": False}
 
     def inventory_notes(self):
         with self.connect() as db:

@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.19.0 — 31 octobre 2026
+
+- MCP : modification partielle des fiches de bobines, y compris poids et consommation connus, notes et utilisation Stock/Service, avec contrôle des versions et sans écriture RFID.
+- Corrections RFID locales conservées lors des relectures et signalées dans l’inventaire; possibilité explicite de reprendre les dernières données observées du tag.
+- Modification des modèles et favoris maintenue; catalogue de treize outils, dont six lectures et sept écritures.
+
+Le fonctionnement de l’édition des fiches par MCP est validé par un essai utilisateur. **Vérifications : 751 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **752 sur Raspberry Pi**. Les corrections et les révisions, les lectures RFID, la sauvegarde/restauration, les conflits et l’affichage français/anglais sont vérifiés sur des données de test; les appels de contrôle sur le stock réel ne changent aucune valeur.
+
+L’archive complète `opt-station-v0.19.0.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **5**. Reconnecter les clients MCP pour découvrir `update_spool`. Les corrections locales ne réécrivent pas le RFID et restent signalées tant qu’elles ne sont pas réconciliées. Pour revenir à une version antérieure, restaurer ensemble les sources et les données sauvegardées avant la mise à jour.
+
 ## v0.18.0 — 31 octobre 2026
 
 - Assistant IA : photo couleur avec le Pi ou fichier image, recherche Web facultative, propositions avec preuves et sources avant remplissage d’une nouvelle fiche.
