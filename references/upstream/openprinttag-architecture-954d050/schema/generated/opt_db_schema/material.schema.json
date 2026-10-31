@@ -1,0 +1,240 @@
+{
+  "$id": "/material",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Material",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "If not provided by the manufacturer, the UUID can be derived as specified in [the UUID section](/uuid)."
+    },
+    "brand": {
+      "title": "Brand",
+      "oneOf": [
+        {
+          "$ref": "brand.schema.json"
+        },
+        {
+          "$ref": "slug_reference.schema.json"
+        },
+        {
+          "$ref": "uuid_reference.schema.json"
+        }
+      ],
+      "x-example": "Prusament"
+    },
+    "brand_specific_id": {
+      "type": "string",
+      "description": "An identifier the brand uses to indentify this specific material"
+    },
+    "class": {
+      "$ref": "material_class.schema.json",
+      "title": "MaterialClass"
+    },
+    "name": {
+      "type": "string",
+      "x-example": "PETG Carbon Fiber Black",
+      "description": "Name of the material itself, without the brand name"
+    },
+    "abbreviation": {
+      "type": "string",
+      "maxLength": 7,
+      "x-example": "PETGCF",
+      "description": "Short abbreviation of the material type name, no longer than 7 characters.\nUsed for example in printer footers (to show what material is loaded).\nAlso possibly used for checking filament type match between gcode and printer.\nIf the material has a `type` (`FFFMaterialType`), the abbreviation can be inherited from it if not present."
+    },
+    "url": {
+      "type": "string",
+      "x-example": "https://prusament.com/materials/pla/",
+      "description": "URL of the info/product page of the material (not material package!)\nIf not specified explicitly, can be also derived using `Brand::material_url_template`"
+    },
+    "properties": {},
+    "primary_color": {
+      "$ref": "material_color.schema.json",
+      "title": "MaterialColor",
+      "description": "Primary color of the material, if it has ones.\nIf the material contains multiple colours of same importance (for example coextruded or rainbow filaments), it makes sense to leave this field null and work only with secondary colors.\nImportant! In most schemas, the `MaterialColor` entity is replaced by a plain RGBA value"
+    },
+    "secondary_colors": {
+      "type": "array",
+      "items": {
+        "$ref": "material_color.schema.json",
+        "title": "MaterialColor"
+      },
+      "description": "Additonal colors of the material to the primary colors.\nThe material doesn't have to have a primary colos, in which case all the colors are on the same level of importance as secondary colors.\nSome systems (for example printers) can only work with primary colors and ignore this field.\nImportant! In most schemas, the `MaterialColor` entity is replaced by a plain RGBA value"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "material_tag.schema.json",
+        "title": "MaterialTag"
+      },
+      "x-example": "glitter, carbon_fiber"
+    },
+    "transmission_distance": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "x-unit": "HueForge TD",
+      "x-example": 6.6,
+      "description": "Transmission Distance is a number representing material opacity. Value ranges from 0.1 (least transparent/most opaque) to 100 (most transparent/least opaque)\nSee [Prusa TD values](https://help.prusa3d.com/article/hueforge-filament-transparency-values-and-hexcodes_762314) or [HueForge website](https://shop.thehueforge.com/blogs/news/what-is-hueforge)."
+    },
+    "refractive_index": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 4,
+      "x-example": 1.585,
+      "description": "Physical pefractive index/refraction index/index of refraction/IOR, for visualisation purposes.\nSee [Wikipedia](https://en.wikipedia.org/wiki/Refractive_index), [Database for various materials](https://physicallybased.info/)\nExpected value range [1,3], 3-decimal precision"
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "$ref": "material_certification.schema.json",
+        "title": "MaterialCertification"
+      },
+      "description": "List of certifications the material has obtained"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "title": "MaterialPhoto",
+        "properties": {
+          "url": {
+            "type": "string",
+            "x-example": "https://prusament.com/wp-content/uploads/360_degrees/pla/galaxy_black/08.jpg",
+            "description": "URL to the photo"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "print",
+              "package",
+              "filament_colors_sample"
+            ],
+            "title": "MaterialPhotoType",
+            "x-example": "`print`",
+            "description": "Information about what actually is on the photo"
+          }
+        },
+        "required": [
+          "url",
+          "type"
+        ],
+        "x-recommended": [],
+        "unevaluatedProperties": false
+      },
+      "description": "Photos of the material"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Identifier within the material database directory structure. Has to correspond with entity yaml the filename."
+    }
+  },
+  "required": [
+    "uuid",
+    "brand",
+    "class",
+    "name",
+    "abbreviation"
+  ],
+  "x-recommended": [],
+  "unevaluatedProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "class": {
+            "const": "FFF"
+          }
+        },
+        "required": [
+          "class"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "title": "FFFMaterial",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "PLA",
+              "PETG",
+              "TPU",
+              "ABS",
+              "ASA",
+              "PC",
+              "PCTG",
+              "PP",
+              "PA6",
+              "PA11",
+              "PA12",
+              "PA612",
+              "PA66",
+              "CPE",
+              "TPE",
+              "HIPS",
+              "PHA",
+              "PET",
+              "PEI",
+              "PBT",
+              "PVB",
+              "PVA",
+              "PEKK",
+              "PEEK",
+              "BVOH",
+              "TPC",
+              "PPS",
+              "PPSU",
+              "PVC",
+              "PEBA",
+              "PVDF",
+              "PPA",
+              "PCL",
+              "PES",
+              "PMMA",
+              "POM",
+              "PPE",
+              "PS",
+              "PSU",
+              "TPI",
+              "SBS",
+              "OBC",
+              "EVA"
+            ],
+            "title": "FFFMaterialType",
+            "x-example": "PETG",
+            "description": "Type of the material. Can be null if the Material is not of any FFFMaterialType in the list."
+          },
+          "properties": {
+            "$ref": "fff_material_properties.schema.json",
+            "title": "FFFMaterialProperties"
+          }
+        },
+        "required": [],
+        "x-recommended": []
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "class": {
+            "const": "SLA"
+          }
+        },
+        "required": [
+          "class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "properties": {
+            "$ref": "sla_material_properties.schema.json",
+            "title": "SLAMaterialProperties"
+          }
+        }
+      }
+    }
+  ]
+}

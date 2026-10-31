@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=OPT Station
+Comment=Afficher la station en plein écran après ouverture du bureau
+Exec=/usr/bin/python3 "@HOME@/.local/lib/openprinttag-screen/launch.py" --session-start
+TryExec=/usr/bin/firefox
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

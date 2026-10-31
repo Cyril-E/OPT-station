@@ -1,0 +1,154 @@
+{
+  "$id": "/material_container",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "MaterialContainer",
+  "properties": {
+    "class": {
+      "$ref": "material_class.schema.json",
+      "title": "MaterialClass",
+      "description": "FFF/SLA"
+    },
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier of the product.\nIf not provided by the manufacturer, the UUID can be derived as specified in [the UUID section](/uuid)."
+    },
+    "brand": {
+      "title": "Brand",
+      "oneOf": [
+        {
+          "$ref": "brand.schema.json"
+        },
+        {
+          "$ref": "slug_reference.schema.json"
+        },
+        {
+          "$ref": "uuid_reference.schema.json"
+        }
+      ],
+      "x-example": "Prusament"
+    },
+    "brand_specific_id": {
+      "type": "string",
+      "description": "Unique identifier of the container within the brand"
+    },
+    "name": {
+      "type": "string"
+    },
+    "volumetric_capacity": {
+      "type": "number",
+      "x-unit": "ml (cm\u00b3)",
+      "description": "Maximum amount of material the container can hold.\nThe volumetric unit has been selected so that the property would work with both SLA and FFF."
+    },
+    "empty_weight": {
+      "type": "number",
+      "x-unit": "g",
+      "description": "Weight of the empty container.\nThe aim is to be able to put the container on a scale, subtract this number and be able to estimate the amount of material inside."
+    },
+    "slug": {
+      "type": "string",
+      "description": "Identifier within the material database directory structure. Has to correspond with entity yaml the filename."
+    }
+  },
+  "required": [
+    "class",
+    "uuid",
+    "name"
+  ],
+  "x-recommended": [],
+  "unevaluatedProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "class": {
+            "const": "FFF"
+          }
+        },
+        "required": [
+          "class"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "title": "FFFMaterialContainer",
+        "properties": {
+          "hole_diameter": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "Diameter of the hole in the middle of the spool.\nDetermines the maximum diameter of the spool holder rod."
+          },
+          "inner_diameter": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "Inner diameter of the spool = minimum radius the fiament is rolled"
+          },
+          "outer_diameter": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "Outer diameter of the spool.\nDetermines what spool holders/dryboxes the spool can fit into."
+          },
+          "width": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "Width of the spool (= height of the cylinder)\nDetermines what spool holders/dryboxes the spool can fit into."
+          }
+        },
+        "required": [],
+        "x-recommended": []
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "class": {
+            "const": "SLA"
+          }
+        },
+        "required": [
+          "class"
+        ]
+      },
+      "then": {
+        "type": "object",
+        "title": "SLAMaterialContainer",
+        "properties": {
+          "width": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "(Maximum) size of the container in one of the horizontal dimensions"
+          },
+          "length": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "(Maximum) size of the container in the other horizontal dimension"
+          },
+          "height": {
+            "type": "number",
+            "x-unit": "mm",
+            "description": "(Maximum) size of the container in the vertical dimension."
+          },
+          "connector": {
+            "title": "SLAMaterialContainerConnector",
+            "oneOf": [
+              {
+                "$ref": "sla_material_container_connector.schema.json"
+              },
+              {
+                "$ref": "slug_reference.schema.json"
+              },
+              {
+                "$ref": "uuid_reference.schema.json"
+              }
+            ],
+            "x-example": "20mm thread",
+            "description": "See SLAMaterialContainerConnector"
+          }
+        },
+        "required": [],
+        "x-recommended": []
+      }
+    }
+  ]
+}

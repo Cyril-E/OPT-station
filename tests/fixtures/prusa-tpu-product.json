@@ -1,0 +1,63 @@
+{
+  "name": "Prusament TPU 95A Lipstick Red 500g",
+  "slug": "product/prusament-tpu-95a-lipstick-red-500g-nfc/",
+  "detailTemplateType": "FILAMENT",
+  "brand": {
+    "name": "Prusament"
+  },
+  "parameters": [
+    {
+      "__typename": "CommonParameter",
+      "uuid": "c3b115da-8122-46ef-9ab4-828a3a124c69",
+      "name": "Weight",
+      "values": [
+        {
+          "uuid": "855412b7-8d9c-4853-881f-bf5e2cbfae8c",
+          "text": "500g",
+          "frontendType": "SELECT_BOX",
+          "__typename": "ParameterValue"
+        }
+      ],
+      "type": "common",
+      "isVariant": false
+    },
+    {
+      "__typename": "CommonParameter",
+      "uuid": "75f27f03-2033-4813-a408-87be94a70f49",
+      "name": "NFC compatibility",
+      "values": [
+        {
+          "uuid": "721efcbb-1b8c-4998-9db8-c08732e706cf",
+          "text": "NFC",
+          "frontendType": "SELECT_BOX",
+          "__typename": "ParameterValue"
+        }
+      ],
+      "type": "common",
+      "isVariant": false
+    },
+    {
+      "__typename": "ColorParameter",
+      "uuid": "8817f150-6036-46f4-9673-a5be474652b5",
+      "name": "Filament color",
+      "values": [
+        {
+          "uuid": "50278c81-36d4-4cb0-933e-349138df3a9d",
+          "text": "Lipstick Red",
+          "frontendType": "SELECT_BOX",
+          "__typename": "ParameterValue"
+        }
+      ],
+      "type": "color",
+      "isVariant": true,
+      "rgbHex": "#ff0000",
+      "iconUrl": "https://www.prusa3d.com/content/images/parameterValueColor/2426.png",
+      "baseColor": {
+        "name": "Red",
+        "uuid": "36ad6cfe-f408-462f-9bc2-e95a57b53217",
+        "__typename": "BaseColor"
+      }
+    }
+  ],
+  "description": "Technical Parameters\nNozzle temperature 230±10 °C\nHeatbed temperature 65±10 °C\nRecommended nozzle 0.4 mm brass nozzle\nFilament diameter 1.75 mm\nFilament diameter precision ±0.06 mm"
+}

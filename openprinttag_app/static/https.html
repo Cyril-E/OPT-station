@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17181a"><title>OPT Station — HTTPS</title><link rel="stylesheet" href="/static/style.css"><script src="/static/translations.js"></script><script src="/static/i18n.js"></script><script src="/static/theme.js"></script><script src="/static/https.js" defer></script></head>
+<body><main class="https-setup"><div class="page-heading"><h1 data-i18n>Accéder à OPT Station en HTTPS</h1><label data-i18n class="field">Langue<select id="language-select"><option value="fr">Français</option><option value="en">English</option></select></label></div>
+<article class="card"><div class="card-heading"><h2 data-i18n>Connexion sécurisée</h2><span id="https-state" class="status-chip">—</span></div><p id="https-message" role="status"></p><p><a id="https-address" class="mono" hidden></a></p><p id="https-aliases" class="fine-print"></p><a data-i18n id="https-certificate" class="button primary" href="/https/certificate" download hidden>Télécharger le certificat public</a><h3 data-i18n>Nom du certificat</h3><p id="https-certificate-name" class="mono">—</p><p data-i18n>Le trousseau affiche ce nom. Le fichier téléchargé s’appelle opt-station-root-ca.crt.</p><h3 data-i18n>Empreinte du certificat</h3><p id="https-fingerprint" class="mono https-fingerprint"></p></article>
+<article class="card"><h2 data-i18n>À faire une fois par appareil</h2><ol><li data-i18n>Comparez l’empreinte ci-dessus avec celle affichée dans Configuration sur l’écran du Pi.</li><li data-i18n>Téléchargez le certificat public, puis importez-le dans les autorités de confiance de cet appareil.</li><li data-i18n>Fermez et rouvrez votre navigateur, puis ouvrez l’adresse HTTPS de la station.</li></ol><h3>Mac</h3>
+<ol>
+<li data-i18n>Cliquez sur Télécharger le certificat public. Le fichier opt-station-root-ca.crt se trouve dans Téléchargements.</li>
+<li data-i18n>Ouvrez Spotlight avec ⌘ Espace, recherchez Trousseaux d’accès et ouvrez cette application.</li>
+<li data-i18n>Sélectionnez Système à gauche. Dans Fichier → Importer des éléments, choisissez opt-station-root-ca.crt et confirmez l’importation dans Système. Saisissez le mot de passe du Mac uniquement dans sa fenêtre si demandé.</li>
+<li data-i18n>Choisissez la catégorie Certificats, effacez la recherche précédente puis recherchez Caddy. Retrouvez le nom exact affiché ci-dessus.</li>
+<li data-i18n>Double-cliquez sur ce certificat, dépliez Se fier et réglez SSL sur Toujours approuver. Fermez la fenêtre et validez avec le mot de passe du Mac si demandé.</li>
+<li data-i18n>Ouvrez l’adresse HTTPS de la station dans Chrome. Si un avertissement persiste, fermez puis rouvrez Chrome et réessayez.</li>
+</ol>
+<p data-i18n>Si vous ne trouvez pas le certificat, vérifiez Système → Certificats. Les vues Racines du système et Mes certificats ne correspondent pas à cet import.</p>
+<h3>Windows</h3>
+<ol>
+<li data-i18n>Ouvrez opt-station-root-ca.crt, cliquez sur Installer le certificat puis choisissez Utilisateur actuel.</li>
+<li data-i18n>Choisissez Placer tous les certificats dans le magasin suivant, cliquez sur Parcourir et sélectionnez Autorités de certification racines de confiance.</li>
+<li data-i18n>Terminez l’importation, puis relancez le navigateur et ouvrez l’adresse HTTPS de la station.</li>
+</ol>
+<h3>Firefox / Linux</h3>
+<ol>
+<li data-i18n>Ouvrez Paramètres → Vie privée et sécurité → Certificats → Afficher les certificats → Autorités.</li>
+<li data-i18n>Cliquez sur Importer, choisissez opt-station-root-ca.crt et autorisez cette autorité à identifier des sites web.</li>
+<li data-i18n>Vérifiez le nom du certificat dans la liste, puis relancez Firefox et ouvrez l’adresse HTTPS de la station.</li>
+</ol>
+<p data-i18n>Le certificat à télécharger est public. La clé privée reste sur le Pi. La fermeture d’un avertissement ne remplace pas cette installation.</p><p data-i18n>La confiance dans le certificat et l’autorisation des notifications sont deux choix distincts. Le réglage Inventaire ou Complet reste celui choisi dans Configuration.</p></article>
+</main></body></html>

@@ -1,0 +1,6 @@
+# Terminology
+
+The OpenPrintTag format is based on an entity model described in the [OpenPrintTag Architecture]({{arch}}). Please visit the architecture page, most significantly:
+
+* [Materials]({{arch}}/#/materials): `Material`, `FFFMaterialType`, `MaterialTag`, ...
+* [Packaging]({{arch}}/#/packaging): `MaterialPackage`, `MaterialPackageInstance`, `MaterialContainer`, ...

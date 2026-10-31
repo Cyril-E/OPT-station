@@ -1,0 +1,17 @@
+[Unit]
+Description=OPT Station
+
+[Service]
+Type=simple
+WorkingDirectory=%h/apps/openprinttag-station
+ExecStart=%h/apps/openprinttag-station/.venv/bin/python -m openprinttag_app --mode hardware --camera --lan --data-dir %h/openprinttag-data
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=45
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

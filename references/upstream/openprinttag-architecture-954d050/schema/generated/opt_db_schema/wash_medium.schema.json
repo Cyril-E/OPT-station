@@ -1,0 +1,51 @@
+{
+  "$id": "/wash_medium",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "WashMedium",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier of the wash medium."
+    },
+    "brand": {
+      "title": "Brand",
+      "oneOf": [
+        {
+          "$ref": "brand.schema.json"
+        },
+        {
+          "$ref": "slug_reference.schema.json"
+        },
+        {
+          "$ref": "uuid_reference.schema.json"
+        }
+      ]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human readable name of the wash medium."
+    },
+    "brand_specific_id": {
+      "type": "string",
+      "description": "An identifier the brand uses to indentify this specific wash medium"
+    },
+    "density": {
+      "type": "number",
+      "x-unit": "g/cm\u00b3 (1 g/cm\u00b3 = 0.001 g/mm\u00b3 = 1000 kg/m\u00b3)"
+    },
+    "wash_capacity": {
+      "type": "number",
+      "x-unit": "cm\u00b2/g",
+      "description": "Amount of prints the washing medium can wash before it needs to be replaced, in surface area of the washed models."
+    },
+    "slug": {
+      "type": "string",
+      "description": "Identifier within the material database directory structure. Has to correspond with entity yaml the filename."
+    }
+  },
+  "required": [],
+  "x-recommended": [],
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,116 @@
+{
+  "$id": "/fff_material_properties",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "FFFMaterialProperties",
+  "properties": {
+    "min_print_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "x-example": 205,
+      "description": "Minimum recommended nozzle temperature for printing"
+    },
+    "max_print_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "x-example": 225,
+      "description": "Maximum recommended nozzle temperature for printing"
+    },
+    "preheat_temperature": {
+      "type": "number",
+      "x-unit": "\u00b0C",
+      "description": "Nozzle temperature for preheat/MBL/nozzle cleaning\nThe temperature should be high enough so that the material is soft and can be easily cleaned off the nozzle,\nbut low enough so that the filament doesn't ooze."
+    },
+    "min_bed_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "x-example": 40,
+      "description": "Minimum recommended heatbed temperature for printing"
+    },
+    "max_bed_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "x-example": 60,
+      "description": "Minimum recommended heatbed temperature for printing"
+    },
+    "heatbreak_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "description": "Temperature the heatbreak should be cooled to."
+    },
+    "chamber_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "description": "Chamber temperature the printer should ideally keep during the print"
+    },
+    "min_chamber_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "description": "Minimum chamber temperature that is required for printing of this material.\nThe printer should wait to reach this temperature before starting the print."
+    },
+    "max_chamber_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "description": "Maximum chamber temperature that is required for printing of this material.\nThe printer should wait to cool to this temperature before starting the print."
+    },
+    "drying_temperature": {
+      "type": "number",
+      "minimum": -273,
+      "maximum": 500,
+      "x-unit": "\u00b0C",
+      "description": "Recommended temperature for drying the filament"
+    },
+    "drying_time": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 500000,
+      "x-unit": "min",
+      "description": "Recommended drying time (on `drying_temperature`) before using the material"
+    },
+    "min_nozzle_diameter": {
+      "type": "number",
+      "minimum": 200,
+      "maximum": 2000,
+      "x-unit": "\u00b5m",
+      "description": "Minimum recommended nozzle diameter for printing the material.\nSome materials can contain added particles that would clog the nozzle if the diameter was too small."
+    },
+    "density": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 100,
+      "x-unit": "g/cm\u00b3 (1 g/cm\u00b3 = 0.001 g/mm\u00b3 = 1000 kg/m\u00b3)"
+    },
+    "hardness_shore_a": {
+      "type": "number",
+      "description": "Hardness of the material on the Shore A scale"
+    },
+    "hardness_shore_d": {
+      "type": "number",
+      "description": "Hardness of the material on the Shore D scale"
+    }
+  },
+  "required": [],
+  "x-recommended": [
+    "min_print_temperature",
+    "max_print_temperature",
+    "min_bed_temperature",
+    "max_bed_temperature"
+  ],
+  "unevaluatedProperties": false
+}

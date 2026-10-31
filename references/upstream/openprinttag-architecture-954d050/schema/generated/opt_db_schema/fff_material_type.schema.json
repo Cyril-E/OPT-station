@@ -1,0 +1,32 @@
+{
+  "$id": "/fff_material_type",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "FFFMaterialType",
+  "properties": {
+    "abbreviation": {
+      "type": "string",
+      "maxLength": 7,
+      "x-example": "PETG",
+      "description": "Short abbreviation of the material type name, no longer than 7 characters.\nUsed for example in printer footers (to show what material is loaded).\nAlso possibly used for checking filament type match between gcode and printer.\nThe (class, abbreviation) pair forms an unique key."
+    },
+    "id": {
+      "type": "number",
+      "description": "Unique numerical identifier, alternative to the class+abbreviation pair"
+    },
+    "name": {
+      "type": "string",
+      "x-example": "Polyethylene Terephtalate Glycol"
+    },
+    "default_properties": {
+      "$ref": "fff_material_properties.schema.json",
+      "title": "FFFMaterialProperties"
+    }
+  },
+  "required": [
+    "abbreviation",
+    "name"
+  ],
+  "x-recommended": [],
+  "unevaluatedProperties": false
+}

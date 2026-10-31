@@ -1,0 +1,105 @@
+{
+  "$id": "/brand",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Brand",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier of the brand.\nIf not provided by the manufacturer, the UUID can be derived as specified in [the UUID section](/uuid)."
+    },
+    "name": {
+      "type": "string",
+      "x-example": "Prusament"
+    },
+    "countries_of_origin": {
+      "type": "array",
+      "items": {
+        "title": "Country",
+        "description": "Two-letter country code, according to [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)",
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 2
+      },
+      "x-example": "CZ, US",
+      "description": "List of all countries where the brand has manufacturing facilities."
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-example": "Prusa, Prusa3D",
+      "description": "Additional strings the brand can be matched against during searches."
+    },
+    "material_url_template": {
+      "type": "string",
+      "x-example": "https://prusament.com/materials/{id}/",
+      "description": "`{id}` gets replaced by Material::brand_specific_id\n`{uuid}` gets replaced by Material::uuid"
+    },
+    "material_package_url_template": {
+      "type": "string",
+      "x-example": "https://www.prusa3d.com/cs/produkt/{id}/",
+      "description": "`{id}` gets replaced by MaterialPackage::brand_specific_id\n`{uuid}` gets replaced by MaterialPackage::uuid"
+    },
+    "material_package_instance_url_template": {
+      "type": "string",
+      "x-example": "https://prusament.com/spool/?spoolId={uuid}",
+      "description": "`{id}` gets replaced by MaterialPackageInstance::brand_specific_id\n`{uuid}` gets replaced by MaterialPackageInstance::uuid"
+    },
+    "link_patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "title": "BrandLinkPattern",
+        "properties": {
+          "brand": {
+            "title": "Brand",
+            "oneOf": [
+              {
+                "$ref": "brand.schema.json"
+              },
+              {
+                "$ref": "slug_reference.schema.json"
+              },
+              {
+                "$ref": "uuid_reference.schema.json"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "brand",
+              "material",
+              "material_package",
+              "material_package_instance"
+            ],
+            "title": "BrandLinkPatternType",
+            "x-example": "`material`",
+            "description": "Type of object the link is referring to"
+          },
+          "pattern": {
+            "type": "string",
+            "x-example": "`https://prusament\\.com/spool/\\?spoolId=(?<MaterialPackageInstance_uuid>\\d+)/`",
+            "description": "Regex pattern for matching the link. The regex is required to use named capturing groups, where the group name is the captured property name in the form of `object_property`"
+          }
+        },
+        "required": [],
+        "x-recommended": [],
+        "unevaluatedProperties": false
+      }
+    },
+    "slug": {
+      "type": "string",
+      "description": "Identifier within the material database directory structure. Has to correspond with entity yaml the filename."
+    }
+  },
+  "required": [
+    "uuid",
+    "name"
+  ],
+  "x-recommended": [],
+  "unevaluatedProperties": false
+}

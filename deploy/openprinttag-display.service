@@ -1,0 +1,13 @@
+[Unit]
+Description=OPT Station en plein écran
+Wants=openprinttag.service
+After=openprinttag.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/lib/openprinttag-screen/launch.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillMode=control-group
+UMask=0077
