@@ -1,4 +1,4 @@
-"""Encrypted application backups, guarded restore and mount-aware scheduling.
+"""Application backups with optional encryption, guarded restore and scheduling.
 
 Archives contain data, never SQL or executable code. SQLite schemas always come
 from this application; imported rows are checked in a temporary trusted schema.
@@ -35,6 +35,7 @@ from .network import NetworkAccess
 from .storage import ConflictError, Store, dumps, now
 
 MAGIC = b"OPTBAK1\n"
+PLAIN_MAGIC = b"OPTBAK0\n"
 MAX_ARCHIVE = 32 * 1024 * 1024
 MAX_PLAIN = 64 * 1024 * 1024
 CONFIG_FILES = ("network-settings.json", "printer-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json")
@@ -93,12 +94,34 @@ def encrypt(record, password=None, material=None):
     return encrypted
 
 
-def decrypt(content, password):
-    if not isinstance(content, bytes) or not 52 <= len(content) <= MAX_ARCHIVE or not content.startswith(MAGIC):
+def encode_backup(record, password=None, material=None):
+    if password not in (None, "") or material is not None:
+        return encrypt(record, password=password, material=material)
+    raw = dumps(record).encode()
+    if len(raw) > MAX_PLAIN:
+        raise BackupError("Les données dépassent la limite de sauvegarde de 64 Mo.")
+    zipped = gzip.compress(raw)
+    content = PLAIN_MAGIC + hashlib.sha256(zipped).digest() + zipped
+    if len(content) > MAX_ARCHIVE:
+        raise BackupError("La sauvegarde dépasse la limite de fichier de 32 Mo.")
+    return content
+
+
+def decrypt(content, password=None):
+    if not isinstance(content, bytes) or not 40 <= len(content) <= MAX_ARCHIVE:
         raise BackupError("Fichier de sauvegarde OPT Station invalide ou trop volumineux.")
-    salt, nonce = content[8:24], content[24:36]
     try:
-        zipped = AESGCM(derive(password, salt)).decrypt(nonce, content[36:], MAGIC + salt)
+        if content.startswith(PLAIN_MAGIC):
+            zipped = content[40:]
+            if not secrets.compare_digest(content[8:40], hashlib.sha256(zipped).digest()):
+                raise BackupError("Sauvegarde altérée : le contrôle d’intégrité a échoué.")
+        elif content.startswith(MAGIC) and len(content) >= 52:
+            if password in (None, ""):
+                raise BackupError("Cette sauvegarde est protégée. Saisissez son mot de passe.")
+            salt, nonce = content[8:24], content[24:36]
+            zipped = AESGCM(derive(password, salt)).decrypt(nonce, content[36:], MAGIC + salt)
+        else:
+            raise BackupError("Fichier de sauvegarde OPT Station invalide ou trop volumineux.")
         decoder = zlib.decompressobj(31)
         raw = decoder.decompress(zipped, MAX_PLAIN + 1)
         if len(raw) > MAX_PLAIN or not decoder.eof or decoder.unused_data:
@@ -106,7 +129,9 @@ def decrypt(content, password):
         return read_json(raw)
     except InvalidTag:
         raise BackupError("Mot de passe incorrect ou sauvegarde altérée.") from None
-    except (zlib.error, UnicodeError):
+    except BackupError:
+        raise
+    except (zlib.error, UnicodeError, ValueError):
         raise BackupError("Contenu de sauvegarde illisible.") from None
 
 
@@ -168,7 +193,7 @@ def mounted_volumes():
 
 
 def default_settings():
-    return {"version": 1, "revision": 0, "enabled": False, "destination": "", "mount_path": "", "mount_source": "",
+    return {"version": 1, "revision": 0, "enabled": False, "encrypted": False, "destination": "", "mount_path": "", "mount_source": "",
             "frequency": "daily", "time": "02:00", "weekday": 6, "timezone": "Europe/Paris", "keep": 14,
             "station_id": uuid.uuid4().hex}
 
@@ -176,10 +201,11 @@ def default_settings():
 def validate_schedule(record):
     if not isinstance(record, dict):
         raise BackupError("Réglages de sauvegarde invalides.")
+    record = {"encrypted": True, **record}  # Legacy schedules always used encryption.
     for key in ("revision", "weekday", "keep", "version"):
         if type(record.get(key)) is not int:
             raise BackupError("Réglages de sauvegarde invalides.")
-    if (record["version"] != 1 or record["revision"] < 0 or type(record.get("enabled")) is not bool
+    if (record["version"] != 1 or record["revision"] < 0 or type(record.get("enabled")) is not bool or type(record.get("encrypted")) is not bool
             or not 0 <= record["weekday"] <= 6 or not 1 <= record["keep"] <= 365
             or record.get("frequency") not in {"daily", "weekly"}
             or not isinstance(record.get("time"), str) or not re.fullmatch(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]", record["time"])
@@ -248,7 +274,7 @@ class BackupManager:
 
     def snapshot(self):
         with self.lock:
-            return {**deepcopy(self.configuration), "password_saved": self.key_path.is_file(), "volumes": self.volumes(),
+            return {**deepcopy(self.configuration), "password_saved": self.configuration["encrypted"] and self.key_path.is_file(), "volumes": self.volumes(),
                     "last_result": deepcopy(self.state), "next_run": self.next_run() if self.configuration["enabled"] else None,
                     "restore_points": self.restore_points()}
 
@@ -357,21 +383,26 @@ class BackupManager:
         with self.lock:
             if body["revision"] != self.configuration["revision"]:
                 raise ConflictError("Les réglages de sauvegarde ont changé. Rechargez-les avant d’enregistrer.")
-            record = validate_schedule({**self.configuration, **{k: v for k, v in body.items() if k != "password"}})
+            values = {**self.configuration, **{k: v for k, v in body.items() if k != "password"}}
+            if "encrypted" not in body and body.get("password"):
+                values["encrypted"] = True  # Preserve requests made by older clients.
+            record = validate_schedule(values)
             password = body.get("password")
             material = None
-            if password:
+            if record["encrypted"] and password:
                 salt = secrets.token_bytes(16)
                 material = {"salt": base64.b64encode(salt).decode(), "key": base64.b64encode(derive(password, salt)).decode()}
             if record["enabled"]:
                 self._destination(record)
-                if not material and not self.key_path.exists():
+                if record["encrypted"] and not material and not self.key_path.exists():
                     raise BackupError("Saisissez le mot de passe à conserver pour les sauvegardes automatiques.")
             record["revision"] += 1
             before_key = self.key_path.read_bytes() if self.key_path.exists() else None
             try:
                 if material:
                     private_json(self.key_path, material)
+                elif not record["encrypted"]:
+                    self.key_path.unlink(missing_ok=True)
                 private_json(self.path, record)
             except OSError:
                 if before_key is not None:
@@ -420,11 +451,11 @@ class BackupManager:
             record["configuration"] = {name: read_json((self.directory / name).read_bytes()) for name in CONFIG_FILES if (self.directory / name).exists()}
         return record
 
-    def download(self, scope, password):
+    def download(self, scope, password=None):
         with self.gate.hold(), self.lock:
             if self.busy():
                 raise BackupError("Arrêtez le scan QR et attendez la fin des opérations matérielles avant de sauvegarder.", 409)
-            return encrypt(self.collect(scope), password=password)
+            return encode_backup(self.collect(scope), password=password)
 
     def _validate_inventory(self, inventory, folder):
         if (not isinstance(inventory, dict) or type(inventory.get("schema")) is not int or inventory["schema"] not in {4, 5}
@@ -575,7 +606,7 @@ class BackupManager:
         record.pop("created_at")
         return hashlib.sha256(dumps(record).encode()).hexdigest()
 
-    def preview(self, content, password):
+    def preview(self, content, password=None):
         record = decrypt(content, password)
         try:
             summary = self._validate(record)
@@ -691,9 +722,11 @@ class BackupManager:
                 raise BackupError("Une opération matérielle est en cours. La sauvegarde attendra sa fin.", 409)
             slot, _ = self._latest_slot()
             try:
-                key = read_json(self.key_path.read_bytes())
-                material = (base64.b64decode(key["salt"], validate=True), base64.b64decode(key["key"], validate=True))
-                content = encrypt(self.collect("all"), material=material)
+                material = None
+                if self.configuration["encrypted"]:
+                    key = read_json(self.key_path.read_bytes())
+                    material = (base64.b64decode(key["salt"], validate=True), base64.b64decode(key["key"], validate=True))
+                content = encode_backup(self.collect("all"), material=material)
                 # Recheck mount presence after collection, before writing anything.
                 self._destination(self.configuration)
                 prefix = "opt-station-" + self.configuration["station_id"][:8] + "-" + self.settings.mode + "-"
@@ -704,7 +737,8 @@ class BackupManager:
                         raise BackupError("Le support de sauvegarde manque d’espace libre.", 409)
                     self._write_on_volume(descriptor, filename, content, prefix)
                 self.state = {**self.state, "status": "success", "attempted_at": self.utcnow().isoformat(),
-                              "completed_at": self.utcnow().isoformat(), "filename": filename, "bytes": len(content), "message": "Sauvegarde chiffrée enregistrée et vérifiée."}
+                              "completed_at": self.utcnow().isoformat(), "filename": filename, "bytes": len(content),
+                              "message": "Sauvegarde chiffrée enregistrée et vérifiée." if self.configuration["encrypted"] else "Sauvegarde sans mot de passe enregistrée et vérifiée."}
                 if scheduled:
                     self.state["last_slot"] = slot
             except (OSError, ValueError, KeyError, TypeError) as exc:

@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La version courante est **[v0.17.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La version courante est **[v0.17.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.1)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -13,7 +13,7 @@ La version courante est **[v0.17.0](https://github.com/Cyril-E/OPT-station/relea
 - HTTPS local, aide pour approuver le certificat, démarrage en plein écran et commandes d’alimentation du Pi.
 - Notifications Chrome de fin d’impression et d’intervention avec un onglet ouvert en arrière-plan.
 - Douze outils MCP pour consulter le stock et le schéma et gérer la bibliothèque, sans accès aux commandes matérielles.
-- Sauvegardes chiffrées manuelles/planifiées et indication des nouvelles versions GitHub, sans installation automatique de mise à jour.
+- Sauvegardes manuelles/planifiées avec protection par mot de passe facultative et indication des nouvelles versions GitHub avec leurs nouveautés, sans installation automatique de mise à jour.
 
 ## Qualification complémentaire de l’installation
 

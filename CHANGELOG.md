@@ -1,5 +1,16 @@
 # Versions publiques
 
+## v0.17.1 — 31 octobre 2026
+
+- Mot de passe facultatif pour les sauvegardes manuelles et planifiées, avec un choix explicite dans Configuration.
+- Téléchargement manuel sans mot de passe par défaut; format compressé avec contrôle d’intégrité et restauration sans saisie de mot de passe.
+- Compatibilité des sauvegardes protégées existantes et maintien du choix de protection des anciennes planifications.
+- Notes de la dernière version GitHub accessibles dans une fenêtre depuis le bandeau, l’indicateur latéral ou Configuration, y compris en accès Inventaire. Le dernier contenu connu reste disponible en cas de panne réseau.
+- Section Nouveautés sur la page principale du projet, avec un résumé des versions et les liens vers leurs publications.
+
+L’archive complète `opt-station-v0.17.1.tar.gz` et son SHA-256 accompagnent cette préversion. Les stations existantes conservent leur inventaire, leurs réglages et leur autorité HTTPS. L’installation complète sur une carte SD vierge reste à qualifier.
+
+
 ## v0.17.0 — 31 octobre 2026
 
 - Installation en une commande sur Raspberry Pi OS 64 bits Trixie : téléchargement public et SHA-256, dépendances, environnement Python, services, HTTPS et plein écran avec ouverture automatique du bureau.

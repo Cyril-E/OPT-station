@@ -128,12 +128,12 @@ class LibraryImport(Model):
 
 class BackupDownload(Model):
     scope: Literal["all", "inventory", "configuration"]
-    password: str = Field(min_length=10, max_length=256)
+    password: str | None = Field(default=None, max_length=256)
 
 
 class BackupFile(Model):
     content: str = Field(max_length=(MAX_ARCHIVE * 4 // 3 + 8))
-    password: str = Field(min_length=10, max_length=256)
+    password: str | None = Field(default=None, max_length=256)
 
 
 class BackupRestore(Model):
@@ -144,6 +144,7 @@ class BackupRestore(Model):
 class BackupSettings(Model):
     revision: StrictInt = Field(ge=0)
     enabled: StrictBool
+    encrypted: StrictBool = False
     destination: str = Field(max_length=1000)
     mount_path: str = Field(max_length=1000)
     mount_source: str = Field(max_length=1000)
@@ -152,7 +153,7 @@ class BackupSettings(Model):
     weekday: StrictInt = Field(ge=0, le=6)
     timezone: str = Field(max_length=100)
     keep: StrictInt = Field(ge=1, le=365)
-    password: str | None = Field(default=None, min_length=10, max_length=256)
+    password: str | None = Field(default=None, max_length=256)
 
 
 class Packaged(Model):
@@ -1113,7 +1114,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     def save_backup_settings(request: Request, body: BackupSettings):
         require_station(request)
         try:
-            return backups.save(body.model_dump())
+            return backups.save(body.model_dump(exclude_unset=True))
         except OSError:
             raise HTTPException(503, "Impossible d’enregistrer les réglages de sauvegarde.") from None
 

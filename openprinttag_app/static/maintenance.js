@@ -29,8 +29,15 @@
     $("library-export-download").disabled = $("library-import-preview").disabled = !browse || busy || pendingPower;
     $("library-import-confirm").disabled = !browse || busy || pendingPower || !importPreview;
     $("backup-restore-confirm").disabled = !access || busy || pendingPower || !restorePreview || !$("backup-restore-ack").checked;
-    $("backup-run").disabled = busy || dirty || !configuration?.password_saved || !configuration?.destination;
-    text("backups-access", access ? msg("Téléchargez une copie chiffrée ou restaurez un fichier après vérification.") : msg("Les sauvegardes et restaurations nécessitent l’accès local ou complet."));
+    $("backup-run").disabled = busy || dirty || (configuration?.encrypted !== false && !configuration?.password_saved) || !configuration?.destination;
+    const protect = $("backup-protected").checked, automatic = $("backup-encrypted").checked;
+    $("backup-password-fields").hidden = !protect;
+    for (const id of ["backup-password", "backup-password-confirm"]) { $(id).disabled = !protect; $(id).required = protect; }
+    $("backup-auto-password-field").hidden = !automatic;
+    $("backup-auto-password-note").hidden = !automatic;
+    $("backup-auto-password").disabled = !automatic;
+    $("backup-auto-password").required = automatic && $("backup-enabled").checked && !configuration?.password_saved;
+    text("backups-access", access ? msg("Téléchargez une copie avec ou sans mot de passe, ou restaurez un fichier après vérification.") : msg("Les sauvegardes et restaurations nécessitent l’accès local ou complet."));
     $("backup-point-preview").disabled = !access || busy || pendingPower || !configuration?.restore_points?.length;
     if (configuration) {
       const points = $("backup-point"), selected = points.value;
@@ -67,6 +74,7 @@
     if (!configuration) return;
     const c = configuration; fillVolumes(c.mount_path);
     $("backup-enabled").checked = c.enabled;
+    $("backup-encrypted").checked = c.encrypted ?? true;
     $("backup-folder").value = c.destination && c.mount_path ? c.destination.slice(c.mount_path.length).replace(/^\/+/, "") : "opt-station-backups";
     $("backup-frequency").value = c.frequency; $("backup-weekday").value = c.weekday;
     $("backup-time").value = c.time; $("backup-timezone").value = c.timezone; $("backup-keep").value = c.keep;
@@ -82,6 +90,10 @@
     });
   }
   $("backups-reload").addEventListener("click", refresh);
+  $("backup-protected").addEventListener("change", () => {
+    if (!$("backup-protected").checked) $("backup-password").value = $("backup-password-confirm").value = "";
+    render();
+  });
   $("backup-schedule-form").addEventListener("input", () => { dirty = true; render(); });
   $("backup-schedule-form").addEventListener("submit", event => {
     event.preventDefault(); if (!configuration || !access) return;
@@ -89,26 +101,27 @@
       const mount = $("backup-volume").value, folder = $("backup-folder").value.trim();
       const volume = configuration.volumes.find(v => v.path === mount);
       if (folder.startsWith("/") || folder.split("/").some(p => p === ".." || p === ".") || !folder) throw new Error(msg("Indiquez un sous-dossier du support choisi."));
-      configuration = await request("/api/configuration/backups", {revision: configuration.revision, enabled: $("backup-enabled").checked,
+      configuration = await request("/api/configuration/backups", {revision: configuration.revision, enabled: $("backup-enabled").checked, encrypted: $("backup-encrypted").checked,
         destination: mount ? mount.replace(/\/$/, "") + "/" + folder : "", mount_path: mount, mount_source: volume?.source || configuration.mount_source || "",
         frequency: $("backup-frequency").value, time: $("backup-time").value, weekday: Number($("backup-weekday").value), timezone: $("backup-timezone").value.trim(),
-        keep: Number($("backup-keep").value), password: $("backup-auto-password").value || null}, "PUT");
+        keep: Number($("backup-keep").value), password: $("backup-encrypted").checked ? $("backup-auto-password").value || null : null}, "PUT");
       fillSchedule(); text("backups-result", msg("Planification enregistrée sur le Pi."));
     });
   });
   $("backup-run").addEventListener("click", () => action("backups-result", async () => {
     configuration = await request("/api/backups/run", {});
-    text("backups-result", msg("Sauvegarde chiffrée enregistrée et vérifiée."));
+    text("backups-result", configuration.last_result?.message || msg("Sauvegarde enregistrée et vérifiée."));
   }));
   $("backup-download").addEventListener("click", () => action("backups-result", async () => {
-    const password = $("backup-password").value;
-    if (password.length < 10) throw new Error(msg("Choisissez un mot de passe de sauvegarde de 10 à 256 caractères."));
-    if (password !== $("backup-password-confirm").value) throw new Error(msg("Les deux mots de passe ne correspondent pas."));
+    const protect = $("backup-protected").checked;
+    const password = protect ? $("backup-password").value : null;
+    if (protect && password.length < 10) throw new Error(msg("Choisissez un mot de passe de sauvegarde de 10 à 256 caractères."));
+    if (protect && password !== $("backup-password-confirm").value) throw new Error(msg("Les deux mots de passe ne correspondent pas."));
     const scope = $("backup-scope").value;
     const response = await request("/api/backups/download", {scope, password}, "POST", true);
     download(await response.blob(), `opt-station-${scope}-${new Date().toISOString().slice(0, 10)}.optbak`);
     $("backup-password").value = $("backup-password-confirm").value = "";
-    text("backups-result", msg("Sauvegarde téléchargée. Conservez son mot de passe séparément."));
+    text("backups-result", protect ? msg("Sauvegarde téléchargée. Conservez son mot de passe séparément.") : msg("Sauvegarde téléchargée sans mot de passe."));
   }));
   $("backup-preview").addEventListener("click", () => action("backups-result", async () => {
     restorePreview = null;

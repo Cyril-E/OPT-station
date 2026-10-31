@@ -9,8 +9,13 @@
     const available = Boolean(status?.enabled && status?.update_available && status?.latest?.url);
     $("updates-banner").hidden = $("updates-sidebar").hidden = !available;
     $("updates-release-link").hidden = !status?.latest?.url;
-    if (status?.latest?.url) ["updates-banner-link", "updates-release-link"].forEach(id => { $(id).href = status.latest.url; });
-    else ["updates-banner-link", "updates-release-link"].forEach(id => $(id).removeAttribute('href'));
+    $("updates-notes-open").hidden = !status?.latest?.url;
+    if (status?.latest?.url) ["updates-banner-link", "updates-release-link", "updates-notes-link"].forEach(id => { $(id).href = status.latest.url; });
+    else ["updates-banner-link", "updates-release-link", "updates-notes-link"].forEach(id => $(id).removeAttribute('href'));
+    // GitHub content stays plain text, in the language used by its author.
+    $("updates-notes-version").textContent = status?.latest?.name || status?.latest?.tag || "";
+    $("updates-notes-content").textContent = status?.latest?.notes || msg("Aucun détail n’a été fourni pour cette version. Consultez sa page GitHub.");
+    if (!status?.latest?.url && $("updates-notes-dialog").open) $("updates-notes-dialog").close();
     if (available) text("updates-banner-text", msg("Version {0} disponible · version installée : {1}", status.latest.tag, status.installed_version));
     text("updates-installed", status?.installed_version || "—"); text("updates-latest", status?.latest?.tag || "—");
     let label = msg("À vérifier"), message = msg("Activez la recherche de versions pour consulter les publications GitHub.");
@@ -19,7 +24,7 @@
       else if (status.checking) { label = msg("Vérification…"); message = msg("Vérification des versions publiées sur GitHub…"); }
       else if (status.error_code) { label = status.error_code === 'access' || status.error_code === 'token' ? msg("Accès GitHub requis") : msg("Vérification indisponible"); message = I18n.message(status.message); }
       else if (status.phase === 'ok') {
-        if (available) { label = msg("Mise à jour disponible"); message = msg("La version {0} est disponible. Consultez ses nouveautés sur GitHub.", status.latest.tag); }
+        if (available) { label = msg("Mise à jour disponible"); message = msg("La version {0} est disponible. Consultez ses nouveautés ici ou sur GitHub.", status.latest.tag); }
         else if (!status.latest) { label = msg("Aucune version compatible"); message = msg("Aucune publication compatible avec les options choisies n’a été trouvée."); }
         else if (status.comparison === 'ahead') { label = msg("Version plus récente installée"); message = msg("La version installée est plus récente que la dernière publication GitHub ({0}).", status.latest.tag); }
         else { label = msg("À jour"); message = msg("La station utilise la dernière version publiée compatible avec vos options."); }
@@ -74,7 +79,11 @@
     finally { busy = false; render(); }
   });
   $("updates-info").addEventListener('click', () => $("updates-info-dialog").showModal());
-  $("updates-sidebar").addEventListener('click', () => { $("tab-configuration").click(); $("updates-info").focus(); });
+  function showNotes() {
+    if (!status?.latest?.url || $("updates-notes-dialog").open) return;
+    $("updates-notes-dialog").showModal();
+  }
+  ["updates-sidebar", "updates-banner-notes", "updates-notes-open"].forEach(id => $(id).addEventListener('click', showNotes));
   document.addEventListener('opt-station-status', event => {
     access = event.detail.access; pendingPower = Boolean(event.detail.power?.pending); status = event.detail.updates;
     if (!access) { configuration = null; $("updates-token").value = ""; dirty = false; }

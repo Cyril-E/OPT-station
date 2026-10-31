@@ -20,6 +20,7 @@ from .storage import ConflictError
 
 DEFAULT_REPOSITORY = "Cyril-E/OPT-station"
 MAX_BODY = 2 * 1024 * 1024
+MAX_NOTES = 12_000
 
 
 def stamp(value):
@@ -120,8 +121,12 @@ def release(item, repository):
     except (ValueError, TypeError):
         return None
     name = item.get("name")
+    notes = item.get("body")
+    notes = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", notes.replace("\r\n", "\n").replace("\r", "\n")).strip() if isinstance(notes, str) else ""
+    if len(notes) > MAX_NOTES:
+        notes = notes[:MAX_NOTES - 2] + "\n…"
     return {"tag": tag, "version": str(version(tag)), "name": name[:200] if isinstance(name, str) else tag,
-            "url": url, "published_at": published,
+            "url": url, "published_at": published, "notes": notes,
             "prerelease": item["prerelease"] or version(tag).is_prerelease or version(tag).is_devrelease}
 
 
@@ -168,7 +173,8 @@ class ReleaseMonitor:
                     latest = record.get("latest")
                     if latest is not None:
                         sanitized = release({"draft": False, "prerelease": latest["prerelease"], "tag_name": latest["tag"],
-                                             "published_at": latest["published_at"], "html_url": latest["url"], "name": latest["name"]}, self.configuration.record["repository"])
+                                             "published_at": latest["published_at"], "html_url": latest["url"], "name": latest["name"],
+                                             "body": latest.get("notes", "")}, self.configuration.record["repository"])
                         if not sanitized:
                             raise ValueError()
                         record["latest"] = sanitized

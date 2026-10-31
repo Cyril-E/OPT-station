@@ -17,7 +17,11 @@ Le bouton **Comment fonctionne la vérification ?** explique le fonctionnement e
 
 ## Affichage
 
-Lorsqu’une mise à jour est connue, un bandeau affiche la version publiée et la version installée, avec un lien vers la release GitHub. Un indicateur reste également dans la barre latérale et mène à Configuration. Les utilisateurs du réseau en accès Inventaire peuvent voir cette indication; la modification des réglages et le lancement d’un contrôle nécessitent l’accès local ou complet.
+Lorsqu’une mise à jour est connue, un bandeau affiche la version publiée et la version installée, avec un bouton **Nouveautés** et un lien vers la release GitHub. Un indicateur reste également dans la barre latérale : le sélectionner ouvre les notes de cette version. Les utilisateurs du réseau en accès Inventaire peuvent consulter cette indication et les notes; la modification des réglages et le lancement d’un contrôle nécessitent l’accès local ou complet.
+
+Depuis v0.17.1, **Configuration → Mises à jour d’OPT Station → Nouveautés de la dernière version** ouvre aussi cette fenêtre, même si la station utilise déjà cette version. Le contenu provient des notes de la publication GitHub retenue par les options de recherche. Il reste dans la langue de sa publication, sans traduction automatique; les boutons et les explications suivent la langue de l’interface. Si la publication n’a pas de notes, un message propose de consulter sa page GitHub.
+
+Les notes restent du texte : les balises HTML et le Markdown ne sont pas exécutés ni rendus comme du contenu actif. Le texte affiché est limité à 12 000 caractères et se termine par une ellipse s’il dépasse cette limite. Le lien vers GitHub donne toujours accès à la publication complète. Les notes sont conservées avec le dernier résultat réussi, y compris après redémarrage ou pendant une panne réseau. Les anciens caches sans notes restent compatibles.
 
 Configuration affiche : version installée, dernière version compatible, état de la vérification, date du dernier contrôle réussi et prochaine échéance. Si le Pi utilise un développement plus récent que la publication courante, il l’indique et ne propose pas une ancienne version comme mise à jour.
 
@@ -37,7 +41,11 @@ Un contrôle est limité à dix pages de cent releases, 2 Mo par page et un budg
 
 Les réglages sont enregistrés dans **`updates-settings.json`**, avec droits `0600`. Le jeton n’est jamais renvoyé au navigateur, ajouté à un lien ou affiché dans les erreurs. L’état et les métadonnées nécessaires au cache sont dans **`updates-state.json`**, sans secret. Les changements de dépôt, de canal ou de secret invalident les résultats précédents; un contrôle lancé avec d’anciens réglages ne peut pas les remplacer.
 
-Les sauvegardes chiffrées de configuration incluent les réglages GitHub et le jeton. Leur validation et leur restauration utilisent les mêmes règles que le formulaire. Après restauration, la station recharge ces réglages et invalide l’ancien état de vérification. La base courante utilise le **schéma 5**. Conserver les données et les sources sauvegardées avant toute mise à jour.
+Les sauvegardes de configuration incluent les réglages GitHub et le jeton, avec ou sans mot de passe selon le choix de protection. Leur validation et leur restauration utilisent les mêmes règles que le formulaire. Après restauration, la station recharge ces réglages et invalide l’ancien état de vérification. La base courante utilise le **schéma 5**. Conserver les données et les sources sauvegardées avant toute mise à jour.
+
+## Notes à chaque publication
+
+Lors de la préparation d’une version, compléter la section **Nouveautés** du [README](../README.md) avec un résumé et un lien vers sa publication, puis détailler les changements dans le [journal des versions](../CHANGELOG.md). Renseigner les nouveautés correspondantes dans le texte de la release GitHub : c’est ce texte que l’application récupère au prochain contrôle réussi. Un simple tag Git ne contient pas ces notes et ne déclenche pas d’indication.
 
 ## Périmètre et vérification
 

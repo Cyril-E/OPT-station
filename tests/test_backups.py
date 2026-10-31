@@ -1,6 +1,8 @@
 """Backups use temporary databases and fake mounts; never restore real Pi data."""
 from datetime import datetime, timedelta, timezone
 import base64
+import gzip
+import hashlib
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -12,7 +14,8 @@ import pytest
 
 from openprinttag_app.app import create_app
 from openprinttag_app.backups import (BackupError, BackupManager, MaintenanceGate, decrypt, encrypt,
-                                    private_json, database_copy, recover_restore, mounted_volumes)
+                                    private_json, database_copy, recover_restore, mounted_volumes,
+                                    encode_backup, PLAIN_MAGIC, MAGIC)
 from openprinttag_app.config import Settings
 from openprinttag_app.storage import ConflictError, Store
 
@@ -44,7 +47,7 @@ def schedule(manager, tmp_path, enabled=True, password=PASSWORD, **changes):
     volumes = [{"path": str(mount), "source": "/dev/fake1", "filesystem": "ext4", "writable": True, "network": False}]
     manager.volumes = lambda: deepcopy(volumes)
     body = {k: v for k, v in manager.configuration.items() if k not in {"version", "station_id"}}
-    body.update(enabled=enabled, destination=str(mount / "opt-backups"), mount_path=str(mount), mount_source="/dev/fake1", password=password)
+    body.update(enabled=enabled, encrypted=True, destination=str(mount / "opt-backups"), mount_path=str(mount), mount_source="/dev/fake1", password=password)
     body.update(changes)
     manager.save(body)
     return mount, volumes
@@ -380,3 +383,120 @@ def test_recovery_point_date_is_immutable_when_viewed(station):
     os.utime(point,(1,1))  # Directory metadata can change when SQLite opens sidecars.
     assert app.state.backups.restore_points()[0]['created_at'] == first
     assert client.post('/api/backups/points/'+identifier+'/preview',json={}).json()['created_at'] == first
+
+
+@pytest.mark.parametrize("scope", ["all", "inventory", "configuration"])
+@pytest.mark.parametrize("password", [None, "", "omitted"])
+def test_manual_backup_and_preview_without_password(station, scope, password):
+    app, client = station
+    app.state.store.create_packaged(MAIN, {})
+    body = {"scope": scope}
+    if password != "omitted":
+        body["password"] = password
+    response = client.post("/api/backups/download", json=body)
+    assert response.status_code == 200, response.text
+    assert response.content.startswith(PLAIN_MAGIC)
+    assert decrypt(response.content)["scope"] == scope
+    response = client.post("/api/backups/restore/preview", json={"content": base64.b64encode(response.content).decode()})
+    assert response.status_code == 200, response.text
+    assert response.json()["scope"] == scope
+
+
+def test_plain_backup_integrity_and_decompression_bounds(monkeypatch):
+    record = {"notes": "a" * 100, "unknown_weight": None}
+    content = encode_backup(record)
+    assert content.startswith(PLAIN_MAGIC) and decrypt(content) == record
+    assert decrypt(content, "an unused password") == record
+    for changed in (content[:-1], content[:10] + bytes([content[10] ^ 1]) + content[11:], b"not a backup"):
+        with pytest.raises(BackupError):
+            decrypt(changed)
+    def wrap(zipped):
+        return PLAIN_MAGIC + hashlib.sha256(zipped).digest() + zipped
+    for zipped in (b"bad gzip data", gzip.compress(b"not json"), gzip.compress(b"{}") + gzip.compress(b"{}")):
+        with pytest.raises(BackupError):
+            decrypt(wrap(zipped))
+    monkeypatch.setattr("openprinttag_app.backups.MAX_PLAIN", 32)
+    with pytest.raises(BackupError, match="volumineux"):
+        decrypt(content)
+
+
+def test_plain_backup_restores_spools_models_and_notes_without_password(station):
+    app, client = station; store = app.state.store
+    first = store.create_packaged(MAIN, {})
+    favorite = store.save_favorite("Reusable spool", {"empty_container_weight": 234}, kind="model")
+    store.save_inventory_notes("Known empty spool: 234 g", 0)
+    response = client.post("/api/backups/download", json={"scope": "inventory"})
+    assert response.status_code == 200
+    content = response.content
+    store.create_packaged({**MAIN, "brand_name": "Another spool"}, {})
+    store.patch_template(favorite["id"], 1, "model", main={"empty_container_weight": 300})
+    store.save_inventory_notes("Changed note", 1)
+    report = client.post("/api/backups/restore/preview", json={"content": base64.b64encode(content).decode()})
+    assert report.status_code == 200, report.text
+    response = client.post("/api/backups/restore/commit", json={"preview_id": report.json()["preview_id"], "confirmed": True})
+    assert response.status_code == 200, response.text
+    assert len(store.list_spools()) == 1 and store.get_spool(first["id"])["spool_number"] == first["spool_number"]
+    assert store.inventory_notes()["text"] == "Known empty spool: 234 g"
+    assert store.favorites()[0]["main"] == {"empty_container_weight": 234}
+
+
+def test_encrypted_backup_still_requires_original_password(station):
+    _, client = station
+    content = get_backup(client)
+    assert content.startswith(MAGIC)
+    payload = {"content": base64.b64encode(content).decode()}
+    response = client.post("/api/backups/restore/preview", json=payload)
+    assert response.status_code == 422 and "protégée" in response.json()["detail"]
+    assert client.post("/api/backups/restore/preview", json={**payload, "password": PASSWORD}).status_code == 200
+
+
+def test_scheduled_backup_without_password_needs_no_saved_key(station, tmp_path):
+    app, _ = station; manager = app.state.backups
+    mount, volumes = schedule(manager, tmp_path, password=None, encrypted=False)
+    assert manager.configuration["encrypted"] is False and not manager.key_path.exists()
+    assert manager.snapshot()["password_saved"] is False
+    manager.gate.enter()
+    try:
+        result = manager.run()
+    finally:
+        manager.gate.leave()
+    assert result["last_result"]["status"] == "success" and "sans mot de passe" in result["last_result"]["message"]
+    files = list((mount / "opt-backups").glob("*.optbak"))
+    assert len(files) == 1 and files[0].read_bytes().startswith(PLAIN_MAGIC)
+    assert decrypt(files[0].read_bytes())["scope"] == "all"
+    fresh = BackupManager(app.state.settings, app.state.store, MaintenanceGate(), volumes=lambda: volumes)
+    assert fresh.configuration["encrypted"] is False and not fresh.snapshot()["password_saved"]
+
+
+def test_switching_off_protection_removes_key_without_changing_old_backups(station, tmp_path):
+    app, _ = station; manager = app.state.backups
+    schedule(manager, tmp_path)
+    old = encrypt({"previous": "encrypted"}, PASSWORD)
+    manager.save({"revision": manager.configuration["revision"], "encrypted": False})
+    assert not manager.key_path.exists() and not manager.snapshot()["password_saved"]
+    assert decrypt(old, PASSWORD) == {"previous": "encrypted"}
+    manager.gate.enter()
+    try:
+        assert manager.run()["last_result"]["status"] == "success"
+    finally:
+        manager.gate.leave()
+
+
+def test_legacy_schedule_keeps_protection_and_legacy_api_can_set_a_password(station, tmp_path):
+    app, client = station; manager = app.state.backups
+    schedule(manager, tmp_path)
+    legacy = json.loads(manager.path.read_text()); legacy.pop("encrypted")
+    private_json(manager.path, legacy)
+    fresh = BackupManager(app.state.settings, app.state.store, MaintenanceGate(), volumes=manager.volumes)
+    assert fresh.configuration["encrypted"] is True and fresh.snapshot()["password_saved"]
+    payload = {k: v for k, v in manager.configuration.items() if k not in {"version", "station_id", "encrypted"}}
+    payload["password"] = PASSWORD
+    response = client.put("/api/configuration/backups", json=payload)
+    assert response.status_code == 200, response.text
+    assert response.json()["encrypted"] and response.json()["password_saved"]
+
+
+def test_unprotected_api_backup_keeps_access_restrictions(station):
+    app, _ = station
+    with TestClient(app, client=("192.0.2.42", 1)) as remote:
+        assert remote.post("/api/backups/download", json={"scope": "all"}).status_code == 403

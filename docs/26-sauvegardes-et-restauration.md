@@ -1,15 +1,15 @@
 # Sauvegardes et restauration
 
-Fonctions de **v0.10.0**, dans **Configuration → Sauvegardes et restauration**, utilisables sur le Pi et à distance avec l’accès complet. L’accès distant Inventaire n’autorise pas la lecture des réglages privés ni ces opérations.
+Fonctions disponibles depuis **v0.10.0**, avec mot de passe facultatif à partir de **v0.17.1**, dans **Configuration → Sauvegardes et restauration**, utilisables sur le Pi et à distance avec l’accès complet. L’accès distant Inventaire n’autorise pas la lecture des réglages privés ni ces opérations.
 
 ## Télécharger une sauvegarde
 
 1. Choisir **Configuration et inventaire**, **Inventaire et bibliothèque** ou **Configuration uniquement**.
-2. Saisir un mot de passe de 10 à 256 caractères et le confirmer.
+2. Laisser **Protéger la sauvegarde par mot de passe** décoché pour télécharger sans mot de passe. Pour protéger le fichier, cocher cette case, saisir un mot de passe de 10 à 256 caractères et le confirmer.
 3. Cliquer sur **Télécharger la sauvegarde**.
-4. Conserver le fichier `.optbak` et son mot de passe séparément.
+4. Conserver le fichier `.optbak`. Si une protection a été choisie, garder également son mot de passe.
 
-Toutes les sauvegardes sont chiffrées et authentifiées avec **AES-256-GCM**, après dérivation du mot de passe par **scrypt**. Le mot de passe d’un téléchargement manuel n’est pas enregistré sur le Pi. Sans ce mot de passe, le fichier exporté ne peut pas être restauré.
+Par défaut, la sauvegarde manuelle est **sans mot de passe**. Son contenu JSON est compressé et accompagné d’un contrôle d’intégrité SHA-256. Si la protection est activée, le fichier utilise **AES-256-GCM** et une clé dérivée du mot de passe par **scrypt**. Ce mot de passe manuel n’est pas enregistré sur le Pi. La restauration reconnaît automatiquement les deux formats; les anciennes sauvegardes chiffrées restent compatibles et demandent leur mot de passe d’origine.
 
 Le fichier complet conserve :
 
@@ -21,12 +21,12 @@ Le fichier complet conserve :
 
 Les sauvegardes de configuration comprennent les identifiants PrusaLink et caméra. La clé privée utilisée pour les sauvegardes automatiques n’est jamais exportée. Les préférences de langue et de thème propres à un navigateur, Raspberry Pi OS, les fichiers système, le Wi-Fi, SSH, les services et les logiciels installés ne font pas partie de cette sauvegarde applicative. Les données de simulation et les données matérielles restent distinctes.
 
-La limite est de **32 Mo pour le fichier chiffré** et **64 Mo pour son contenu décompressé**. Un dépassement produit une erreur explicite; aucune sauvegarde partielle n’est annoncée comme réussie.
+La limite est de **32 Mo pour le fichier** et **64 Mo pour son contenu décompressé**. Un dépassement produit une erreur explicite; aucune sauvegarde partielle n’est annoncée comme réussie.
 
 ## Restaurer un fichier
 
-1. Choisir le fichier `.optbak` et saisir son mot de passe.
-2. Cliquer sur **Vérifier avant restauration**. La station vérifie le chiffrement, le format, le mode matériel/simulation, le schéma, les données et les réglages, dans une base temporaire séparée.
+1. Choisir le fichier `.optbak`. Laisser le champ du mot de passe vide pour un fichier sans protection; sinon, saisir son mot de passe.
+2. Cliquer sur **Vérifier avant restauration**. La station vérifie l’intégrité ou le chiffrement selon le fichier, le format, le mode matériel/simulation, le schéma, les données et les réglages, dans une base temporaire séparée.
 3. Lire la date, la version et le résumé : nombre de bobines, d’archives et de fiches, et configuration concernée.
 4. Cocher la confirmation du remplacement puis cliquer sur **Restaurer les données**.
 5. Après le rechargement, vérifier le stock, les appareils et le niveau d’accès distant si la configuration était incluse.
@@ -54,10 +54,10 @@ Cette fonction ne remplace pas une sauvegarde externe : la perte du disque du Pi
 1. Brancher un disque externe inscriptible, ou monter un partage réseau sur le Pi.
 2. Dans **Sauvegardes automatiques planifiées**, choisir le support et un sous-dossier, par exemple `opt-station-backups`.
 3. Choisir une fréquence quotidienne ou hebdomadaire, le jour si nécessaire, l’heure et le fuseau horaire. Valeurs initiales : **02:00, Europe/Paris, 14 copies conservées**.
-4. Renseigner le mot de passe de ces sauvegardes, le conserver séparément et activer la planification.
+4. Choisir de protéger ou non les sauvegardes avec **Protéger les sauvegardes planifiées par mot de passe**, puis activer la planification. Sans protection, aucun mot de passe ni clé enregistrée n’est nécessaire.
 5. Cliquer sur **Enregistrer la planification**, puis **Sauvegarder maintenant sur le support** pour vérifier la destination.
 
-Une clé dérivée, et non le mot de passe en clair, est conservée dans `backup-key.json`, avec droits `0600`, pour le chiffrement sans intervention. Elle n’est pas renvoyée au navigateur ni incluse dans les sauvegardes. Un changement de mot de passe ne change pas celui des anciens fichiers.
+Si la protection est activée, une clé dérivée, et non le mot de passe en clair, est conservée dans `backup-key.json`, avec droits `0600`, pour le chiffrement sans intervention. Elle n’est pas renvoyée au navigateur ni incluse dans les sauvegardes. Un changement de mot de passe ne change pas celui des anciens fichiers. Désactiver la protection supprime la clé automatique enregistrée, sans modifier les fichiers déjà créés. Les planifications existantes conservent leur protection tant que ce choix n’est pas changé; les nouvelles planifications proposent par défaut des fichiers sans mot de passe.
 
 Les sauvegardes automatiques prennent toujours **configuration et inventaire**. Le bouton de copie immédiate utilise les réglages enregistrés; enregistrer d’abord les modifications du formulaire. La date du prochain passage, le dernier essai et son résultat sont affichés. Après un arrêt du Pi ou une destination temporairement indisponible, la station effectue au plus un rattrapage pour la dernière échéance; les échecs sont retentés au plus toutes les quinze minutes. Un changement d’heure ne provoque pas deux copies pour la même échéance.
 
@@ -78,4 +78,4 @@ python3 -m venv --system-site-packages .venv
 
 Conserver les autres commandes d’installation du [guide de station réelle](12-installation-station-reelle.md). Aucune nouvelle autorisation système ou tâche cron n’est nécessaire : le planificateur tourne avec le service existant et s’arrête avec lui. Depuis `v0.9.0`, le schéma SQLite passe de **3 à 4** pour les numéros et les notes. Un retour à `v0.9.0` nécessite les anciennes sources et la base sauvegardée ensemble. Depuis `0.14.0.dev0`, une migration **4 vers 5** ajoute le statut d’utilisation, indépendant du QR/RFID. Conserver les sources et la base d’avant migration ensemble pour un retour à une version antérieure.
 
-Les essais couvrent chiffrement et mauvais mot de passe, fichiers altérés/incompatibles, limites de taille, conservation des données, conflits, imports transactionnels, restauration complète et partielle, retour arrière et journal après interruption, planification quotidienne/hebdomadaire et changements d’heure, rétention, support absent ou non inscriptible et absence de repli sur le disque système. Les écritures et restaurations d’essai restent sur des données temporaires séparées du stock réel.
+Les essais couvrent les sauvegardes et restaurations sans mot de passe, le contrôle d’intégrité et les limites de décompression, la compatibilité des anciennes planifications, l’activation et la désactivation du chiffrement, chiffrement et mauvais mot de passe, fichiers altérés/incompatibles, limites de taille, conservation des données, conflits, imports transactionnels, restauration complète et partielle, retour arrière et journal après interruption, planification quotidienne/hebdomadaire et changements d’heure, rétention, support absent ou non inscriptible et absence de repli sur le disque système. Les écritures et restaurations d’essai restent sur des données temporaires séparées du stock réel.

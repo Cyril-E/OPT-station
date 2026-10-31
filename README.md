@@ -11,20 +11,37 @@
 - Création et recréation du RFID depuis une fiche d’inventaire; modèles réutilisables depuis l’inventaire, un tag ou un QR.
 - Favoris et modèles modifiables, import/export, étiquettes QR et impression USB NIIMBOT.
 - Suivi PrusaLink en lecture seule et jusqu’à quatre caméras réseau.
-- Accès réseau configurable, serveur MCP optionnel, sauvegardes chiffrées manuelles et planifiées.
+- Accès réseau configurable, serveur MCP optionnel, sauvegardes manuelles et planifiées avec mot de passe facultatif.
 - Détection des versions GitHub disponibles, affichage local en plein écran et commandes d’arrêt/redémarrage du Pi.
 
 Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesuré, la tare et la consommation sont des informations distinctes. Les modèles ne copient pas les données individuelles d’une bobine.
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.17.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.0)**, avec installation en une commande sur Raspberry Pi OS 64 bits Trixie : dépendances, services, HTTPS et démarrage en plein écran. Elle fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.17.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.1)**, avec sauvegardes sans mot de passe et consultation des nouveautés depuis l’application. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
-La qualification de v0.17.0 comprend **677 tests sur Raspberry Pi et 676 sur Mac**, avec le test propre à systemd ignoré sur Mac, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
+La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
 La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide bilingue. L’[installateur](docs/33-installation-une-commande.md) conserve l’inventaire et les certificats sur une station existante, sauvegarde les fichiers avant activation et tente un retour arrière en cas d’échec. L’identification d’étiquettes par IA reste à réaliser. La [feuille de route](docs/14-feuille-de-route.md) distingue les fonctions livrées et les travaux à réaliser.
 
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
+
+## Nouveautés
+
+### [v0.17.1 — Sauvegardes et notes de version](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.1)
+
+- Mot de passe facultatif pour les sauvegardes manuelles et planifiées. Le téléchargement manuel est sans mot de passe par défaut; les anciennes sauvegardes protégées restent restaurables.
+- Nouveautés de la dernière version consultables directement depuis l’indicateur de mise à jour et dans Configuration, à partir des notes publiées sur GitHub.
+
+### [v0.17.0 — Installation en une commande](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.0)
+
+- Installation des dépendances, services, HTTPS et affichage plein écran avec une seule commande; options sans écran ou caméra et réinstallation préservant les données et certificats.
+
+### [v0.16.1 — Première distribution publique](https://github.com/Cyril-E/OPT-station/releases/tag/v0.16.1)
+
+- Lecture et écriture NFC, inventaire, QR et étiquettes, modèles et favoris, PrusaLink et caméras, notifications Chrome, MCP et interface française/anglaise.
+
+Cette section présente les ajouts de chaque version, de la plus récente à la plus ancienne. Le [journal complet](CHANGELOG.md) et les [publications GitHub](https://github.com/Cyril-E/OPT-station/releases) détaillent les changements et les conditions de validation.
 
 ## Installer et configurer
 

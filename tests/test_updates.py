@@ -14,7 +14,7 @@ from openprinttag_app.backups import decrypt
 from openprinttag_app.config import Settings
 from openprinttag_app.storage import ConflictError
 from openprinttag_app.updates import (ReleaseMonitor, UpdateConfiguration, UpdateFailure, DEFAULT_REPOSITORY,
-                                    github_request, next_page, release, version)
+                                    MAX_NOTES, github_request, next_page, release, version)
 
 TOKEN = 'github_pat_FICTITIOUS_READ_ONLY_TOKEN'
 BASE = 'https://api.github.com/repos/Cyril-E/OPT-station/releases?per_page=100&page=1'
@@ -117,6 +117,51 @@ def test_metadata_safe_links_and_json_failures(tmp_path):
         assert m.snapshot()['phase']=='error'
 
 
+def test_release_notes_are_plain_text_normalized_and_bounded():
+    notes = '  ## Nouveautés\r\n- Sans mot de passe\r\n<script>untrusted</script>\x00  '
+    result = release(row(body=notes), DEFAULT_REPOSITORY)
+    assert result['notes'] == '## Nouveautés\n- Sans mot de passe\n<script>untrusted</script>'
+    long = release(row(body='a' * (MAX_NOTES + 100)), DEFAULT_REPOSITORY)['notes']
+    assert len(long) == MAX_NOTES and long.endswith('\n…')
+
+
+@pytest.mark.parametrize('body', [None, 42, {'unexpected': 'object'}])
+def test_missing_or_non_text_release_notes_remain_compatible(body):
+    assert release(row(body=body), DEFAULT_REPOSITORY)['notes'] == ''
+    assert release(row(), DEFAULT_REPOSITORY)['notes'] == ''
+
+
+def test_latest_release_notes_survive_restart_conditional_fetch_and_offline(tmp_path):
+    clock = [1000000.]
+    notes = '- Sauvegardes sans mot de passe\n- Nouveautés dans la station'
+    fetch = Mock(return_value=reply([row('v0.10.0', body='Anciennes notes'), row('v0.11.0', body=notes)], {'ETag': '"notes"'}))
+    monitor = ReleaseMonitor(tmp_path, fetch=fetch, installed='0.9.0', clock=lambda: clock[0])
+    save(monitor); monitor.tick()
+    assert monitor.snapshot()['latest']['notes'] == notes
+    cached = ReleaseMonitor(tmp_path, fetch=Mock(side_effect=[(304, {}, b''), UpdateFailure('network')]), clock=lambda: clock[0])
+    assert cached.snapshot()['latest']['notes'] == notes
+    clock[0] += 21601; cached.tick()
+    assert cached.snapshot()['latest']['notes'] == notes
+    clock[0] += 21601; cached.tick()
+    assert cached.snapshot()['stale'] and cached.snapshot()['latest']['notes'] == notes
+
+
+def test_previous_cache_without_notes_loads_and_refreshes(tmp_path):
+    clock = [1000000.]
+    monitor = ReleaseMonitor(tmp_path, fetch=Mock(return_value=reply()), clock=lambda: clock[0])
+    save(monitor); monitor.tick()
+    cached = json.loads(monitor.path.read_text())
+    cached['latest'].pop('notes')
+    for page in cached['pages'].values():
+        for item in page['items']:
+            item.pop('notes', None)
+    monitor.path.write_text(json.dumps(cached))
+    reloaded = ReleaseMonitor(tmp_path, fetch=Mock(return_value=reply([row(body='Notes désormais disponibles')])), clock=lambda: clock[0])
+    assert reloaded.snapshot()['latest']['notes'] == ''
+    clock[0] += 21601; reloaded.tick()
+    assert reloaded.snapshot()['latest']['notes'] == 'Notes désormais disponibles'
+
+
 def test_only_one_check_and_discard_old_result_after_settings_change(tmp_path):
     started,finish=threading.Event(),threading.Event()
     def fetch(*_):started.set();assert finish.wait(5);return reply([row('v0.12.0')])
@@ -153,7 +198,7 @@ def test_settings_clear_token_repository_change_conflicts_and_restart(tmp_path):
 @pytest.fixture
 def station(tmp_path,monkeypatch):
     # Keep the simulated update newer than the installed application release.
-    fetch=Mock(return_value=reply([row('v999.0.0')]))
+    fetch=Mock(return_value=reply([row('v999.0.0', body='Nouveautés visibles depuis le réseau')]))
     app=create_app(Settings(tmp_path,network_enabled=True),updates_fetch=fetch)
     monkeypatch.setattr(app.state.updates,'start',lambda:None)
     with TestClient(app,client=('127.0.0.1',1)) as client:yield app,client,fetch
@@ -168,6 +213,7 @@ def test_api_full_access_secret_masking_status_visibility_host_origin_power(stat
     with TestClient(app,client=('192.0.2.42',1)) as remote:
         assert remote.get('/api/configuration/updates').status_code==403
         public=remote.get('/api/status').json()['updates'];assert public['update_available'] and TOKEN not in json.dumps(public)
+        assert public['latest']['notes'] == 'Nouveautés visibles depuis le réseau'
         assert remote.post('/api/updates/check',json={}).status_code==403
         client.put('/api/configuration/network',json={'mode':'full'})
         assert remote.get('/api/configuration/updates').status_code==200
