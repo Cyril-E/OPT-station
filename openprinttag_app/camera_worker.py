@@ -82,10 +82,38 @@ def run(directory: Path, seconds: float):
         status("error", "La caméra est indisponible. Vérifiez son raccordement et fermez les autres applications qui l’utilisent.")
 
 
+def photograph(directory):
+    from picamera2 import Picamera2
+    from libcamera import controls
+    def status(state, message):
+        temporary = directory / "status.next"
+        temporary.write_text(json.dumps({"state": state, "message": message, "frames": 1 if state == "found" else 0,
+                                        "codes": [], "model": model}))
+        os.replace(temporary, directory / "status.json")
+    model = ""
+    try:
+        status("starting", "Prise de photo…")
+        with Picamera2(0) as camera:
+            model = str(camera.camera_properties.get("Model", "Caméra Raspberry Pi"))
+            camera.configure(camera.create_still_configuration(main={"size": (2592, 1944), "format": "RGB888"}))
+            if "AfMode" in camera.camera_controls:
+                camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
+            camera.start(); time.sleep(2)
+            image = camera.capture_image("main")
+            image.save(directory / "photo.jpg", format="JPEG", quality=90)
+            image.thumbnail((960, 720)); image.save(directory / "preview.jpg", format="JPEG", quality=85)
+        status("found", "Photo prête. Vérifiez son cadrage avant l’analyse.")
+    except Exception:
+        traceback.print_exc()
+        status("error", "La photo n’a pas pu être prise. Vérifiez la caméra puis réessayez.")
+
+
 if __name__ == "__main__":
     if sys.argv[1:] == ["--list"]:
         from picamera2 import Picamera2
         print(json.dumps({"cameras": [{"model": str(info.get("Model", "Caméra Raspberry Pi")), "index": info.get("Num", index)}
                                       for index, info in enumerate(Picamera2.global_camera_info())]}))
+    elif len(sys.argv) == 3 and sys.argv[1] == "--photo":
+        photograph(Path(sys.argv[2]))
     else:
         run(Path(sys.argv[1]), float(sys.argv[2]))

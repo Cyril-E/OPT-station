@@ -21,7 +21,7 @@ def test_catalog_keeps_interpolation_parameters_and_covers_dynamic_messages():
     for source, english in messages.items():
         assert isinstance(english, str) and english.strip(), source
         assert sorted(re.findall(r"\{\d+\}", source)) == sorted(re.findall(r"\{\d+\}", english)), source
-    for name in ("app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "theme.js"):
+    for name in ("app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "theme.js"):
         for literal in re.findall(r'\bmsg\(("(?:[^"\\]|\\.)*")', (STATIC / name).read_text()):
             source = json.loads(literal)
             assert source in messages or source == "{0}{1}", (name, source)

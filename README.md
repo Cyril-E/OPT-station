@@ -11,6 +11,8 @@
 - Création et recréation du RFID depuis une fiche d’inventaire; modèles réutilisables depuis l’inventaire, un tag ou un QR.
 - Favoris et modèles modifiables, import/export, étiquettes QR et impression USB NIIMBOT.
 - Suivi PrusaLink en lecture seule et jusqu’à quatre caméras réseau.
+- Assistant IA depuis une photo d’étiquette, avec recherche Web facultative et validation des propositions avant remplissage.
+- Sommaire de Configuration avec accès direct aux réglages et navigation adaptée à l’écran.
 - Accès réseau configurable, serveur MCP optionnel, sauvegardes manuelles et planifiées avec mot de passe facultatif.
 - Détection des versions GitHub disponibles, affichage local en plein écran et commandes d’arrêt/redémarrage du Pi.
 
@@ -18,15 +20,21 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.17.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.1)**, avec sauvegardes sans mot de passe et consultation des nouveautés depuis l’application. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.18.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.18.0)**, avec assistant IA pour les étiquettes et sommaire de Configuration. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
-La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide bilingue. L’[installateur](docs/33-installation-une-commande.md) conserve l’inventaire et les certificats sur une station existante, sauvegarde les fichiers avant activation et tente un retour arrière en cas d’échec. L’identification d’étiquettes par IA reste à réaliser. La [feuille de route](docs/14-feuille-de-route.md) distingue les fonctions livrées et les travaux à réaliser.
+La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide bilingue. L’[installateur](docs/33-installation-une-commande.md) conserve l’inventaire et les certificats sur une station existante, sauvegarde les fichiers avant activation et tente un retour arrière en cas d’échec. L’[assistant IA](docs/34-assistant-ia-etiquettes.md) est optionnel et utilise une clé API saisie dans Configuration. La [feuille de route](docs/14-feuille-de-route.md) et les [issues GitHub](https://github.com/Cyril-E/OPT-station/issues) regroupent les travaux à réaliser.
 
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.18.0 — Assistant IA et sommaire de Configuration](https://github.com/Cyril-E/OPT-station/releases/tag/v0.18.0)
+
+- [Assistant IA pour les étiquettes](docs/34-assistant-ia-etiquettes.md) : photo avec le Pi ou fichier image, recherche Web facultative et propositions avec sources à vérifier avant remplissage. La clé API reste dans les réglages privés; les mesures individuelles inconnues ne sont pas inventées.
+- [Sommaire de Configuration](docs/15-configuration-et-apparence.md#se-déplacer-dans-les-réglages) : accès direct aux douze rubriques, navigation visible sur grand écran et repliable sur petit écran, sans perte des saisies.
+- Notification de fin d’impression validée en conditions réelles. Les [issues publiques](https://github.com/Cyril-E/OPT-station/issues) complètent la feuille de route pour le suivi des demandes.
 
 ### [v0.17.1 — Sauvegardes et notes de version](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.1)
 
@@ -80,6 +88,7 @@ Ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765). **Configuration → Maté
 - [Modèles depuis RFID/QR](docs/28-modeles-depuis-rfid-et-qr.md), [états et modèles depuis l’inventaire](docs/30-utilisation-et-modeles-inventaire.md), [création et recréation RFID](docs/29-creation-et-recreation-rfid-inventaire.md).
 - [Import/export de bibliothèque](docs/25-import-export-bibliotheque.md), [sauvegardes et restauration](docs/26-sauvegardes-et-restauration.md), [mises à jour](docs/27-detection-mises-a-jour.md).
 - [Serveur MCP](docs/21-serveur-mcp.md), [HTTPS local](docs/31-https-local.md) et [alimentation du Pi](docs/20-arret-et-redemarrage-pi.md).
+- [Assistant IA pour les étiquettes](docs/34-assistant-ia-etiquettes.md) et [fonctions et évolutions](docs/14-feuille-de-route.md).
 
 ## Format et sources
 

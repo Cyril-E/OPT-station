@@ -33,6 +33,7 @@ class CameraBusy(Exception):
 class Scan:
     id: str
     temporary: tempfile.TemporaryDirectory
+    kind: str = "qr"
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     result: dict = field(default_factory=lambda: {"state": "starting", "message": "Ouverture de la caméra…", "frames": 0, "codes": []})
@@ -127,7 +128,7 @@ class CameraScanner:
                       preview_ready=(scan.directory / "preview.jpg").is_file())
         return result
 
-    def start(self):
+    def start(self, kind="qr"):
         capabilities = self.status()
         if not capabilities["available"]:
             raise CameraUnavailable(capabilities["message"])
@@ -140,7 +141,7 @@ class CameraScanner:
                 self._expiry.cancel()
             if self._scan:
                 self._scan.temporary.cleanup()
-            scan = Scan(secrets.token_urlsafe(18), tempfile.TemporaryDirectory(prefix="openprinttag-qr-"))
+            scan = Scan(secrets.token_urlsafe(18), tempfile.TemporaryDirectory(prefix="openprinttag-qr-"), kind=kind)
             self._scan = scan
             scan.thread = threading.Thread(target=self._run, args=(scan,), daemon=True, name="openprinttag-camera")
             scan.thread.start()
@@ -157,6 +158,17 @@ class CameraScanner:
                 return (scan.directory / "preview.jpg").read_bytes()
             except FileNotFoundError:
                 raise KeyError("La première image n’est pas encore disponible.") from None
+
+    def start_photo(self):
+        return self.start(kind="photo")
+
+    def photo(self, identifier):
+        with self._lock:
+            scan = self._current(identifier)
+            path = scan.directory / ("photo.jpg" if scan.kind == "photo" else "preview.jpg")
+            if not path.is_file():
+                raise KeyError("La photo n’est pas encore disponible.")
+            return path.read_bytes()
 
     def cancel(self, identifier):
         with self._lock:
@@ -181,7 +193,9 @@ class CameraScanner:
         process = None
         try:
             with (scan.directory / "capture.log").open("wb") as log:
-                process = subprocess.Popen(self._command(scan.directory), stdout=log, stderr=log,
+                command = ([sys.executable, "-m", "openprinttag_app.camera_worker", "--photo", str(scan.directory)]
+                           if scan.kind == "photo" else self._command(scan.directory))
+                process = subprocess.Popen(command, stdout=log, stderr=log,
                                            stdin=subprocess.DEVNULL, start_new_session=True)
                 while True:
                     if scan.cancel.is_set():

@@ -47,6 +47,7 @@ from .mcp_server import MCPConfiguration, MCPTransport
 from .library_transfer import LibraryTransfer
 from .backups import BackupManager, BackupError, MaintenanceGate, recover_restore, MAX_ARCHIVE
 from .updates import ReleaseMonitor
+from .assistant import LabelAssistant, AssistantError, MAX_IMAGE
 
 LOG = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -124,6 +125,21 @@ class ImportChoice(Model):
 class LibraryImport(Model):
     preview_id: str = Field(min_length=8, max_length=100)
     choices: list[ImportChoice] = Field(min_length=1, max_length=1000)
+
+
+class AssistantSettings(Model):
+    revision: StrictInt = Field(ge=0)
+    enabled: StrictBool
+    model: str = Field(min_length=1, max_length=100)
+    web_search: StrictBool
+    api_key: str | None = Field(default=None, max_length=512)
+    clear_key: StrictBool = False
+
+
+class AssistantAnalysis(Model):
+    scan_id: str | None = Field(default=None, max_length=100)
+    image: str | None = Field(default=None, max_length=MAX_IMAGE * 4 // 3 + 100)
+    language: Literal["fr", "en"] = "fr"
 
 
 class BackupDownload(Model):
@@ -292,7 +308,7 @@ def blank(record):
 
 def create_app(settings: Settings | None = None, camera: CameraScanner | None = None, reader=None,
                printer_fetch=None, printer_capture=None, label_runner=None, power_backend=None, updates_fetch=None,
-               prusament_fetch=None, prusa_product_fetch=None):
+               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None):
     settings = settings or Settings.from_env()
     https = HTTPSConfiguration.load(settings.https_config)
     if https.url:
@@ -317,8 +333,11 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     label_printer = LabelPrinter(settings.data_dir, store, runner=label_runner)
     maintenance = MaintenanceGate()
     library_transfer = LibraryTransfer(store)
+    assistant = LabelAssistant(settings.data_dir, **({"fetch": assistant_fetch} if assistant_fetch else {}))
 
     def hardware_busy():
+        if assistant.analysis_lock.locked():
+            return True
         if getattr(camera, "is_scanning", lambda: False)() or label_printer.lock.locked():
             return True
         if not reader.lock.acquire(blocking=False):
@@ -345,6 +364,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         app.state.network, app.state.mcp_configuration = network, mcp_configuration
         app.state.printer_configuration = printer_configuration
         updates.reload()
+        assistant.reload()
 
     backups = BackupManager(settings, store, maintenance,
                             busy=lambda: hardware_busy() or station_power.state()["pending"],
@@ -367,6 +387,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     app = FastAPI(title=APP_NAME, version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.store, app.state.reader, app.state.settings = store, reader, settings
     app.state.camera = camera
+    app.state.assistant = assistant
     app.state.network = network
     app.state.printer_configuration = printer_configuration
     app.state.printer_monitor = printer_monitor
@@ -410,10 +431,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
             except ValueError:
                 return JSONResponse({"detail": "Taille de requête invalide."}, status_code=400)
             limit = (MAX_ARCHIVE * 4 // 3 + 2048 if request.url.path == "/api/backups/restore/preview"
-                     else 6_100_000 if request.url.path == "/api/library/import/preview" else 256_000)
+                     else 6_100_000 if request.url.path in {"/api/library/import/preview", "/api/assistant/analyse"} else 256_000)
             if length > limit:
                 return JSONResponse({"detail": "Requête trop volumineuse."}, status_code=413)
-            if request.url.path in {"/api/backups/restore/preview", "/api/library/import/preview"}:
+            if request.url.path in {"/api/backups/restore/preview", "/api/library/import/preview", "/api/assistant/analyse"}:
                 chunks, size = [], 0
                 async for chunk in request.stream():
                     size += len(chunk)
@@ -488,6 +509,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     async def backup_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
 
+    @app.exception_handler(AssistantError)
+    async def assistant_handler(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
     @app.exception_handler(PrinterError)
     async def printer_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
@@ -560,7 +585,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -593,6 +618,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 "power": station_power.state(),
                 "mcp": {"enabled": mcp_configuration.enabled, "revision": mcp_configuration.revision},
                 "updates": updates.snapshot() if local_station(request) or network.mode != "disabled" else None,
+                "assistant": assistant.public() if station_access(request) else None,
                 "library_revision": store.library_revision(),
                 "inventory_revision": store.inventory_revision() if local_station(request) or network.mode != "disabled" else None,
                 "inventory_notes_revision": store.inventory_notes()["revision"] if local_station(request) or network.mode != "disabled" else None,
@@ -1172,6 +1198,40 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                     report["message"] = "Bobine retrouvée hors stock. Ouvrir son étiquette pour la remettre explicitement au stock avant de préparer le RFID."
             report["inventory"] = item
         return report
+
+    @app.get("/api/configuration/assistant")
+    def assistant_settings(request: Request):
+        require_station(request)
+        return assistant.public()
+
+    @app.put("/api/configuration/assistant")
+    def save_assistant_settings(request: Request, body: AssistantSettings):
+        require_station(request)
+        return assistant.save(body.model_dump())
+
+    @app.post("/api/assistant/photo")
+    def assistant_photo(request: Request):
+        require_station(request)
+        return camera.start_photo()
+
+    @app.post("/api/assistant/analyse")
+    def assistant_analyse(request: Request, body: AssistantAnalysis):
+        require_station(request)
+        if bool(body.scan_id) == bool(body.image):
+            raise AssistantError("Choisissez une photo ou une capture caméra.")
+        if body.scan_id:
+            image = camera.photo(body.scan_id)
+        else:
+            content = body.image
+            if content.startswith("data:"):
+                if not content.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+                    raise AssistantError("Format d’image non pris en charge.")
+                content = content.split(",", 1)[1]
+            try:
+                image = base64.b64decode(content, validate=True)
+            except ValueError:
+                raise AssistantError("La photo est illisible.") from None
+        return assistant.analyse(image, body.language)
 
     @app.post("/api/camera/scans")
     def camera_start(request: Request):

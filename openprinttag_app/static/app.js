@@ -256,7 +256,7 @@
     setText("camera-availability", !canControl() ? msg("Activez l’accès complet dans Configuration → Accès distant pour utiliser la caméra du Pi.") : status.camera?.available ? msg("Scannez avec la caméra du Pi, ou saisissez le texte d’un code. Vous vérifierez son contenu avant de l’utiliser.") : msg("{0} La saisie du texte reste disponible.", status.camera?.message || msg("Caméra indisponible.")));
     renderConfiguration();
     syncControls();
-    document.dispatchEvent(new CustomEvent("opt-station-status", {detail: {access: canControl(), browse: canBrowse(), power: status.power, mcp: status.mcp, updates: status.updates}}));
+    document.dispatchEvent(new CustomEvent("opt-station-status", {detail: {access: canControl(), browse: canBrowse(), power: status.power, mcp: status.mcp, updates: status.updates, assistant: status.assistant, camera: status.camera}}));
   }
 
   function renderConfiguration() {
@@ -1321,6 +1321,12 @@
       if (epoch === state.cameraEpoch) { state.cameraStarting = false; syncControls(); }
     }
   }
+
+  document.addEventListener("opt-station-ai-apply", event => {
+    if (!canControl() || !event.detail?.main) return;
+    setEditorMode("create"); $("qr-text").value = ""; applyMain(event.detail.main);
+    showTab("write"); notify(msg("Proposition IA chargée. Vérifiez et complétez les données propres à la bobine."));
+  });
 
   document.querySelectorAll("[data-tab]").forEach((button) => {
     button.addEventListener("click", () => showTab(button.dataset.tab));

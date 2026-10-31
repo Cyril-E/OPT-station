@@ -1,5 +1,18 @@
 # Versions publiques
 
+## v0.18.0 — 31 octobre 2026
+
+- Assistant IA : photo couleur avec le Pi ou fichier image, recherche Web facultative, propositions avec preuves et sources avant remplissage d’une nouvelle fiche.
+- Configuration de la clé et du modèle OpenAI, clé masquée et incluse dans les sauvegardes de configuration.
+- Conservation des inconnues et exclusion des mesures individuelles : tare, poids réel et consommation ne sont pas déduits.
+- Sommaire de Configuration : accès direct aux douze rubriques, navigation fixe sur grand écran et menu repliable sur les petits écrans, sans perte des saisies.
+- Validation du déclenchement des notifications lors d’une fin d’impression réelle; l’intervention réelle reste à qualifier.
+- Suivi des demandes publiques dans les issues GitHub, à consulter avec la feuille de route lors de chaque bilan.
+
+L’assistant est désactivé à la première installation; la clé API se renseigne dans Configuration. Le schéma d’inventaire reste à **5**. L’archive complète `opt-station-v0.18.0.tar.gz` et son SHA-256 accompagnent cette préversion. L’identification depuis une vraie étiquette sous la caméra et l’installation sur carte SD vierge restent à qualifier.
+
+**Vérifications : 719 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **720 sur Raspberry Pi**; moteurs d’interface IA, langues, notifications et nouveautés vérifiés. Les propositions IA sont testées avec des réponses contrôlées et un essai API sur une étiquette de test. Le sommaire a été vérifié en français/anglais, clair/sombre et aux largeurs 390, 1280 et 1920 pixels.
+
 ## v0.17.1 — 31 octobre 2026
 
 - Mot de passe facultatif pour les sauvegardes manuelles et planifiées, avec un choix explicite dans Configuration.

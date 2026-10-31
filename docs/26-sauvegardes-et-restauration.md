@@ -65,7 +65,7 @@ La copie utilise un fichier temporaire, une publication atomique et une vérific
 
 La station relève les supports montés dans la table du système et vérifie leur identité, leurs droits et l’espace libre. Un support absent, remplacé, en lecture seule ou un dossier traversant un lien symbolique est refusé. Les écritures restent attachées au support ouvert pour éviter tout repli sur le disque système s’il disparaît pendant la copie. L’application ne formate aucun disque, ne monte aucun partage et ne demande aucun identifiant réseau : le montage relève de l’administration du Pi.
 
-La destination doit être inscriptible et déjà montée; un support d’installation en lecture seule est refusé. Le moteur est qualifié sur des destinations temporaires représentant les montages. Le premier essai matériel sur un support externe inscriptible reste à effectuer; activer la planification seulement après vérification de la destination.
+La destination doit être inscriptible et déjà montée; un support d’installation en lecture seule est refusé. Le moteur est qualifié sur des destinations temporaires représentant les montages. La création manuelle sur USB, le contrôle d’intégrité et l’aperçu de restauration sont validés, sans restauration du stock réel. L’exécution nocturne planifiée sur un support externe reste à qualifier; activer la planification seulement après vérification de la destination.
 
 ## Installation et qualification
 

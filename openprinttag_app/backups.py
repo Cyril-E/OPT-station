@@ -38,7 +38,7 @@ MAGIC = b"OPTBAK1\n"
 PLAIN_MAGIC = b"OPTBAK0\n"
 MAX_ARCHIVE = 32 * 1024 * 1024
 MAX_PLAIN = 64 * 1024 * 1024
-CONFIG_FILES = ("network-settings.json", "printer-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json")
+CONFIG_FILES = ("network-settings.json", "printer-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json", "ai-settings.json")
 TABLES = ("metadata", "spools", "favorites", "simulated_tags", "state", "tag_sources", "operations", "label_jobs", "inventory_notes")
 NFC_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,140}\.(?:bin|json)\Z")
 
@@ -598,6 +598,9 @@ class BackupManager:
                 if "updates-settings.json" in configurations:
                     from .updates import UpdateConfiguration
                     UpdateConfiguration(folder)
+                if "ai-settings.json" in configurations:
+                    from .assistant import validate_settings
+                    validate_settings(configurations["ai-settings.json"])
                 summary["configuration_files"] = list(configurations)
         return summary
 

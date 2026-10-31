@@ -2,7 +2,7 @@
 
 ## Vérifications logicielles
 
-La suite de la version **v0.16.1** comprend **628 tests sur Mac et Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS et les événements d’imprimante.
+La suite de la version **v0.18.0** comprend **719 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **720 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées.
 
 Depuis les sources, avec les dépendances de test installées :
 
@@ -10,6 +10,8 @@ Depuis les sources, avec les dépendances de test installées :
 .venv/bin/python -m pytest -q
 node tests/interface_i18n.cjs
 node tests/interface_notifications.cjs
+node tests/interface_updates.cjs
+node tests/interface_assistant.cjs
 ```
 
 Le test réel de passerelle utilise Caddy. Si ce binaire n’est pas dans le PATH, indiquer son emplacement :
@@ -18,7 +20,7 @@ Le test réel de passerelle utilise Caddy. Si ce binaire n’est pas dans le PAT
 OPT_STATION_CADDY=/chemin/vers/caddy .venv/bin/python -m pytest -q tests/test_https_gateway.py
 ```
 
-Sans Caddy, ce test est ignoré. La qualification complète indiquée ci-dessus inclut son exécution. Les vérifications JavaScript couvrent la langue, les saisies, les préférences, les permissions de notification, la reprise et les doublons entre onglets avec des API de navigateur contrôlées.
+Sans Caddy, ce test est ignoré. La qualification complète indiquée ci-dessus inclut son exécution. Les vérifications JavaScript couvrent la langue, les saisies, les préférences, les permissions de notification, la reprise, les doublons entre onglets, les notes de version et les propositions IA avec des API de navigateur contrôlées. Le sommaire est vérifié dans le navigateur aux largeurs 390, 1280 et 1920 pixels, en français/anglais et thèmes clair/sombre, avec conservation d’une saisie non enregistrée.
 
 ## Profils matériels et essais
 
@@ -29,9 +31,9 @@ Sans Caddy, ce test est ignoré. La qualification complète indiquée ci-dessus 
 | Acquisition QR | Caméra OV5647 et ZXing-C++ | Courte distance, autofocus et autres capteurs à qualifier selon le montage. |
 | Impression d’étiquettes | NIIMBOT B3S_P USB, 70 × 40 mm | QR papier relu. Le profil B1 n’est pas qualifié physiquement. |
 | PrusaLink | CORE One, firmware 8.0.0+17068 | Suivi en lecture seule au repos et pendant des impressions; aucune commande de mouvement ou de travail. |
-| Notifications Chrome | HTTPS, certificat approuvé, Chrome sur macOS | Notification de test affichée. Événements sur une vraie fin d’impression et une vraie intervention encore à qualifier. |
+| Notifications Chrome | HTTPS, certificat approuvé, Chrome sur macOS | Notification de test et déclenchement sur une vraie fin d’impression validés. Intervention réelle encore à qualifier. |
 | Démarrage et alimentation | Raspberry Pi OS 64 bits, session graphique et services systemd | Plein écran, arrêt et redémarrage vérifiés. Le tactile dépend de l’écran retenu. |
-| Sauvegardes planifiées | Moteur testé sur destinations temporaires | Premier essai sur un support externe inscriptible à effectuer. |
+| Sauvegardes planifiées | Moteur testé sur destinations temporaires; sauvegarde manuelle USB et aperçu de restauration validés | Exécution nocturne planifiée sur support externe encore à qualifier. |
 
 ## Contrôles d’une installation
 
