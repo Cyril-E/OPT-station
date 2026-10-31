@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.19.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.19.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.20.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.20.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -27,6 +27,10 @@ Demandes ouvertes relevées le 31 octobre 2026; cette liste ne remplace pas une 
 - [#2 — Photos dans les fiches et modèles, depuis la caméra ou un fichier](https://github.com/Cyril-E/OPT-station/issues/2).
 - [#3 — Ordre du menu : Inventaire / Imprimante / Lecture / Écriture / Paramètres](https://github.com/Cyril-E/OPT-station/issues/3).
 
+## Demandes intégrées en v0.20.0
+
+Les demandes #1 et #2 sont implémentées dans **v0.20.0** : vues Tout/Stock/Production/Terminées, sélections multiples de marques et matières, photos jointes aux bobines et aux modèles/favoris, capture ou import, sauvegarde/restauration. Voir le [guide des filtres et photos](35-filtres-et-photos.md). Les issues restent ouvertes pour leur suivi sur GitHub.
+
 ## Qualification complémentaire de l’installation
 
 - **Installation complète en une commande** : publiée en v0.17.0, avec téléchargement vérifié, préparation Python, sauvegarde/retour arrière, services, plein écran et HTTPS. La réinstallation réelle et le retour arrière sur une station existante sont validés. L’essai complet sur carte SD vierge reste à faire. Voir le [parcours en une commande](33-installation-une-commande.md) ou le [guide manuel](12-installation-station-reelle.md).
@@ -36,7 +40,7 @@ Demandes ouvertes relevées le 31 octobre 2026; cette liste ne remplace pas une 
 - **Connexion ChatGPT de l’assistant IA** : le parcours par clé API est disponible; la connexion OAuth ChatGPT est étudiée et reste à intégrer. Voir le [guide de l’assistant](34-assistant-ia-etiquettes.md).
 - **Prusa Connect et consommation** : qualifier les informations et identités réellement exposées par les API avant une synchronisation avec l’inventaire. La préparation actuelle des réglages ne réalise aucune synchronisation.
 - **Aperçu QR** : améliorer la taille et la visibilité de l’image existante et qualifier le placement avec une caméra adaptée.
-- **Bibliothèque de photos** : enregistrement volontaire des captures et consultation après redémarrage.
+- **Bibliothèque générale de photos** : onglet autonome reporté; les pièces jointes des fiches sont disponibles depuis v0.20.0.
 - **Interface** : ajustements graphiques ciblés et qualification du tactile selon l’écran utilisé.
 
 ## Validations récentes

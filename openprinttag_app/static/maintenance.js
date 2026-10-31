@@ -126,7 +126,7 @@
   $("backup-preview").addEventListener("click", () => action("backups-result", async () => {
     restorePreview = null;
     const file = $("restore-file").files[0];
-    if (!file || file.size > 32 * 1024 * 1024) throw new Error(msg("Sélectionnez une sauvegarde OPT Station de 32 Mo maximum."));
+    if (!file || file.size > 128 * 1024 * 1024) throw new Error(msg("Sélectionnez une sauvegarde OPT Station de 128 Mo maximum."));
     const bytes = new Uint8Array(await file.arrayBuffer());
     const chunks = []; for (let i = 0; i < bytes.length; i += 8192) chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
     const preview = await request("/api/backups/restore/preview", {content: btoa(chunks.join("")), password: $("restore-password").value});
@@ -138,6 +138,7 @@
     summary.append(element("p", msg("Sauvegarde du {0} · version {1}", date(preview.created_at), preview.application_version)));
     summary.append(element("strong", {all: msg("Configuration et inventaire"), inventory: msg("Inventaire et bibliothèque"), configuration: msg("Configuration uniquement")}[preview.scope]));
     if (preview.spools !== undefined) summary.append(element("p", msg("{0} bobine(s), dont {1} terminée(s), et {2} fiche(s) de bibliothèque.", preview.spools, preview.completed, preview.templates)));
+    if (preview.photos !== undefined) summary.append(element("p", msg("{0} photo(s) jointe(s) seront restaurées avec les fiches.", preview.photos)));
     if (preview.configuration_files) summary.append(element("p", msg("{0} fichier(s) de configuration, avec les identifiants enregistrés.", preview.configuration_files.length)));
     $("backup-restore-ack").checked = false; text("backup-restore-result", "");
     $("backup-restore-dialog").showModal(); text("backups-result", msg("Sauvegarde vérifiée. Confirmez son contenu dans la fenêtre."));

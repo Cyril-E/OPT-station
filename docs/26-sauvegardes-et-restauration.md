@@ -19,9 +19,11 @@ Le fichier complet conserve :
 - Sauvegardes NFC antérieures à l’écriture, binaires et métadonnées.
 - Réglages persistants des accès distants, du MCP, de PrusaLink et des caméras, de l’imprimante d’étiquettes et de la planification des sauvegardes. Depuis `v0.11.0`, inclut aussi la détection GitHub et son jeton privé.
 
+Les sauvegardes Inventaire et Complète incluent les photos jointes aux bobines et aux modèles. Les anciennes sauvegardes sans photos restent restaurables; elles remplacent l’inventaire par son état sans photos.
+
 Les sauvegardes de configuration comprennent les identifiants PrusaLink et caméra. La clé privée utilisée pour les sauvegardes automatiques n’est jamais exportée. Les préférences de langue et de thème propres à un navigateur, Raspberry Pi OS, les fichiers système, le Wi-Fi, SSH, les services et les logiciels installés ne font pas partie de cette sauvegarde applicative. Les données de simulation et les données matérielles restent distinctes.
 
-La limite est de **32 Mo pour le fichier** et **64 Mo pour son contenu décompressé**. Un dépassement produit une erreur explicite; aucune sauvegarde partielle n’est annoncée comme réussie.
+La limite est de **128 Mo pour le fichier** et **256 Mo pour son contenu décompressé**. Un dépassement produit une erreur explicite; aucune sauvegarde partielle n’est annoncée comme réussie.
 
 ## Restaurer un fichier
 

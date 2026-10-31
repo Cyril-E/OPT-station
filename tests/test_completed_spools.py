@@ -200,7 +200,7 @@ def test_v2_migration_never_counts_old_removed_or_empty_spools_as_completed(tmp_
     assert old['remaining_weight'] == 0 and old['added_at']=='2026-10-01T10:00:00+00:00'
     assert store.completed_count() == 0
     with store.connect() as db:
-        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0]=='5'
+        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0]=='6'
     assert Store(path).get_spool('old') == old
     assert store.restore('old', 7)['in_stock']
 

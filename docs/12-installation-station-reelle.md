@@ -100,7 +100,7 @@ if [ -d "$HOME/openprinttag-data" ]; then
 fi
 ```
 
-Conserver cette sauvegarde privée : elle peut contenir des clés, mots de passe, données d’inventaire et images de tags. La base doit être sauvegardée de façon cohérente, serveur arrêté. La version v0.17.0 utilise le schéma 5, inchangé depuis v0.14.0, et migre les anciennes bases compatibles; ne pas tenter un retour à un schéma antérieur avec la base modifiée. Une station déjà en HTTPS doit aussi conserver ses fichiers système et son autorité, selon le [guide HTTPS](31-https-local.md#redémarrage-et-mises-à-jour).
+Conserver cette sauvegarde privée : elle peut contenir des clés, mots de passe, données d’inventaire et images de tags. La base doit être sauvegardée de façon cohérente, serveur arrêté. La version v0.20.0 utilise le schéma 6 pour inclure les photos, après le schéma 5 des versions v0.14.0 à v0.19.0. Les anciennes bases compatibles sont migrées sans remplacer les fiches. Pour revenir à une version antérieure, restaurer ensemble les sources et les données sauvegardées avant migration. Une station déjà en HTTPS doit aussi conserver ses fichiers système et son autorité, selon le [guide HTTPS](31-https-local.md#redémarrage-et-mises-à-jour).
 
 ## 5. Installer les services et le plein écran
 

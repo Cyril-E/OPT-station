@@ -235,7 +235,7 @@ def test_v4_migration_preserves_data_and_initializes_previously_displayed_usage(
         for row in rows:
             del row["usage_state"]
         assert rows == before
-        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0] == "5"
+        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0] == "6"
     assert Store(path).get_spool(b["id"])["usage_state"] == "stock"
 
 
@@ -266,9 +266,13 @@ def test_backup_restore_preserves_usage_and_accepts_previous_backups(station, sc
     response = client.post("/api/backups/download", json={"scope": "inventory", "password": password})
     assert response.status_code == 200, response.text
     record = decrypt(response.content, password)
-    assert record["inventory"]["schema"] == 5
+    assert record["inventory"]["schema"] == 6
+    record["inventory"]["schema"] = schema
+    record["inventory"]["tables"].pop("photos")
+    for row in record["inventory"]["tables"]["metadata"]["rows"]:
+        if row[0] == "schema_version":
+            row[1] = str(schema)
     if schema == 4:
-        record["inventory"]["schema"] = 4
         table = record["inventory"]["tables"]["spools"]
         index = table["columns"].index("usage_state")
         del table["columns"][index]
@@ -288,7 +292,7 @@ def test_backup_restore_preserves_usage_and_accepts_previous_backups(station, sc
     assert current["main"] == item["main"] and current["aux"] == item["aux"]
     assert app.state.store.get_spool(qr["id"])["usage_state"] == "stock"
     with app.state.store.connect() as db:
-        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0] == "5"
+        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0] == "6"
 
 
 def test_factory_rfid_usage_and_model_keep_the_uid_derived_spool_identity(station, monkeypatch):

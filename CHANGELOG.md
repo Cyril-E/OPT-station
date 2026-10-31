@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.20.0 — 31 octobre 2026
+
+- Inventaire : vues Tout, Stock, Production et Terminées; choix multiples de marques et matières présents dans les fiches, combinables avec la recherche.
+- Photos sur les bobines et les modèles/favoris, import depuis le navigateur ou capture par la caméra du Pi, aperçu avant ajout, vignettes et suppression confirmée.
+- Photos incluses dans les sauvegardes d’inventaire; restauration des anciens schémas conservée. Schéma SQLite 6 et limites de sauvegarde 128 Mo / 256 Mo décompressés.
+
+Vérifications : **766 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **767 sur Raspberry Pi**, ainsi que les six moteurs JavaScript. Les essais couvrent les filtres combinés, l’ajout explicite des photos, les limites de taille et de nombre, les droits réseau, la conservation des fiches, les conflits et la sauvegarde/restauration. L’import depuis le navigateur et l’affichage français/anglais ont été contrôlés sur des données isolées; la capture par la caméra réelle du Pi est vérifiée sans ajout au stock ni écriture RFID.
+
+L’archive complète `opt-station-v0.20.0.tar.gz` et son SHA-256 accompagnent cette préversion. La migration vers le schéma SQLite **6** conserve les fiches existantes. Les photos sont incluses dans les sauvegardes Inventaire et Complète; les anciens schémas 4/5 restent restaurables. Les fichiers JSON d’import/export de modèles n’incluent pas les photos. Avant un retour à une version antérieure, restaurer ensemble les sources et les données sauvegardées avant migration. Voir le [guide des filtres et photos](docs/35-filtres-et-photos.md).
+
 ## v0.19.0 — 31 octobre 2026
 
 - MCP : modification partielle des fiches de bobines, y compris poids et consommation connus, notes et utilisation Stock/Service, avec contrôle des versions et sans écriture RFID.

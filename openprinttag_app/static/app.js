@@ -8,7 +8,7 @@
   const state = {
     status: null, schema: {main: [], aux: []}, currentTag: null,
     editorTag: null, editorMode: "create", preview: null,
-    inventory: [], inventoryView: "stock", favorites: [], editingFavorite: null, deletingFavorite: null, lastRead: null,
+    inventory: [], inventoryView: "all", inventoryBrands: new Set(), inventoryMaterials: new Set(), favorites: [], editingFavorite: null, deletingFavorite: null, lastRead: null,
     activeTab: "read", toastTimer: null, sourceQR: null, sourceFavorite: null,
     cameraScan: null, cameraEpoch: 0, cameraTimer: null, cameraStarting: false,
     cameraFrame: null, cameraResults: null, qrEpoch: 0,
@@ -659,19 +659,23 @@
     setText("stock-weight", known.length ? grams(known.reduce((total, item) => total + item.remaining_weight, 0)) : "—");
     setText("favorite-count", String(state.favorites.length));
     const search = $("inventory-search").value.trim().toLocaleLowerCase("fr");
-    const source = archived ? [...completed].sort((a, b) => b.completed_at.localeCompare(a.completed_at)) : items;
+    const eligible = state.inventory.filter(item => item.in_stock || item.completed_at);
+    renderInventoryFacets(eligible);
+    const source = (archived ? [...completed].sort((a, b) => b.completed_at.localeCompare(a.completed_at)) : eligible)
+      .filter(item => window.OPT_INVENTORY_FILTERS.matches(item, state.inventoryView, state.inventoryBrands, state.inventoryMaterials));
     const numberSearch = /^b\d{1,18}$/i.test(search) ? "b" + search.slice(1).replace(/^0+(?=\d)/, "").padStart(4, "0") : null;
     const visible = source.filter((item) => !search || (numberSearch ? item.spool_number?.toLowerCase() === numberSearch : [item.spool_number, item.notes, item.uid, ...Object.values(item.main || {}), ...Object.values(item.aux || {})].join(" ").toLocaleLowerCase("fr").includes(search)));
-    setText("inventory-title", archived ? msg("Bobines terminées") : msg("Vos bobines"));
-    for (const [id, active] of [["inventory-stock", !archived], ["inventory-archives", archived]]) {
-      $(id).classList.toggle("selected", active); $(id).setAttribute("aria-pressed", String(active));
+    const filtered = Boolean(search || state.inventoryBrands.size || state.inventoryMaterials.size);
+    setText("inventory-title", msg("Vos bobines"));
+    for (const [id, view] of [["inventory-all", "all"], ["inventory-stock", "stock"], ["inventory-production", "production"], ["inventory-archives", "completed"]]) {
+      $(id).classList.toggle("selected", state.inventoryView === view); $(id).setAttribute("aria-pressed", String(state.inventoryView === view));
     }
     $("inventory-sort").disabled = archived;
     $("inventory-sort").closest("label").hidden = archived;
     const container = $("inventory-list"); clear(container);
     if (!visible.length) {
       const empty = node("div", "table-empty");
-      empty.append(node("strong", "", search ? msg("Aucune bobine ne correspond") : archived ? msg("Aucune bobine terminée") : msg("Votre inventaire est prêt à être rempli")), node("span", "", search ? msg("Essayez une autre marque ou un autre matériau.") : archived ? msg("Les bobines marquées comme terminées apparaîtront ici.") : canControl() ? msg("Ajoutez une bobine emballée ou lisez un tag RFID pour entrer une bobine au stock.") : msg("Ajoutez une bobine emballée pour préparer son QR, ou consultez les bobines déjà enregistrées.")));
+      empty.append(node("strong", "", filtered ? msg("Aucune bobine ne correspond") : archived ? msg("Aucune bobine terminée") : msg("Votre inventaire est prêt à être rempli")), node("span", "", filtered ? msg("Essayez une autre marque ou un autre matériau.") : archived ? msg("Les bobines marquées comme terminées apparaîtront ici.") : canControl() ? msg("Ajoutez une bobine emballée ou lisez un tag RFID pour entrer une bobine au stock.") : msg("Ajoutez une bobine emballée pour préparer son QR, ou consultez les bobines déjà enregistrées.")));
       container.append(empty);
     } else {
       const table = node("table", "inventory-table");
@@ -698,7 +702,7 @@
         const actions = node("div", "table-actions");
         const label = node("button", "button secondary small", msg("Étiquette QR")); label.type = "button";
         label.addEventListener("click", () => task(label, () => openLabel(item))); actions.append(label);
-        if (!archived) {
+        if (item.in_stock && !item.completed_at) {
           const finish = completionButton(item, "button secondary small");
           const remove = node("button", "button secondary small", msg("Retirer")); remove.type = "button";
           I18n.attribute(remove, "aria-label", msg("Retirer {0} de l’inventaire", spoolName(item)));
@@ -709,8 +713,28 @@
       }
       table.append(tbody); container.append(table);
     }
+    const count = node("span", "inventory-result-count", msg("{0} bobine(s) affichée(s).", visible.length)); container.prepend(count);
     const unknown = items.length - known.length;
     setText("inventory-footnote", archived ? msg("Archives : {0} bobine{1}. Fiches conservées, de la fin la plus récente à la plus ancienne.", completed.length, completed.length === 1 ? "" : "s") : msg("{0} bobine{1} dans l’inventaire{2}. Le retrait conserve les données du tag.", items.length, items.length === 1 ? "" : "s", unknown ? msg(" · quantité restante inconnue pour {0} bobine{1}", unknown, unknown === 1 ? "" : "s") : ""));
+  }
+  function renderInventoryFacets(items) {
+    for (const [id, field, selected, missing] of [["inventory-brands", "brand_name", state.inventoryBrands, msg("Marque non renseignée")], ["inventory-materials", "material_type", state.inventoryMaterials, msg("Matière non renseignée")]]) {
+      const holder = $(id), focus = document.activeElement;
+      const focusedValue = holder.contains(focus) ? focus.value : null;
+      clear(holder);
+      const options = window.OPT_INVENTORY_FILTERS.values(items, field);
+      // Keep an unavailable selection visible so a live inventory update cannot silently broaden it.
+      for (const value of selected) if (!options.some(([key]) => key === value)) options.push([value, value || missing]);
+      for (const [value, label] of options) {
+        const wrapper = node("label", "inventory-filter-option"), input = node("input");
+        input.type = "checkbox"; input.value = value; input.checked = selected.has(value);
+        input.addEventListener("change", () => { input.checked ? selected.add(value) : selected.delete(value); renderInventory(); });
+        wrapper.append(input, node("span", "", label || missing)); holder.append(wrapper);
+        if (focusedValue === value) input.focus();
+      }
+      if (!options.length) holder.append(node("p", "fine-print", msg("Aucune valeur disponible.")));
+    }
+    $("inventory-clear-filters").disabled = !state.inventoryBrands.size && !state.inventoryMaterials.size && !$("inventory-search").value;
   }
   async function refreshStock() {
     const response = await api(`/api/inventory?include_removed=true&sort=${encodeURIComponent($("inventory-sort").value)}`);
@@ -756,6 +780,9 @@
       const ended = node("div"); ended.append(node("span", "", msg("Terminée le")), node("strong", "", formatDate(item.completed_at))); summary.append(ended);
       content.append(node("p", "fine-print", msg("Fiche archivée : les dernières données connues sont conservées. Le tag RFID reste inchangé.")));
     }
+    const photos = node("button", "button secondary", msg("Photos")); photos.type = "button";
+    photos.addEventListener("click", () => window.OPT_PHOTOS.open("spool", item.id, spoolTitle(item)));
+    content.append(photos);
     const actions = node("div", "detail-actions"), label = node("button", "button secondary", msg("Afficher / imprimer le QR")); label.type = "button";
     label.addEventListener("click", () => task(label, async () => { $("detail-dialog").close(); await openLabel(item); })); actions.append(label);
     if (item.in_stock && !item.completed_at) {
@@ -869,6 +896,8 @@
       const summary = [favorite.main?.brand_name, favorite.main?.material_type == null ? null : displayValue("main", "material_type", favorite.main.material_type), favorite.main?.nominal_netto_full_weight == null ? null : grams(favorite.main.nominal_netto_full_weight)].filter(Boolean).join(" · ");
       card.append(identity, node("p", "", summary || msg("Fiche à compléter")));
       const actions = node("div", "card-actions");
+      const photos = node("button", "button secondary small", msg("Photos")); photos.type = "button";
+      photos.addEventListener("click", () => window.OPT_PHOTOS.open("template", favorite.id, favorite.name)); actions.append(photos);
       const edit = node("button", "button secondary small", msg("Modifier")); edit.type = "button"; edit.addEventListener("click", () => openFavorite(favorite)); actions.append(edit);
       if (canControl()) {
         const use = node("button", "button secondary small", msg("Utiliser")); use.type = "button";
@@ -1365,8 +1394,9 @@
     const item = await api(`/api/inventory/${encodeURIComponent(state.detailItem.id)}`);
     state.detailItem = item; renderSpoolNotes(item, true);
   }));
+  $("inventory-clear-filters").addEventListener("click", () => { state.inventoryBrands.clear(); state.inventoryMaterials.clear(); $("inventory-search").value = ""; renderInventory(); });
   $("inventory-search").addEventListener("input", renderInventory);
-  for (const [id, view] of [["inventory-stock", "stock"], ["inventory-archives", "completed"]]) {
+  for (const [id, view] of [["inventory-all", "all"], ["inventory-stock", "stock"], ["inventory-production", "production"], ["inventory-archives", "completed"]]) {
     $(id).addEventListener("click", () => { state.inventoryView = view; renderInventory(); });
   }
   $("inventory-toggle").addEventListener("click", (event) => task(event.currentTarget, async () => {

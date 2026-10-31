@@ -48,6 +48,7 @@ from .library_transfer import LibraryTransfer
 from .backups import BackupManager, BackupError, MaintenanceGate, recover_restore, MAX_ARCHIVE
 from .updates import ReleaseMonitor
 from .assistant import LabelAssistant, AssistantError, MAX_IMAGE
+from .photos import MAX_UPLOAD
 
 LOG = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -140,6 +141,11 @@ class AssistantAnalysis(Model):
     scan_id: str | None = Field(default=None, max_length=100)
     image: str | None = Field(default=None, max_length=MAX_IMAGE * 4 // 3 + 100)
     language: Literal["fr", "en"] = "fr"
+
+
+class PhotoUpload(Model):
+    image: str | None = Field(default=None, max_length=MAX_UPLOAD * 4 // 3 + 100)
+    scan_id: str | None = Field(default=None, max_length=100)
 
 
 class BackupDownload(Model):
@@ -430,11 +436,12 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 length = int(request.headers.get("content-length", "0"))
             except ValueError:
                 return JSONResponse({"detail": "Taille de requête invalide."}, status_code=400)
+            large_body = request.url.path in {"/api/backups/restore/preview", "/api/library/import/preview", "/api/assistant/analyse"} or request.url.path.startswith("/api/photos/")
             limit = (MAX_ARCHIVE * 4 // 3 + 2048 if request.url.path == "/api/backups/restore/preview"
-                     else 6_100_000 if request.url.path in {"/api/library/import/preview", "/api/assistant/analyse"} else 256_000)
+                     else 6_100_000 if large_body else 256_000)
             if length > limit:
                 return JSONResponse({"detail": "Requête trop volumineuse."}, status_code=413)
-            if request.url.path in {"/api/backups/restore/preview", "/api/library/import/preview", "/api/assistant/analyse"}:
+            if large_body:
                 chunks, size = [], 0
                 async for chunk in request.stream():
                     size += len(chunk)
@@ -585,7 +592,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -1208,6 +1215,42 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     def save_assistant_settings(request: Request, body: AssistantSettings):
         require_station(request)
         return assistant.save(body.model_dump())
+
+    @app.get("/api/photos/{kind}/{identifier}")
+    def list_photos(kind: Literal["spool", "template"], identifier: str):
+        return {"items": store.photos(kind, identifier)}
+
+    @app.post("/api/photos/{kind}/{identifier}")
+    def upload_photo(kind: Literal["spool", "template"], identifier: str, request: Request, body: PhotoUpload):
+        if bool(body.image) == bool(body.scan_id):
+            raise ValueError("Choisissez une photo ou une capture caméra.")
+        if body.scan_id:
+            require_station(request)
+            content = camera.photo(body.scan_id)
+        else:
+            content = body.image
+            if content.startswith("data:"):
+                if not content.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+                    raise ValueError("Format d’image non pris en charge.")
+                content = content.split(",", 1)[1]
+            try:
+                content = base64.b64decode(content, validate=True)
+            except ValueError:
+                raise ValueError("La photo est illisible.") from None
+        return store.add_photo(kind, identifier, content)
+
+    @app.get("/api/photos/{kind}/{identifier}/{photo_id}")
+    def get_photo(kind: Literal["spool", "template"], identifier: str, photo_id: str, thumbnail: bool = False):
+        return Response(store.photo(kind, identifier, photo_id, thumbnail), media_type="image/jpeg")
+
+    @app.delete("/api/photos/{kind}/{identifier}/{photo_id}")
+    def delete_photo(kind: Literal["spool", "template"], identifier: str, photo_id: str):
+        return store.delete_photo(kind, identifier, photo_id)
+
+    @app.post("/api/camera/photos")
+    def capture_photo(request: Request):
+        require_station(request)
+        return camera.start_photo()
 
     @app.post("/api/assistant/photo")
     def assistant_photo(request: Request):

@@ -134,7 +134,7 @@ def test_v3_migration_assigns_numbers_without_rewriting_old_data(tmp_path):
         old_columns='id,instance_uuid,uid,in_stock,snapshot,last_seen_at,version,added_at,label_state,completed_at'
         assert [tuple(r) for r in db.execute('SELECT '+old_columns+' FROM spools ORDER BY id')]==before
         assert [tuple(r) for r in db.execute('SELECT * FROM favorites')]==models
-        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0]=='5'
+        assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0]=='6'
     assert s.get_spool('unknown')['added_at'] is None
     assert s.completed_count()==1 and s.inventory_notes()=={'text':'','revision':0,'updated_at':None}
     assert all(x['notes']=='' and x['notes_revision']==0 for x in s.list_spools(include_removed=True))

@@ -36,10 +36,10 @@ from .storage import ConflictError, Store, dumps, now
 
 MAGIC = b"OPTBAK1\n"
 PLAIN_MAGIC = b"OPTBAK0\n"
-MAX_ARCHIVE = 32 * 1024 * 1024
-MAX_PLAIN = 64 * 1024 * 1024
+MAX_ARCHIVE = 128 * 1024 * 1024
+MAX_PLAIN = 256 * 1024 * 1024
 CONFIG_FILES = ("network-settings.json", "printer-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json", "ai-settings.json")
-TABLES = ("metadata", "spools", "favorites", "simulated_tags", "state", "tag_sources", "operations", "label_jobs", "inventory_notes")
+TABLES = ("metadata", "spools", "favorites", "simulated_tags", "state", "tag_sources", "operations", "label_jobs", "inventory_notes", "photos")
 NFC_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,140}\.(?:bin|json)\Z")
 
 
@@ -87,10 +87,10 @@ def encrypt(record, password=None, material=None):
     nonce = secrets.token_bytes(12)
     raw = dumps(record).encode()
     if len(raw) > MAX_PLAIN:
-        raise BackupError("Les données dépassent la limite de sauvegarde de 64 Mo.")
+        raise BackupError("Les données dépassent la limite de sauvegarde de 256 Mo.")
     encrypted = MAGIC + salt + nonce + AESGCM(key).encrypt(nonce, gzip.compress(raw), MAGIC + salt)
     if len(encrypted) > MAX_ARCHIVE:
-        raise BackupError("La sauvegarde dépasse la limite de fichier de 32 Mo.")
+        raise BackupError("La sauvegarde dépasse la limite de fichier de 128 Mo.")
     return encrypted
 
 
@@ -99,11 +99,11 @@ def encode_backup(record, password=None, material=None):
         return encrypt(record, password=password, material=material)
     raw = dumps(record).encode()
     if len(raw) > MAX_PLAIN:
-        raise BackupError("Les données dépassent la limite de sauvegarde de 64 Mo.")
+        raise BackupError("Les données dépassent la limite de sauvegarde de 256 Mo.")
     zipped = gzip.compress(raw)
     content = PLAIN_MAGIC + hashlib.sha256(zipped).digest() + zipped
     if len(content) > MAX_ARCHIVE:
-        raise BackupError("La sauvegarde dépasse la limite de fichier de 32 Mo.")
+        raise BackupError("La sauvegarde dépasse la limite de fichier de 128 Mo.")
     return content
 
 
@@ -426,7 +426,7 @@ class BackupManager:
                 rows = [[{"bytes": base64.b64encode(value).decode()} if isinstance(value, bytes) else value for value in row]
                         for row in db.execute('SELECT * FROM "' + name + '"')]
                 tables[name] = {"columns": columns, "rows": rows}
-        return {"schema": 5, "tables": tables}
+        return {"schema": 6, "tables": tables}
 
     def collect(self, scope):
         if scope not in {"inventory", "configuration", "all"}:
@@ -458,8 +458,8 @@ class BackupManager:
             return encode_backup(self.collect(scope), password=password)
 
     def _validate_inventory(self, inventory, folder):
-        if (not isinstance(inventory, dict) or type(inventory.get("schema")) is not int or inventory["schema"] not in {4, 5}
-                or set(inventory.get("tables", {})) != set(TABLES)):
+        if (not isinstance(inventory, dict) or type(inventory.get("schema")) is not int or inventory["schema"] not in {4, 5, 6}
+                or set(inventory.get("tables", {})) != (set(TABLES) if inventory["schema"] == 6 else set(TABLES) - {"photos"})):
             raise BackupError("Schéma d’inventaire non pris en charge. Utilisez une version compatible d’OPT Station.")
         candidate = Store(folder / "candidate.sqlite3")
         self._insert_inventory(candidate, inventory, preserve=None)
@@ -492,12 +492,23 @@ class BackupManager:
         if type(notes["revision"]) is not int or notes["revision"] < 0:
             raise BackupError("Le carnet commun sauvegardé est invalide.")
         with candidate.connect() as db:
+            from .photos import validate_saved_photo, MAX_PHOTOS
+            if db.execute("PRAGMA foreign_key_check").fetchone():
+                raise BackupError("Une photo sauvegardée référence une fiche absente.")
+            for row in db.execute("SELECT * FROM photos"):
+                try:
+                    validate_saved_photo(row)
+                except (ValueError, OSError, TypeError):
+                    raise BackupError("Une photo sauvegardée est invalide.") from None
+            if db.execute("SELECT 1 FROM photos GROUP BY spool_id,template_id HAVING COUNT(*)>?", (MAX_PHOTOS,)).fetchone():
+                raise BackupError("Une fiche sauvegardée contient trop de photos.")
+            photo_count = db.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
             if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise BackupError("L’inventaire sauvegardé est incohérent.")
             counter = db.execute("SELECT value FROM metadata WHERE key='next_spool_number'").fetchone()
             highest = db.execute("SELECT COALESCE(MAX(sequence_number)+1,0) FROM spools").fetchone()[0]
             schema = db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()
-            if not counter or not counter[0].isascii() or not counter[0].isdigit() or not highest <= int(counter[0]) <= 2**63 - 1 or not schema or schema[0] != "5":
+            if not counter or not counter[0].isascii() or not counter[0].isdigit() or not highest <= int(counter[0]) <= 2**63 - 1 or not schema or schema[0] != "6":
                 raise BackupError("Le compteur de bobines sauvegardé est invalide.")
             for key in ("library_revision", "inventory_revision"):
                 revision = db.execute("SELECT value FROM metadata WHERE key=?", (key,)).fetchone()
@@ -506,13 +517,16 @@ class BackupManager:
             if db.execute("SELECT 1 FROM spools WHERE in_stock NOT IN (0,1) OR usage_state NOT IN ('stock','in_service') OR version<1 OR notes_revision<0 LIMIT 1").fetchone():
                 raise BackupError("L’état d’une bobine sauvegardée est invalide.")
         return {"spools": len(candidate.list_spools(include_removed=True)), "completed": candidate.completed_count(),
-                "templates": len(candidate.favorites())}
+                "templates": len(candidate.favorites()), "photos": photo_count}
 
     @staticmethod
     def _insert_inventory(store, inventory, preserve):
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            db.execute("DELETE FROM photos")
             for name in TABLES:
+                if name == "photos" and inventory["schema"] < 6:
+                    continue
                 table = inventory["tables"][name]
                 columns = [r[1] for r in db.execute('PRAGMA table_info("' + name + '")')]
                 old_spools = inventory["schema"] == 4 and name == "spools"
@@ -535,7 +549,7 @@ class BackupManager:
                     if name == "metadata" and values[0] == "schema_version":
                         if values[1] != str(inventory["schema"]):
                             raise BackupError("La version de l’inventaire sauvegardé est incohérente.")
-                        values[1] = "5"
+                        values[1] = "6"
                     db.execute('INSERT INTO "' + name + '" VALUES(' + ','.join('?' for _ in columns) + ')', values)
             if preserve:
                 # Never recycle a number issued after the backup, even on rollback.

@@ -74,7 +74,7 @@ class Store:
             # Serialize migration discovery as well as the migration itself.
             db.execute("BEGIN IMMEDIATE")
             version = db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()[0]
-            if version not in {"1", "2", "3", "4", "5"}:
+            if version not in {"1", "2", "3", "4", "5", "6"}:
                 raise ValueError("Version de base inconnue; sauvegarder avant migration.")
             if version == "1":
                 # Old last_seen_at is a reading time, never an arrival date.
@@ -124,6 +124,17 @@ class Store:
                 # Preserve the previously displayed state, then let usage and identification vary independently.
                 db.execute("UPDATE spools SET usage_state='stock' WHERE label_state='qr'")
                 db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
+            db.execute("""CREATE TABLE IF NOT EXISTS photos (
+                id TEXT PRIMARY KEY, spool_id TEXT REFERENCES spools(id) ON DELETE CASCADE,
+                template_id TEXT REFERENCES favorites(id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL,
+                image BLOB NOT NULL, thumbnail BLOB NOT NULL,
+                CHECK((spool_id IS NOT NULL AND template_id IS NULL) OR
+                      (spool_id IS NULL AND template_id IS NOT NULL))
+            )""")
+            db.execute("CREATE INDEX IF NOT EXISTS photos_spool ON photos(spool_id)")
+            db.execute("CREATE INDEX IF NOT EXISTS photos_template ON photos(template_id)")
+            db.execute("UPDATE metadata SET value='6' WHERE key='schema_version'")
             db.execute("""CREATE TABLE IF NOT EXISTS label_jobs (
                 request_id TEXT PRIMARY KEY, spool_id TEXT NOT NULL, version INTEGER NOT NULL,
                 settings_revision INTEGER NOT NULL, payload_hash TEXT NOT NULL,
@@ -609,3 +620,50 @@ class Store:
     def recover_label_jobs(self):
         with self.connect() as db:
             db.execute("UPDATE label_jobs SET status='uncertain',detail='Station redémarrée pendant une impression. Vérifier l’étiquette avant de réimprimer.' WHERE status='pending'")
+
+    @staticmethod
+    def _photo_owner(db, kind, identifier):
+        if kind not in {"spool", "template"}:
+            raise ValueError("Type de fiche invalide.")
+        table, column = ("spools", "spool_id") if kind == "spool" else ("favorites", "template_id")
+        if not db.execute("SELECT 1 FROM " + table + " WHERE id=?", (identifier,)).fetchone():
+            raise KeyError(identifier)
+        return column
+
+    def photos(self, kind, identifier):
+        with self.connect() as db:
+            column = self._photo_owner(db, kind, identifier)
+            return [dict(row) for row in db.execute("SELECT id,created_at,width,height FROM photos WHERE " + column + "=? ORDER BY created_at,id", (identifier,))]
+
+    def photo(self, kind, identifier, photo_id, thumbnail=False):
+        with self.connect() as db:
+            column = self._photo_owner(db, kind, identifier)
+            row = db.execute("SELECT image,thumbnail FROM photos WHERE " + column + "=? AND id=?", (identifier, photo_id)).fetchone()
+            if row is None:
+                raise KeyError(photo_id)
+            return row["thumbnail" if thumbnail else "image"]
+
+    def add_photo(self, kind, identifier, content):
+        from .photos import normalize_photo, MAX_PHOTOS
+        image, thumbnail, width, height = normalize_photo(content)
+        photo_id, stamp = str(uuid.uuid4()), now()
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            column = self._photo_owner(db, kind, identifier)
+            count = db.execute("SELECT COUNT(*) FROM photos WHERE " + column + "=?", (identifier,)).fetchone()[0]
+            if count >= MAX_PHOTOS:
+                raise ValueError("Une fiche peut contenir au maximum 8 photos.")
+            db.execute("INSERT INTO photos (id," + column + ",created_at,width,height,image,thumbnail) VALUES (?,?,?,?,?,?,?)",
+                       (photo_id, identifier, stamp, width, height, image, thumbnail))
+            (self._bump_inventory if kind == "spool" else self._bump_library)(db)
+        return {"id": photo_id, "created_at": stamp, "width": width, "height": height}
+
+    def delete_photo(self, kind, identifier, photo_id):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            column = self._photo_owner(db, kind, identifier)
+            deleted = db.execute("DELETE FROM photos WHERE " + column + "=? AND id=?", (identifier, photo_id))
+            if not deleted.rowcount:
+                raise KeyError(photo_id)
+            (self._bump_inventory if kind == "spool" else self._bump_library)(db)
+        return {"deleted": True}

@@ -14,14 +14,15 @@
 - Assistant IA depuis une photo d’étiquette, avec recherche Web facultative et validation des propositions avant remplissage.
 - Sommaire de Configuration avec accès direct aux réglages et navigation adaptée à l’écran.
 - Accès réseau configurable et serveur MCP optionnel : treize outils pour consulter et corriger les fiches de bobines, et gérer les favoris et modèles.
-- Sauvegardes manuelles et planifiées avec mot de passe facultatif.
+- Filtres d’inventaire par état, marque et matière; photos des bobines et modèles depuis un fichier ou la caméra du Pi.
+- Sauvegardes manuelles et planifiées avec mot de passe facultatif, incluant les photos des fiches.
 - Détection des versions GitHub disponibles, affichage local en plein écran et commandes d’arrêt/redémarrage du Pi.
 
 Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesuré, la tare et la consommation sont des informations distinctes. Les modèles ne copient pas les données individuelles d’une bobine.
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.19.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.19.0)**, avec édition des fiches de bobines par MCP et suivi des corrections locales RFID. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.20.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.20.0)**, avec filtres d’inventaire par état, marque et matière, et photos jointes aux fiches de bobines et de modèles. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -30,6 +31,12 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.20.0 — Filtres d’inventaire et photos](https://github.com/Cyril-E/OPT-station/releases/tag/v0.20.0)
+
+- Vues **Tout / Stock / Production / Terminées**, avec plusieurs marques et matières cochables, combinables avec la recherche par numéro ou texte.
+- [Photos des bobines et modèles](docs/35-filtres-et-photos.md) : import depuis l’ordinateur ou capture par la caméra du Pi, aperçu avant ajout, vignettes, consultation et suppression confirmée. Jusqu’à huit photos par fiche.
+- Photos incluses dans les sauvegardes Inventaire et Complète, avec restauration des anciens fichiers conservée. Schéma SQLite 6; limites de sauvegarde de 128 Mo pour le fichier et 256 Mo décompressés. Les photos restent hors des QR et des tags RFID.
 
 ### [v0.19.0 — Édition des bobines par MCP](https://github.com/Cyril-E/OPT-station/releases/tag/v0.19.0)
 
@@ -93,6 +100,7 @@ Ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765). **Configuration → Maté
 - [Suivi PrusaLink et caméras](docs/17-suivi-imprimante-et-cameras.md), avec [étude des API](docs/16-etude-api-imprimante.md).
 - [Réception, QR et étiquettes](docs/19-stock-qr-et-etiquettes.md), [numéros et notes](docs/24-numeros-et-notes-inventaire.md), [archives](docs/23-bobines-terminees-et-archives.md).
 - [Modèles depuis RFID/QR](docs/28-modeles-depuis-rfid-et-qr.md), [états et modèles depuis l’inventaire](docs/30-utilisation-et-modeles-inventaire.md), [création et recréation RFID](docs/29-creation-et-recreation-rfid-inventaire.md).
+- [Filtres et photos des fiches](docs/35-filtres-et-photos.md).
 - [Import/export de bibliothèque](docs/25-import-export-bibliotheque.md), [sauvegardes et restauration](docs/26-sauvegardes-et-restauration.md), [mises à jour](docs/27-detection-mises-a-jour.md).
 - [Serveur MCP](docs/21-serveur-mcp.md), [HTTPS local](docs/31-https-local.md) et [alimentation du Pi](docs/20-arret-et-redemarrage-pi.md).
 - [Assistant IA pour les étiquettes](docs/34-assistant-ia-etiquettes.md) et [fonctions et évolutions](docs/14-feuille-de-route.md).
