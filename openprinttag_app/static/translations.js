@@ -1,6 +1,7 @@
 "use strict";
 // English UI messages. Canonical field names and user data are never translated.
 window.OPT_EN = Object.freeze({
+  "L’installation d’OPT Station est en cours. Réessayez dans un instant.": "OPT Station is being installed. Please try again in a moment.",
   "HTTPS requis": "HTTPS required",
   "Ouvrez la station en HTTPS et approuvez son certificat pour recevoir les notifications.": "Open the station over HTTPS and trust its certificate to receive notifications.",
   "Navigateur non compatible": "Unsupported browser",

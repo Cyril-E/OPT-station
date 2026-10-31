@@ -18,11 +18,11 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.16.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.16.1)**, avec notifications Chrome de fin d’impression et d’intervention, actives lorsqu’un onglet reste ouvert en arrière-plan. Elle fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements de cette version ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.17.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.0)**, avec installation en une commande sur Raspberry Pi OS 64 bits Trixie : dépendances, services, HTTPS et démarrage en plein écran. Elle fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
-La qualification de v0.16.1 comprend **628 tests sur Mac et Raspberry Pi**, dont le flux d’événements réel et la passerelle HTTPS Caddy, ainsi que les moteurs de langue et de notifications. L’affichage d’une notification de test dans Chrome sur Mac est validé. Les événements sur une impression réelle restent à qualifier; voir le [guide des notifications](docs/32-notifications-imprimante.md) et le [journal des versions](CHANGELOG.md).
+La qualification de v0.17.0 comprend **677 tests sur Raspberry Pi et 676 sur Mac**, avec le test propre à systemd ignoré sur Mac, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
-La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide bilingue. L’installation complète en une commande et l’identification d’étiquettes par IA restent en préparation. Aucun installateur `curl … | bash` n’est encore publié comme fonction opérationnelle. La [feuille de route](docs/14-feuille-de-route.md) distingue les fonctions livrées et les travaux à réaliser.
+La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide bilingue. L’[installateur](docs/33-installation-une-commande.md) conserve l’inventaire et les certificats sur une station existante, sauvegarde les fichiers avant activation et tente un retour arrière en cas d’échec. L’identification d’étiquettes par IA reste à réaliser. La [feuille de route](docs/14-feuille-de-route.md) distingue les fonctions livrées et les travaux à réaliser.
 
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
@@ -30,7 +30,15 @@ La version comprend les [notifications Chrome](docs/32-notifications-imprimante.
 
 Le profil matériel de référence utilise **Raspberry Pi 5**, Raspberry Pi OS 64 bits, **ACS ACR1552U-M1** et tags NFC-V/ISO 15693 **SLIX2**. La capture QR a été qualifiée avec un capteur OV5647. Les autres capteurs, écrans et lecteurs doivent être vérifiés sur le système retenu. Le [guide écran](docs/10-ecran-tactile.md) précise les limites du Touch Display 2 de 10,1 pouces.
 
-Suivre le **[guide d’installation matérielle](docs/12-installation-station-reelle.md)** pour les paquets, les sources, l’environnement Python, les services et le navigateur en plein écran. Les adresses des appareils et leurs identifiants se renseignent ensuite dans **Configuration**. Les chemins reposent sur le compte qui installe la station; aucun compte ou adressage réseau particulier n’est requis.
+Sur **Raspberry Pi OS 64 bits Trixie avec bureau**, ouvrir un terminal avec le compte ordinaire du Pi et exécuter, sans ajouter `sudo` devant :
+
+```sh
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/Cyril-E/OPT-station/main/install.sh | bash
+```
+
+Le mot de passe administrateur est demandé dans le terminal quand il devient nécessaire. Après installation, ouvrir l’adresse affichée et renseigner les appareils et leurs clés dans **Configuration**. Sur chaque autre ordinateur, approuver une fois le certificat selon l’[aide HTTPS](docs/31-https-local.md). Les chemins reposent sur le compte qui installe la station; aucun compte ou adressage réseau particulier n’est requis.
+
+Consulter le **[guide d’installation en une commande](docs/33-installation-une-commande.md)** pour le parcours complet, les réinstallations et les options `--no-kiosk`, `--no-camera`, `--version` et `--dry-run`. Raspberry Pi OS Lite demande `--no-kiosk`. Le **[guide manuel](docs/12-installation-station-reelle.md)** décrit les étapes séparées.
 
 Depuis un autre ordinateur, utiliser l’adresse annoncée au lancement de la station. Dans **Configuration → Accès distant**, choisir **Désactivé**, **Inventaire et modèles** ou **Accès complet sans code**. Le choix est persistant et commun aux clients du réseau. Voir le [guide d’accès](docs/18-acces-distant-persistant.md).
 

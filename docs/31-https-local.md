@@ -1,6 +1,6 @@
 # HTTPS local
 
-HTTPS utilise Caddy, une autorité de certification propre à la station et une page d’aide bilingue. L’installateur complet en une commande reste à réaliser; les sources et archives publiées sont accessibles sans authentification.
+HTTPS utilise Caddy, une autorité de certification propre à la station et une page d’aide bilingue. L’[installateur en une commande](33-installation-une-commande.md), disponible depuis v0.17.0, intègre cette configuration dès l’installation. La réinstallation réelle est validée; l’installation complète sur carte SD vierge reste à qualifier. Les sources et archives publiées sont accessibles sans authentification.
 
 ## Fonctionnement
 

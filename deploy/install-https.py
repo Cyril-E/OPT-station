@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Idempotent Debian/Pi OS HTTPS setup; also callable by a future bootstrap.
+"""Idempotent Debian/Pi OS HTTPS setup, shared with the complete installer.
 
 Run --dry-run as the station user first. Apply with sudo, from trusted sources.
 Never copies inventories, rotates an existing CA or disables browser validation.
@@ -36,6 +36,18 @@ def run(*args, **kwargs):
 
 def unit_quote(value):
     return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
+
+
+def runtime_port(arguments):
+    if "--port" not in arguments:
+        return 8765
+    try:
+        port = int(arguments[arguments.index("--port") + 1])
+    except (ValueError, IndexError):
+        raise ValueError("Le port du service existant n’est pas reconnu.") from None
+    if not 1 <= port <= 65535:
+        raise ValueError("Le port du service existant n’est pas reconnu.")
+    return port
 
 
 def discover_addresses():
@@ -114,6 +126,7 @@ class Files:
     """Private, restorable copies of only the configuration files being changed."""
     def __init__(self, backup):
         self.backup, self.saved = backup, []
+        self.created_dirs, self.directory_modes = [], []
         backup.mkdir(parents=True, mode=0o700)
 
     def write(self, path, content, mode=0o644, owner=None):
@@ -137,8 +150,21 @@ class Files:
             parent = parent.parent
         for parent in reversed(parents):
             parent.mkdir(mode=0o700 if owner else 0o755)
+            parent.chmod(0o700 if owner else 0o755)
+            self.created_dirs.append(parent)
             if owner:
                 os.chown(parent, *owner)
+        parent = path.parent
+        if (not owner and mode & 0o044 and parent not in self.created_dirs
+                and parent.stat().st_uid == 0 and not any(parent.iterdir())):
+            previous = parent.stat().st_mode & 0o777
+            if previous != 0o755:
+                self.directory_modes.append((parent, previous))
+                parent.chmod(0o755)
+        (self.backup / "directories.json").write_text(json.dumps({
+            "created": list(map(str, self.created_dirs)),
+            "permissions_before": [{"path": str(p), "mode": old} for p, old in self.directory_modes],
+        }, indent=2))
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
@@ -161,6 +187,13 @@ class Files:
                 os.chown(path, old.st_uid, old.st_gid)
             else:
                 path.unlink(missing_ok=True)
+        for path, mode in reversed(self.directory_modes):
+            path.chmod(mode)
+        for path in reversed(self.created_dirs):
+            try:
+                path.rmdir()
+            except OSError:
+                pass
 
 
 def main():
@@ -205,19 +238,21 @@ def main():
     if "--data-dir" not in arguments or arguments.index("--data-dir") + 1 == len(arguments):
         parser.error("Le service doit préciser son répertoire de données avec --data-dir avant cette installation.")
     data_dir = Path(arguments[arguments.index("--data-dir") + 1]).resolve()
+    old_port = runtime_port(arguments)
     owned = CONFIG / "Caddyfile"
     if owned.exists() and not owned.read_text().startswith(MARKER):
         parser.error("Une configuration HTTPS existante doit être examinée; aucun fichier n’est remplacé.")
     active = subprocess.run(["systemctl", "is-active", "--quiet", "opt-station-https.service"]).returncode == 0
     if not active:
-        for port in (80, 443, PORT):
+        for port in (80, 443, 8765, PORT):
+            if port == old_port:
+                continue  # The running station owns its current backend port.
             with socket.socket() as listener:
                 try:
                     listener.bind(("0.0.0.0", port))
                 except OSError:
                     parser.error(f"Le port {port} est occupé. Aucun autre serveur n’est arrêté.")
     # Refuse to interrupt hardware operations. New code must be running already.
-    old_port = PORT if active else 8765
     with urlopen(f"http://127.0.0.1:{old_port}/api/system/power", timeout=8) as response:
         ready = json.load(response)
     if ready.get("pending") or ready.get("busy", True):

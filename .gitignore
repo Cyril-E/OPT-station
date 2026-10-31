@@ -14,3 +14,5 @@ dist/
 .aws/
 .codex/
 .agents/
+# Local duplicates of Git metadata are never source files.
+/.git [0-9]*/

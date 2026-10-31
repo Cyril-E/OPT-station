@@ -2,19 +2,17 @@
 
 Les snapshots suivants ont été récupérés en lecture seule depuis les dépôts officiels, le 23 octobre 2026. Aucun code téléchargé n’a été exécuté.
 
-## Lecteur déjà commandé, déclaré par Cyril
+## Documentation et profils NFC
 
-- Modèle déclaré : lecteur USB Lianshi ACR122U, selon la [fiche commerciale signalée](https://www.amazon.fr/dp/B07DK9GX1N). L’appareil physique et sa révision n’ont pas été inspectés; confirmer l’étiquette avant d’attribuer cette fiche à l’unité réelle.
-- Le manuel officiel [ACS ACR122U v3.06](https://www.acs.com.hk/download-manual/418/TSP-ACR122U-3.06.pdf) a été vérifié dans la recherche documentaire associée : ISO 14443 A/B, MIFARE, FeliCa et NFC Forum Types 1 à 4; pas d’ISO 15693/NFC-V. Cyril a fourni le modèle et le lien commercial, pas ces caractéristiques. L’accès direct au PDF a échoué dans cet environnement; voir [la provenance](../docs/04-sources-et-provenance.md). Cela exclut l’ACR122U déclaré comme lecteur-écrivain du tag OpenPrintTag MK1. Une modification logicielle ne peut pas ajouter le protocole radio manquant.
-- Le PDF n’a pas pu être téléchargé localement pendant cette tâche; voir les limites et l’état d’accès dans [la provenance](../docs/04-sources-et-provenance.md). Il n’est donc pas couvert par `SHA256SUMS.txt`.
+Les protocoles requis, les pilotes et les profils matériels vérifiés sont décrits dans le [guide d’installation](../docs/12-installation-station-reelle.md) et le [guide de vérification](../docs/08-verification-prototype.md).
 
-## Candidat USB à évaluer, non choisi
+Références des fabricants et pilotes :
 
-- ACS ACR1552U-M1, USB-A, recommandé après recherche comme candidat; Cyril ne l’a pas acheté et le choix n’est pas final.
-- Sources : [page officielle ACS](https://www.acs.com.hk/en/products/575/), [manuel v1.09](https://www.acs.com.hk/download-manual/13473/REF-ACR1552U-Series-1.09.pdf) et [fiche libccid](https://ccid.apdu.fr/ccid/iProduct.html).
-- §5.3.4.2 du manuel (p. 43–45) décrit `FF FB` en pass-through ISO 15693 pour lecture/écriture simple et multiple de blocs, avec exemple NXP SLIX2; firmware requis ≥ 1.03.00. libccid répertorie ACR1552 1S CL Reader (`072f:2303`) depuis la version 1.5.3 avec statut « should work »; éviter de supposer ce support avec libccid 1.5.2. Des versions Debian arm64/armhf existent.
-- Les sources ACS et CCID sont référencées, mais les PDF et pages ne sont pas copiés localement; le résumé du manuel provient de la recherche associée.
-- Compatibilité de bout en bout et fonctionnement Raspberry Pi non testés. Les offres commerciales de repère sont [ShopNFC](https://shopnfc.com/fr/lecteurs-encodeurs-nfc/580-acr1552u-lecteur-encodeur-nfc-multi-iso.html) et [PC21](https://www.pc21.fr/fiche/acr1552u-m1-acr1552u-usb-nfc-reader-iv-usb-type-a--i5672777.html); aucun total livré n’est garanti ici. Aucune page commerciale archivée, aucun achat.
+- [Manuel ACS ACR122U v3.06](https://www.acs.com.hk/download-manual/418/TSP-ACR122U-3.06.pdf).
+- [Page ACS ACR1552U](https://www.acs.com.hk/en/products/575/) et [manuel ACR1552U v1.09](https://www.acs.com.hk/download-manual/13473/REF-ACR1552U-Series-1.09.pdf).
+- [Liste des lecteurs reconnus par libccid](https://ccid.apdu.fr/ccid/iProduct.html).
+
+Les manuels ACS et les pages web ne sont pas inclus dans les snapshots locaux ni dans `SHA256SUMS.txt`. La provenance des références et leurs limites sont décrites dans [Sources et provenance](../docs/04-sources-et-provenance.md).
 
 ## Standard OpenPrintTag
 

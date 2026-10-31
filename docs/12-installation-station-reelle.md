@@ -2,7 +2,7 @@
 
 Procédure manuelle pour **Raspberry Pi OS 64 bits**, Raspberry Pi 5 et ACS ACR1552U-M1. Les dépendances et essais de référence utilisent Trixie arm64. La caméra QR et l’affichage local restent optionnels selon le montage; les profils matériels sont décrits dans les guides [caméra](11-camera-qr.md) et [écran](10-ecran-tactile.md).
 
-L’installateur complet en une commande reste en préparation. Cette procédure installe **v0.16.1**, puis active HTTPS avec Caddy, les certificats et l’aide aux clients. Le dépôt est public et les téléchargements ne demandent ni compte ni jeton GitHub.
+L’[installateur en une commande](33-installation-une-commande.md) est disponible depuis v0.17.0. Sa réinstallation réelle est validée; une première installation complète sur carte SD vierge reste à qualifier. Cette procédure manuelle installe **v0.17.0**, puis active HTTPS avec Caddy, les certificats et l’aide aux clients. Le dépôt est public et les téléchargements ne demandent ni compte ni jeton GitHub.
 
 ## Conventions des exemples
 
@@ -30,7 +30,7 @@ Les mots de passe administrateur se saisissent uniquement dans le terminal du Pi
 Depuis un ordinateur disposant de curl et d’un accès SSH au Pi :
 
 ```sh
-OPT_VERSION=v0.16.1
+OPT_VERSION=v0.17.0
 OPT_PI=maker@opt-station.local
 OPT_DOWNLOAD="$PWD/opt-station-downloads/$OPT_VERSION"
 mkdir -p "$OPT_DOWNLOAD"
@@ -42,12 +42,12 @@ ssh "$OPT_PI" 'mkdir -p "$HOME/apps"'
 scp "$OPT_DOWNLOAD/opt-station-${OPT_VERSION}.tar.gz" "$OPT_DOWNLOAD/opt-station-${OPT_VERSION}.tar.gz.sha256" "${OPT_PI}:apps/"
 ```
 
-Sur Linux, `sha256sum -c` peut remplacer `shasum -a 256 -c`. Les archives publiques ne demandent aucun jeton. Ces commandes téléchargent les sources; elles ne constituent pas encore l’installateur complet en une commande.
+Sur Linux, `sha256sum -c` peut remplacer `shasum -a 256 -c`. Les archives publiques ne demandent aucun jeton. Ces commandes téléchargent uniquement les sources pour le parcours manuel; le [parcours en une commande](33-installation-une-commande.md) automatise les étapes suivantes.
 
 **Sur le Pi**, vérifier l’archive et l’extraire dans un dossier neuf :
 
 ```sh
-OPT_VERSION=v0.16.1
+OPT_VERSION=v0.17.0
 OPT_SOURCE="$HOME/apps/opt-station-$OPT_VERSION"
 (cd "$HOME/apps" && sha256sum -c "opt-station-${OPT_VERSION}.tar.gz.sha256")
 if [ -e "$OPT_SOURCE" ]; then
@@ -70,7 +70,7 @@ python3 -m venv --system-site-packages .venv
 .venv/bin/python -m pytest -q
 ```
 
-L’option `--system-site-packages` donne accès aux bibliothèques NFC/caméra de Raspberry Pi OS; les autres dépendances restent dans l’environnement. Les tests utilisent des périphériques fictifs et ne doivent pas écrire sur un tag branché. La version v0.16.1 est qualifiée par 628 tests sur Mac et Pi, dont un test réel de passerelle qui demande Caddy (voir le [guide HTTPS](31-https-local.md#vérifications-et-références)); sans ce binaire, ce test est ignoré.
+L’option `--system-site-packages` donne accès aux bibliothèques NFC/caméra de Raspberry Pi OS; les autres dépendances restent dans l’environnement. Les tests utilisent des périphériques fictifs et ne doivent pas écrire sur un tag branché. La version v0.17.0 est qualifiée par 677 tests sur Pi et 676 sur Mac, avec le test propre à systemd ignoré sur Mac, dont un test réel de passerelle qui demande Caddy (voir le [guide HTTPS](31-https-local.md#vérifications-et-références)); sans ce binaire, ce test est ignoré.
 
 ## 4. Sauvegarder une installation existante
 
@@ -100,7 +100,7 @@ if [ -d "$HOME/openprinttag-data" ]; then
 fi
 ```
 
-Conserver cette sauvegarde privée : elle peut contenir des clés, mots de passe, données d’inventaire et images de tags. La base doit être sauvegardée de façon cohérente, serveur arrêté. La version v0.16.1 utilise le schéma 5, inchangé depuis v0.14.0, et migre les anciennes bases compatibles; ne pas tenter un retour à un schéma antérieur avec la base modifiée. Une station déjà en HTTPS doit aussi conserver ses fichiers système et son autorité, selon le [guide HTTPS](31-https-local.md#redémarrage-et-mises-à-jour).
+Conserver cette sauvegarde privée : elle peut contenir des clés, mots de passe, données d’inventaire et images de tags. La base doit être sauvegardée de façon cohérente, serveur arrêté. La version v0.17.0 utilise le schéma 5, inchangé depuis v0.14.0, et migre les anciennes bases compatibles; ne pas tenter un retour à un schéma antérieur avec la base modifiée. Une station déjà en HTTPS doit aussi conserver ses fichiers système et son autorité, selon le [guide HTTPS](31-https-local.md#redémarrage-et-mises-à-jour).
 
 ## 5. Installer les services et le plein écran
 

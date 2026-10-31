@@ -129,6 +129,9 @@ class MaintenanceGate:
 
     @contextmanager
     def hold(self, requests=1):
+        from .installation import installation_busy
+        if installation_busy():
+            raise BackupError("L’installation d’OPT Station est en cours. Réessayez dans un instant.", 503)
         with self.lock:
             if self.exclusive or self.active != requests:
                 raise BackupError("Une opération est en cours. Réessayez la sauvegarde ou restauration après sa fin.", 409)

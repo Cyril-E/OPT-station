@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La version courante est **[v0.16.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.16.1)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La version courante est **[v0.17.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.17.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -15,9 +15,12 @@ La version courante est **[v0.16.1](https://github.com/Cyril-E/OPT-station/relea
 - Douze outils MCP pour consulter le stock et le schéma et gérer la bibliothèque, sans accès aux commandes matérielles.
 - Sauvegardes chiffrées manuelles/planifiées et indication des nouvelles versions GitHub, sans installation automatique de mise à jour.
 
+## Qualification complémentaire de l’installation
+
+- **Installation complète en une commande** : publiée en v0.17.0, avec téléchargement vérifié, préparation Python, sauvegarde/retour arrière, services, plein écran et HTTPS. La réinstallation réelle et le retour arrière sur une station existante sont validés. L’essai complet sur carte SD vierge reste à faire. Voir le [parcours en une commande](33-installation-une-commande.md) ou le [guide manuel](12-installation-station-reelle.md).
+
 ## Évolutions à implémenter
 
-- **Installation complète en une commande** : vérifier la plateforme, télécharger et contrôler l’archive, préparer les dépendances, les services et HTTPS, puis afficher l’adresse de Configuration. Le parcours manuel reste celui du [guide d’installation](12-installation-station-reelle.md).
 - **Assistant IA pour les étiquettes** : analyser une photo, rechercher la fiche fabricant et proposer des champs sourcés à vérifier. Les valeurs individuelles inconnues restent absentes. Les clés API et les autorisations restent à intégrer dans Configuration.
 - **Prusa Connect et consommation** : qualifier les informations et identités réellement exposées par les API avant une synchronisation avec l’inventaire. La préparation actuelle des réglages ne réalise aucune synchronisation.
 - **Aperçu QR** : améliorer la taille et la visibilité de l’image existante et qualifier le placement avec une caméra adaptée.

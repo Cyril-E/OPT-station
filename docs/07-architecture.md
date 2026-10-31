@@ -118,7 +118,7 @@ Les favoris ne contiennent que des données Main réutilisables. Le domaine excl
 
 L’écoute par défaut est `127.0.0.1:8765`. `--lan` active l’écoute IPv4 sur `0.0.0.0` et les niveaux de partage persistants désactivé/inventaire/complet sans code. Les `--allowed-host` correspondent aux adresses ou noms utilisés. Les contrôles d’hôte, de requêtes JSON et d’origine du navigateur restent appliqués.
 
-Les fonctions matérielles nécessitent un client local ou le partage complet. Le partage inventaire autorise les fonctions de stock et de bibliothèque sans les commandes du matériel. Le serveur désactive la confiance dans les en-têtes de proxy; son placement derrière une passerelle nécessite une prise en charge spécifique de l’identité du client. Voir le [guide réseau](13-acces-reseau.md) et les [travaux HTTPS prévus](14-feuille-de-route.md#https-fourni-dès-la-première-installation).
+Les fonctions matérielles nécessitent un client local ou le partage complet. Le partage inventaire autorise les fonctions de stock et de bibliothèque sans les commandes du matériel. En HTTPS, le serveur est lié à la boucle locale et interprète les en-têtes validés de la passerelle Caddy configurée; Caddy remplace ceux du client. Sans configuration HTTPS, ces en-têtes ne donnent aucun droit supplémentaire. Voir le [guide réseau](13-acces-reseau.md) et le [guide HTTPS](31-https-local.md).
 
 ## Multilingue
 

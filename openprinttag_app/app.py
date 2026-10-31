@@ -423,6 +423,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         operation = ((request.url.path.startswith("/api/") or mcp_request)
                      and not request.url.path.startswith("/api/system/power")
                      and (request.method in {"POST", "PUT", "PATCH", "DELETE"} or request.url.path == "/api/reader/tag"))
+        from .installation import installation_busy
+        if (operation or (request.url.path.startswith("/api/system/power") and request.method == "POST")) and installation_busy():
+            return JSONResponse({"detail": "L’installation d’OPT Station est en cours. Réessayez dans un instant."},
+                                status_code=503, headers={"Cache-Control": "no-store"})
         if operation:
             try:
                 station_power.enter_operation()
