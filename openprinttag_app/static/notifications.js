@@ -38,7 +38,7 @@
     } else if (!supported()) {
       state = msg("Navigateur non compatible"); detail = msg("Utilisez Chrome sur un ordinateur pour les notifications de cette station.");
     } else if (!access) {
-      state = msg("Accès complet requis"); detail = msg("Activez l’accès complet dans Configuration → Accès distant pour recevoir les alertes de l’imprimante.");
+      state = msg("Accès complet requis"); detail = msg("Activez l’accès complet dans Paramètres → Accès distant pour recevoir les alertes de l’imprimante.");
     } else if (permission() === "denied") {
       state = msg("Notifications bloquées"); detail = msg("Autorisez les notifications dans les paramètres du site de Chrome, puis revenez ici.");
     } else if (permission() !== "granted") {
@@ -50,7 +50,7 @@
     } else if (connection === "open" && observation?.connected) {
       state = msg("Suivi des alertes actif"); detail = msg("Laissez un onglet OPT Station ouvert, même en arrière-plan. Un clic sur une alerte ouvre l’onglet Imprimante.");
     } else if (connection === "open" && observation?.configured === false) {
-      state = msg("Imprimante à configurer"); detail = msg("Activez le suivi PrusaLink dans Configuration → Imprimante et caméras.");
+      state = msg("Imprimante à configurer"); detail = msg("Activez le suivi PrusaLink dans Paramètres → Imprimante et caméras.");
     } else if (connection === "open") {
       state = msg("Imprimante injoignable"); detail = msg("Les alertes reprendront avec les prochains événements après le retour de la connexion à l’imprimante.");
     } else {

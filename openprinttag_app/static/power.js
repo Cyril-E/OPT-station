@@ -31,7 +31,7 @@
     $("power-off").disabled = loading || pending || !access || !capabilities?.actions?.poweroff;
     $("power-reboot").disabled = loading || pending || !access || !capabilities?.actions?.reboot;
     $("power-refresh").disabled = loading || pending || !access;
-    text("power-message", !access ? msg("Activez l’accès complet dans Configuration → Accès distant pour arrêter ou redémarrer le Pi.")
+    text("power-message", !access ? msg("Activez l’accès complet dans Paramètres → Accès distant pour arrêter ou redémarrer le Pi.")
       : pending ? msg("Demande en cours. Aucune nouvelle opération ne sera lancée.")
       : loading ? msg("Vérification des droits système…") : latest?.phase === "failed" ? latest.message
       : capabilities?.message || msg("Vérifiez les droits pour rendre les commandes disponibles."));

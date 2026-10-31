@@ -36,6 +36,7 @@ const context={document,window:{OPT_I18N:{init(){},msg:value=>value,message:valu
   async fetch(url,options) {
     requests.push({url,options});
     if(url==='/api/configuration/assistant')return {ok:true,json:async()=>settings};
+    if(url==='/api/assistant/chatgpt/signin')return {ok:true,json:async()=>({pending:null})};
     if(url==='/api/assistant/analyse')return new Promise(resolve=>{resolveAnalysis=()=>resolve({ok:true,json:async()=>suggestion});});
     throw Error('Unexpected operation: '+url);
   }};

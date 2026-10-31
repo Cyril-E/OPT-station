@@ -53,7 +53,7 @@
     $("printer-refresh").disabled = !access || polling;
     $("printer-add-camera").disabled = !access || saving || $("printer-camera-editors").children.length >= 4;
     $("printer-username-field").hidden = value("printer-auth") !== "digest";
-    set("printer-settings-access", access ? msg("Les clés restent sur le Pi. Les champs secrets ne sont jamais renvoyés au navigateur.") : msg("Activez l’accès complet dans Configuration → Accès distant pour configurer l’imprimante et ses caméras."));
+    set("printer-settings-access", access ? msg("Les clés restent sur le Pi. Les champs secrets ne sont jamais renvoyés au navigateur.") : msg("Activez l’accès complet dans Paramètres → Accès distant pour configurer l’imprimante et ses caméras."));
   }
   function field(label, key, inputType = "text", initial = "") {
     const wrap = element("label", "field", label);
@@ -261,7 +261,7 @@
       epoch++; clearViews(); configuration = null; latest = null; dirty = false;
       ["printer-url", "printer-secret", "printer-username", "printer-connect-uuid"].forEach((id) => { $(id).value = ""; });
       $("printer-camera-editors").replaceChildren(); set("printer-settings-result", "");
-      render({name: msg("Imprimante"), connected: false, configured: false, cameras: [], message: msg("Activez l’accès complet dans Configuration → Accès distant pour consulter le suivi.")});
+      render({name: msg("Imprimante"), connected: false, configured: false, cameras: [], message: msg("Activez l’accès complet dans Paramètres → Accès distant pour consulter le suivi.")});
     }
     const gained = next && !access; access = next; sync();
     if (access && (gained || !configuration) && tab === "configuration") void loadConfiguration();

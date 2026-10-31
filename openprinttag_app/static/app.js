@@ -9,7 +9,7 @@
     status: null, schema: {main: [], aux: []}, currentTag: null,
     editorTag: null, editorMode: "create", preview: null,
     inventory: [], inventoryView: "all", inventoryBrands: new Set(), inventoryMaterials: new Set(), favorites: [], editingFavorite: null, deletingFavorite: null, lastRead: null,
-    activeTab: "read", toastTimer: null, sourceQR: null, sourceFavorite: null,
+    activeTab: "inventory", toastTimer: null, sourceQR: null, sourceFavorite: null,
     cameraScan: null, cameraEpoch: 0, cameraTimer: null, cameraStarting: false,
     cameraFrame: null, cameraResults: null, qrEpoch: 0,
     previousStationAccess: null,
@@ -213,7 +213,7 @@
       if (active && focus) button.focus();
     });
     document.querySelectorAll(".tab-panel").forEach((panel) => { panel.hidden = panel.id !== `panel-${tab}`; });
-    setText("page-breadcrumb", {read: msg("LECTURE"), write: msg("ÉCRITURE"), inventory: msg("INVENTAIRE"), printer: msg("IMPRIMANTE"), configuration: msg("CONFIGURATION")}[tab]);
+    setText("page-breadcrumb", {read: msg("LECTURE"), write: msg("ÉCRITURE"), inventory: msg("INVENTAIRE"), printer: msg("IMPRIMANTE"), configuration: msg("PARAMÈTRES")}[tab]);
     document.dispatchEvent(new CustomEvent("opt-station-tab", {detail: {tab}}));
     if (tab === "inventory") task(null, () => Promise.all([refreshStock(), refreshFavorites(), refreshInventoryNotes()]));
     if (tab === "configuration") task(null, refreshConfiguration);
@@ -246,14 +246,14 @@
     ["read", "write", "printer"].forEach((tab) => {
       const button = $(`tab-${tab}`);
       button.disabled = !canControl();
-      I18n.attribute(button, "title", canControl() ? "" : msg("Activez l’accès complet dans Configuration → Accès distant"));
+      I18n.attribute(button, "title", canControl() ? "" : msg("Activez l’accès complet dans Paramètres → Accès distant"));
     });
     $("tab-inventory").disabled = !canBrowse();
     if (!canBrowse() && state.activeTab !== "configuration") showTab("configuration");
     else if (!canControl() && !["inventory", "configuration"].includes(state.activeTab)) showTab("inventory");
     I18n.text($("read-empty").querySelector("p"), simulated ? msg("Choisissez un tag simulé, puis lancez une lecture.") : msg("Posez un tag NFC-V au centre du lecteur, puis lancez une lecture."));
     setText("confirm-write", simulated ? msg("Simuler l’écriture") : msg("Écrire et vérifier le tag"));
-    setText("camera-availability", !canControl() ? msg("Activez l’accès complet dans Configuration → Accès distant pour utiliser la caméra du Pi.") : status.camera?.available ? msg("Scannez avec la caméra du Pi, ou saisissez le texte d’un code. Vous vérifierez son contenu avant de l’utiliser.") : msg("{0} La saisie du texte reste disponible.", status.camera?.message || msg("Caméra indisponible.")));
+    setText("camera-availability", !canControl() ? msg("Activez l’accès complet dans Paramètres → Accès distant pour utiliser la caméra du Pi.") : status.camera?.available ? msg("Scannez avec la caméra du Pi, ou saisissez le texte d’un code. Vous vérifierez son contenu avant de l’utiliser.") : msg("{0} La saisie du texte reste disponible.", status.camera?.message || msg("Caméra indisponible.")));
     renderConfiguration();
     syncControls();
     document.dispatchEvent(new CustomEvent("opt-station-status", {detail: {access: canControl(), browse: canBrowse(), power: status.power, mcp: status.mcp, updates: status.updates, assistant: status.assistant, camera: status.camera}}));

@@ -4,13 +4,13 @@ Fonction de la version **v0.18.0**, accessible en mode local ou en accès résea
 
 ## Configuration
 
-Dans **Configuration → Assistant IA · Étiquettes**, renseigner une clé API OpenAI, choisir le modèle, cocher **Activer l’assistant IA** puis enregistrer. Le modèle initial, **gpt-5.4-mini**, accepte images, réponses structurées et recherche Web selon sa [documentation officielle](https://developers.openai.com/api/docs/models/gpt-5.4-mini).
+Dans **Paramètres → Assistant IA · Étiquettes**, choisir **Clé API OpenAI**, renseigner la clé, choisir le modèle, cocher **Activer l’assistant IA** puis enregistrer. Le modèle initial, **gpt-5.4-mini**, accepte images, réponses structurées et recherche Web selon sa [documentation officielle](https://developers.openai.com/api/docs/models/gpt-5.4-mini).
 
 **Compléter avec une recherche Web** recherche la fiche fabricant du produit identifié. Sans cette option, seules les informations de la photo sont proposées. Un champ de clé vide conserve la clé existante. La case d’effacement la supprime; désactiver aussi l’assistant pour enregistrer une configuration sans clé.
 
 Les réglages sont dans `ai-settings.json` du répertoire de données, avec droits `0600`. Le navigateur reçoit uniquement la présence de la clé. Les sauvegardes de configuration incluent ces réglages et la clé, avec ou sans mot de passe selon la protection choisie. La restauration recharge l’assistant.
 
-L’installateur utilise les dépendances épinglées existantes et laisse l’assistant désactivé à la première installation. Aucun compte ni clé n’est distribué. `.env.local` peut conserver une clé locale de développement; ce fichier est exclu de Git et n’est pas chargé automatiquement par la station. En utilisation normale, renseigner la clé dans Configuration.
+L’installateur utilise les dépendances épinglées existantes et laisse l’assistant désactivé à la première installation. Aucun compte ni clé n’est distribué. `.env.local` peut conserver une clé locale de développement; ce fichier est exclu de Git et n’est pas chargé automatiquement par la station. En utilisation normale, renseigner la clé dans Paramètres.
 
 Les [appels API sont facturés séparément de l’abonnement ChatGPT](https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform), selon les crédits et limites du projet. La recherche Web peut ajouter des appels d’outil. Le logiciel ne lance aucune analyse automatiquement.
 
@@ -33,11 +33,9 @@ Une photo floue, une bobine réutilisée ou une référence ambiguë peut condui
 
 Le client utilise [Responses](https://developers.openai.com/api/reference/resources/responses/methods/create), les [images](https://developers.openai.com/api/docs/guides/images-vision), la [recherche Web](https://developers.openai.com/api/docs/guides/tools-web-search) et les [réponses structurées](https://developers.openai.com/api/docs/guides/structured-outputs). Les appels sont bornés, avec `store: false`. Une unique remise en forme, sans nouvelle photo ni recherche, peut suivre une réponse mal formée. Un second échec laisse la fiche intacte; il n’y a pas de changement silencieux de modèle.
 
-## Connexion ChatGPT étudiée
+## Connexion ChatGPT
 
-OpenAI documente [Sign in with ChatGPT pour les applications libres et locales](https://developers.openai.com/siwc/token-sharing-open-source). Ce parcours demande une autorisation OAuth distincte, un identifiant d’hôte persistant, PKCE, la validation des jetons/permissions et leur renouvellement. Le [retour d’authentification utilise une adresse de boucle locale](https://developers.openai.com/siwc/token-sharing-open-source/sign-in); l’usage depuis un autre ordinateur que le Pi demande donc un parcours adapté.
-
-Cette première version utilise la **clé API**. La connexion ChatGPT et le partage éventuel de l’usage d’un abonnement restent une intégration séparée à réaliser et qualifier. Les identifiants d’autres logiciels ne sont pas réutilisés.
+La version **v0.21.0** ajoute le choix du compte ChatGPT, séparé de la clé API. Voir la [procédure pas à pas sur le Pi, un Mac ou un PC](36-connexion-chatgpt.md). Depuis un autre ordinateur, le courriel de confirmation OpenAI ne suffit pas : il faut copier l’adresse complète de l’onglet de retour dans le formulaire OPT Station et terminer la connexion avant de choisir un modèle. La clé API reste conservée et aucun basculement de facturation n’est automatique.
 
 ## Vérification
 

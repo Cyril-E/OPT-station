@@ -135,6 +135,7 @@ body[data-tab="printer"] #simulator-panel{display:none}
 .https-fingerprint { overflow-wrap: anywhere; }
 
 .ai-image{display:block;max-width:100%;max-height:40vh;object-fit:contain;margin:18px auto;border-radius:10px}.ai-field{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;padding:14px 0;border-bottom:1px solid var(--line)}.ai-field small{color:var(--muted)}.ai-visible-text,#ai-warnings{white-space:pre-wrap;overflow-wrap:anywhere}.ai-proposal-fields{margin:18px 0}.ai-settings-card form{margin:18px 0}.ai-settings-card .card-actions{margin:18px 0}#ai-sources{overflow-wrap:anywhere}#ai-open-read{margin-bottom:18px}@media(max-width:600px){.ai-field{grid-template-columns:1fr}}
+.chatgpt-guide{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:10px}.chatgpt-guide h3{margin:20px 0 10px;font-size:15px}.chatgpt-guide ol{display:grid;gap:12px;padding-inline-start:24px;line-height:1.6}.chatgpt-guide p{line-height:1.6}.chatgpt-guide summary{cursor:pointer;font-weight:600}#ai-chatgpt-pending>.field{margin-top:18px}#ai-chatgpt-return{min-width:0;max-width:100%}
 
 /* Keep the settings contents available while reading or editing a section. */
 .configuration-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start}

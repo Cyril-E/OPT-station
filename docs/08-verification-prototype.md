@@ -2,7 +2,7 @@
 
 ## Vérifications logicielles
 
-La suite de la version **v0.20.0** comprend **766 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **767 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés et les photos des fiches (droits, limites, persistance et sauvegarde/restauration).
+La suite de la version **v0.21.0** comprend **789 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **790 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion).
 
 Depuis les sources, avec les dépendances de test installées :
 
@@ -14,6 +14,7 @@ node tests/interface_updates.cjs
 node tests/interface_assistant.cjs
 node tests/interface_inventory_filters.cjs
 node tests/interface_photos.cjs
+node tests/interface_chatgpt.cjs
 ```
 
 Le test réel de passerelle utilise Caddy. Si ce binaire n’est pas dans le PATH, indiquer son emplacement :
@@ -32,6 +33,7 @@ Sans Caddy, ce test est ignoré. La qualification complète indiquée ci-dessus 
 | Remplacement d’un RFID depuis l’inventaire | Lecteur simulé, conservation de l’identité et des données | Remplacement physique d’un tag encore à qualifier. |
 | Acquisition QR | Caméra OV5647 et ZXing-C++ | Courte distance, autofocus et autres capteurs à qualifier selon le montage. |
 | Photos des fiches | Import navigateur, capture caméra OV5647, sauvegarde/restauration sur données isolées | Capture physique vérifiée sans modifier le stock réel; aucune écriture RFID. |
+| Connexion ChatGPT | Autorisation réelle du compte, retour depuis un Mac, catalogue et modèle enregistrés sur le Pi | Analyse d’une vraie étiquette avec cet accès encore à qualifier; identités, renouvellement et erreurs couverts par des tests contrôlés. |
 | Impression d’étiquettes | NIIMBOT B3S_P USB, 70 × 40 mm | QR papier relu. Le profil B1 n’est pas qualifié physiquement. |
 | PrusaLink | CORE One, firmware 8.0.0+17068 | Suivi en lecture seule au repos et pendant des impressions; aucune commande de mouvement ou de travail. |
 | Notifications Chrome | HTTPS, certificat approuvé, Chrome sur macOS | Notification de test et déclenchement sur une vraie fin d’impression validés. Intervention réelle encore à qualifier. |

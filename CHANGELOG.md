@@ -1,5 +1,20 @@
 # Versions publiques
 
+## v0.21.0 — 31 octobre 2026
+
+- Menu réorganisé : Inventaire, Imprimante, Lecture, Écriture, Paramètres; navigation clavier conservée.
+- L’inventaire s’ouvre par défaut au chargement et après actualisation de la page.
+- Assistant IA : choix explicite entre clé API et connexion ChatGPT, comptes séparés, catalogue de modèles, retour local ou manuel depuis un autre ordinateur, renouvellement et déconnexion.
+- Conservation de la clé API et absence de basculement automatique de facturation. Les connexions ChatGPT restent propres à la station et hors des fichiers de sauvegarde portables.
+- Reprise d’une connexion ChatGPT en cours après rechargement et maintien du retour pendant les interruptions réseau temporaires.
+- Procédure ChatGPT numérotée dans l’interface française/anglaise et la documentation : retour automatique sur le Pi, copie de l’adresse complète sur Mac/PC, distinction avec le courriel OpenAI et vérification du modèle enregistré.
+
+Connexion réelle, autorisation d’utiliser le forfait, récupération du catalogue de modèles et enregistrement du choix vérifiés sur Raspberry Pi. Le menu et l’ouverture par défaut sur Inventaire sont validés. L’analyse d’une étiquette avec l’accès ChatGPT reste à qualifier. Voir le [guide ChatGPT](docs/36-connexion-chatgpt.md).
+
+Vérifications : **789 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **790 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Les tests ChatGPT utilisent des identités signées et réponses contrôlées pour vérifier le retour, la reprise après rechargement, les permissions, le renouvellement, la déconnexion et l’absence de basculement vers les crédits API. Aucune écriture RFID n’est réalisée pour qualifier cette version.
+
+L’archive complète `opt-station-v0.21.0.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune nouvelle dépendance n’est ajoutée. Les sauvegardes portables conservent les réglages et la clé API; les connexions ChatGPT restent propres à leur station et nécessitent une nouvelle autorisation sur une autre installation.
+
 ## v0.20.0 — 31 octobre 2026
 
 - Inventaire : vues Tout, Stock, Production et Terminées; choix multiples de marques et matières présents dans les fiches, combinables avec la recherche.

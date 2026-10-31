@@ -49,6 +49,7 @@ from .backups import BackupManager, BackupError, MaintenanceGate, recover_restor
 from .updates import ReleaseMonitor
 from .assistant import LabelAssistant, AssistantError, MAX_IMAGE
 from .photos import MAX_UPLOAD
+from .chatgpt import ChatGPTError
 
 LOG = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -129,12 +130,27 @@ class LibraryImport(Model):
 
 
 class AssistantSettings(Model):
+    provider: Literal["api", "chatgpt"] | None = None
+    chatgpt_model: str | None = Field(default=None, max_length=100)
     revision: StrictInt = Field(ge=0)
     enabled: StrictBool
     model: str = Field(min_length=1, max_length=100)
     web_search: StrictBool
     api_key: str | None = Field(default=None, max_length=512)
     clear_key: StrictBool = False
+
+
+class ChatGPTStart(Model):
+    profile_id: str | None = Field(default=None, max_length=100)
+    consent: StrictBool = False
+
+
+class ChatGPTAccount(Model):
+    profile_id: str = Field(min_length=1, max_length=100)
+
+
+class ChatGPTReturn(Model):
+    url: str = Field(min_length=1, max_length=8192)
 
 
 class AssistantAnalysis(Model):
@@ -305,7 +321,7 @@ def station_access(request):
 
 def require_station(request):
     if not station_access(request):
-        raise HTTPException(403, "Activez l’accès complet dans Configuration → Accès distant pour utiliser le lecteur, les caméras et le suivi imprimante.")
+        raise HTTPException(403, "Activez l’accès complet dans Paramètres → Accès distant pour utiliser le lecteur, les caméras et le suivi imprimante.")
 
 
 def blank(record):
@@ -314,7 +330,7 @@ def blank(record):
 
 def create_app(settings: Settings | None = None, camera: CameraScanner | None = None, reader=None,
                printer_fetch=None, printer_capture=None, label_runner=None, power_backend=None, updates_fetch=None,
-               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None):
+               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None):
     settings = settings or Settings.from_env()
     https = HTTPSConfiguration.load(settings.https_config)
     if https.url:
@@ -339,10 +355,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     label_printer = LabelPrinter(settings.data_dir, store, runner=label_runner)
     maintenance = MaintenanceGate()
     library_transfer = LibraryTransfer(store)
-    assistant = LabelAssistant(settings.data_dir, **({"fetch": assistant_fetch} if assistant_fetch else {}))
+    assistant = LabelAssistant(settings.data_dir, **({"fetch": assistant_fetch} if assistant_fetch else {}), **({"chatgpt_fetch": chatgpt_fetch} if chatgpt_fetch else {}))
 
     def hardware_busy():
-        if assistant.analysis_lock.locked():
+        if assistant.analysis_lock.locked() or assistant.chatgpt.busy():
             return True
         if getattr(camera, "is_scanning", lambda: False)() or label_printer.lock.locked():
             return True
@@ -387,6 +403,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
             updates.close()
             printer_cameras.close()
             camera.close()
+            assistant.chatgpt.close()
             if hasattr(reader, "close"):
                 reader.close()
 
@@ -414,7 +431,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 and request.url.path not in {"/", "/api/status", "/api/configuration", "/api/configuration/network", "/api/configuration/mcp",
                                              "/https", "/https/certificate", "/api/configuration/https"}
                 and not request.url.path.startswith("/static/")):
-            return JSONResponse({"detail": "Les fonctions distantes sont désactivées. Vous pouvez les réactiver dans Configuration → Accès distant."},
+            return JSONResponse({"detail": "Les fonctions distantes sont désactivées. Vous pouvez les réactiver dans Paramètres → Accès distant."},
                                 status_code=403, headers={"Cache-Control": "no-store"})
         if mcp_request:
             if not mcp_configuration.enabled:
@@ -515,6 +532,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     @app.exception_handler(BackupError)
     async def backup_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
+    @app.exception_handler(ChatGPTError)
+    async def chatgpt_handler(request, exc):
+        return JSONResponse({"detail": str(exc), "code": exc.code, "request_id": exc.request_id, "api_status": exc.api_status}, status_code=exc.status_code)
 
     @app.exception_handler(AssistantError)
     async def assistant_handler(request, exc):
@@ -693,7 +714,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
 
     def require_printer_access(request):
         if not station_access(request):
-            raise HTTPException(403, "Activez l’accès complet dans Configuration → Accès distant pour consulter l’imprimante, ses caméras et ses réglages.")
+            raise HTTPException(403, "Activez l’accès complet dans Paramètres → Accès distant pour consulter l’imprimante, ses caméras et ses réglages.")
 
     @app.get("/api/configuration/printer")
     def printer_settings(request: Request):
@@ -1215,6 +1236,49 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     def save_assistant_settings(request: Request, body: AssistantSettings):
         require_station(request)
         return assistant.save(body.model_dump())
+
+    @app.post("/api/assistant/chatgpt/signin")
+    def chatgpt_signin(request: Request, body: ChatGPTStart):
+        require_station(request)
+        from .installation import installation_busy
+        return assistant.chatgpt.start(body.profile_id, body.consent, authorize=lambda: station_access(request) and not installation_busy() and not maintenance.exclusive and not station_power.state()["pending"])
+
+    @app.get("/api/assistant/chatgpt/signin")
+    def chatgpt_resume(request: Request):
+        require_station(request)
+        return assistant.chatgpt.resume()
+
+    @app.get("/api/assistant/chatgpt/signin/{identifier}")
+    def chatgpt_signin_status(identifier: str, request: Request):
+        require_station(request)
+        return assistant.chatgpt.attempt(identifier)
+
+    @app.post("/api/assistant/chatgpt/signin/{identifier}/return")
+    def chatgpt_return(identifier: str, request: Request, body: ChatGPTReturn):
+        require_station(request)
+        if not local_station(request) and request.url.scheme != "https":
+            raise HTTPException(403, "Le retour de connexion ChatGPT à distance nécessite HTTPS.")
+        return assistant.chatgpt.complete(identifier, body.url)
+
+    @app.delete("/api/assistant/chatgpt/signin/{identifier}")
+    def chatgpt_cancel(identifier: str, request: Request):
+        require_station(request)
+        return assistant.chatgpt.cancel(identifier)
+
+    @app.post("/api/assistant/chatgpt/account")
+    def chatgpt_select(request: Request, body: ChatGPTAccount):
+        require_station(request)
+        return assistant.chatgpt.select(body.profile_id)
+
+    @app.post("/api/assistant/chatgpt/models")
+    def chatgpt_models(request: Request):
+        require_station(request)
+        return assistant.chatgpt.models()
+
+    @app.post("/api/assistant/chatgpt/disconnect")
+    def chatgpt_disconnect(request: Request, body: ChatGPTAccount):
+        require_station(request)
+        return assistant.chatgpt.disconnect(body.profile_id)
 
     @app.get("/api/photos/{kind}/{identifier}")
     def list_photos(kind: Literal["spool", "template"], identifier: str):

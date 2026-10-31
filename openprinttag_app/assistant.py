@@ -19,6 +19,7 @@ from jsonschema.exceptions import ValidationError
 from .backups import private_json
 from .domain import validate_fields
 from .storage import ConflictError
+from .chatgpt import ChatGPTConnection, transport as chatgpt_transport
 
 MAX_IMAGE = 4 * 1024 * 1024
 MAX_RESPONSE = 2 * 1024 * 1024
@@ -76,10 +77,13 @@ class AssistantError(ValueError):
 
 
 def validate_settings(record):
-    if (not isinstance(record, dict) or set(record) != {"version", "revision", "enabled", "model", "web_search", "api_key"}
-            or type(record["version"]) is not int or record["version"] != 1 or type(record["revision"]) is not int or record["revision"] < 0
-            or type(record["enabled"]) is not bool or type(record["web_search"]) is not bool
+    if isinstance(record, dict) and record.get("version") == 1 and set(record) == {"version", "revision", "enabled", "model", "web_search", "api_key"}:
+        record = {**record, "version": 2, "provider": "api", "chatgpt_model": ""}
+    if (not isinstance(record, dict) or set(record) != {"version", "revision", "enabled", "model", "web_search", "api_key", "provider", "chatgpt_model"}
+            or type(record["version"]) is not int or record["version"] != 2 or type(record["revision"]) is not int or record["revision"] < 0
+            or record["provider"] not in {"api", "chatgpt"} or type(record["enabled"]) is not bool or type(record["web_search"]) is not bool
             or not isinstance(record["model"], str) or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}", record["model"])
+            or not isinstance(record["chatgpt_model"], str) or (record["chatgpt_model"] and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}", record["chatgpt_model"]))
             or not isinstance(record["api_key"], str) or record["api_key"] and not re.fullmatch(r"sk-[A-Za-z0-9_-]{20,510}", record["api_key"])):
         raise AssistantError("Réglages de l’assistant IA invalides.")
     return deepcopy(record)
@@ -204,22 +208,25 @@ def proposal(response, web_search):
 
 
 class LabelAssistant:
-    def __init__(self, directory, fetch=openai_request):
+    def __init__(self, directory, fetch=openai_request, chatgpt_fetch=chatgpt_transport):
         self.path = Path(directory) / "ai-settings.json"
         self.fetch = fetch
+        self.chatgpt = ChatGPTConnection(directory, fetch=chatgpt_fetch)
         self.lock, self.analysis_lock = threading.RLock(), threading.Lock()
         self.reload()
 
     def reload(self):
         with self.lock:
             self.record = validate_settings(json.loads(self.path.read_bytes())) if self.path.exists() else {
-                "version": 1, "revision": 0, "enabled": False, "model": DEFAULT_MODEL, "web_search": True, "api_key": ""}
+                "version": 2, "revision": 0, "enabled": False, "model": DEFAULT_MODEL, "web_search": True, "api_key": "", "provider": "api", "chatgpt_model": ""}
 
     def public(self):
         with self.lock:
             record = deepcopy(self.record)
             record["key_saved"] = bool(record.pop("api_key"))
             record["busy"] = self.analysis_lock.locked()
+            record["chatgpt"] = self.chatgpt.public()
+            record["ready"] = bool(record["enabled"] and (record["key_saved"] if record["provider"] == "api" else record["chatgpt"]["plan_enabled"] and any(m["slug"] == record["chatgpt_model"] for m in record["chatgpt"]["models"])))
             return record
 
     def save(self, body):
@@ -227,10 +234,14 @@ class LabelAssistant:
             if body["revision"] != self.record["revision"]:
                 raise ConflictError("Les réglages IA ont changé. Rechargez-les avant d’enregistrer.")
             key = "" if body.get("clear_key") else self.record["api_key"] if body.get("api_key") is None else body["api_key"]
-            candidate = validate_settings({**self.record, **{k: v for k, v in body.items() if k not in {"api_key", "clear_key"}},
+            candidate = validate_settings({**self.record, **{k: v for k, v in body.items() if k not in {"api_key", "clear_key"} and not (k in {"provider", "chatgpt_model"} and v is None)},
                                            "revision": self.record["revision"] + 1, "api_key": key})
-            if candidate["enabled"] and not candidate["api_key"]:
+            if candidate["enabled"] and candidate["provider"] == "api" and not candidate["api_key"]:
                 raise AssistantError("Renseignez une clé API avant d’activer l’assistant IA.")
+            if candidate["enabled"] and candidate["provider"] == "chatgpt":
+                connection = self.chatgpt.public()
+                if not connection["plan_enabled"] or not any(m["slug"] == candidate["chatgpt_model"] for m in connection["models"]):
+                    raise AssistantError("Connectez ChatGPT, actualisez ses modèles et choisissez-en un avant d’activer cet accès.", 409)
             private_json(self.path, candidate); self.record = candidate
             return self.public()
 
@@ -239,8 +250,13 @@ class LabelAssistant:
             raise AssistantError("Une analyse IA est déjà en cours. Attendez son résultat.", 409)
         try:
             with self.lock: configuration = deepcopy(self.record)
-            if not configuration["enabled"] or not configuration["api_key"]:
-                raise AssistantError("Activez l’assistant IA et renseignez sa clé dans Configuration.", 409)
+            if not configuration["enabled"] or (configuration["provider"] == "api" and not configuration["api_key"]):
+                raise AssistantError("Activez l’assistant IA et configurez son accès dans les paramètres.", 409)
+            profile_id = self.chatgpt.public()["active"] if configuration["provider"] == "chatgpt" else None
+            def fetch(payload):
+                if configuration["provider"] == "chatgpt":
+                    return self.chatgpt.infer({**payload, "model": configuration["chatgpt_model"]}, expected_profile=profile_id)
+                return self.fetch(payload, configuration["api_key"])
             image = normalized_image(image)
             payload = {"model": configuration["model"], "store": False, "max_output_tokens": 5000,
                 "instructions": INSTRUCTIONS + "\nOutput language: " + language,
@@ -251,7 +267,7 @@ class LabelAssistant:
             if configuration["web_search"]:
                 payload.update(tools=[{"type": "web_search", "search_context_size": "low"}], tool_choice="required",
                                max_tool_calls=2, include=["web_search_call.action.sources"])
-            response = self.fetch(payload, configuration["api_key"])
+            response = fetch(payload)
             try:
                 result = proposal(response, configuration["web_search"])
             except AssistantError as error:
@@ -275,12 +291,14 @@ class LabelAssistant:
                                           "Retain web facts only when their existing source_url occurs in consulted_sources. "
                                           "Output language: " + language,
                           "input": json.dumps({"proposal_text": "\n".join(fragments), "consulted_sources": consulted}), "text": payload["text"]}
-                corrected = self.fetch(repair, configuration["api_key"])
+                corrected = fetch(repair)
                 corrected = {**corrected, "output": [item for item in response.get("output", []) if item.get("type") == "web_search_call"] + corrected.get("output", [])}
                 result = proposal(corrected, configuration["web_search"])
             with self.lock:
                 if self.record["revision"] != configuration["revision"]:
                     raise AssistantError("Les réglages IA ont changé pendant l’analyse. Relancez-la.", 409)
-            return {**result, "model": configuration["model"]}
+            if configuration["provider"] == "chatgpt" and self.chatgpt.public()["active"] != profile_id:
+                raise AssistantError("Le compte ChatGPT a changé pendant l’analyse. Relancez-la.", 409)
+            return {**result, "model": configuration["chatgpt_model"] if configuration["provider"] == "chatgpt" else configuration["model"], "provider": configuration["provider"]}
         finally:
             self.analysis_lock.release()
