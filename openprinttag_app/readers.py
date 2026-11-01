@@ -24,7 +24,7 @@ class Reader(Protocol):
 
     def status(self) -> dict: ...
     def read(self) -> dict: ...
-    def write(self, image: bytes) -> None: ...
+    def write(self, image: bytes, *, reuse: bool = False) -> None: ...
 
 
 def revision(record):
@@ -60,7 +60,7 @@ class SimulatedReader:
             raise ReaderUnavailable("Aucun tag simulé sélectionné.")
         return dict(row)
 
-    def write(self, image):
+    def write(self, image, *, reuse=False):
         current = self.read()
         with self.store.connect() as db:
             db.execute("UPDATE simulated_tags SET image=? WHERE uid=?", (image, current["uid"]))

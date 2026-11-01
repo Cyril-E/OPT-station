@@ -2,7 +2,7 @@
 
 ## Vérifications logicielles
 
-La suite de la version **v0.22.0** comprend **797 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **798 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion).
+La suite de la version **v0.24.0** comprend **869 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **870 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion). Elle couvre aussi l’ajustement du filament restant et la réutilisation d’un ancien RFID, les associations concurrentes et la reprise journalisée sans seconde écriture.
 
 Depuis les sources, avec les dépendances de test installées :
 
@@ -34,7 +34,7 @@ Les trois dictionnaires anglais/espagnol/allemand couvrent chacun les **1 621 me
 | Fonction | Profil vérifié | Limites |
 | --- | --- | --- |
 | Lecture et écriture NFC | Raspberry Pi 5, ACS ACR1552U-M1 USB, NFC-V/SLIX2 | Lecture et écriture initiale suivie de relecture vérifiées. Les nouveaux lecteurs, tags et firmwares demandent leurs propres essais. |
-| Remplacement d’un RFID depuis l’inventaire | Lecteur simulé, conservation de l’identité et des données | Remplacement physique d’un tag encore à qualifier. |
+| Remplacement et réutilisation d’un RFID depuis l’inventaire | Réutilisation physique confirmée sur Raspberry Pi avec ACS ACR1552U-M1; conservation des fiches et reprises testées avec un lecteur simulé | Autres profils matériels et scénarios d’interruption physique à qualifier. |
 | Acquisition QR | Caméra OV5647 et ZXing-C++ | Courte distance, autofocus et autres capteurs à qualifier selon le montage. |
 | Photos des fiches | Import navigateur, capture caméra OV5647, sauvegarde/restauration sur données isolées | Capture physique vérifiée sans modifier le stock réel; aucune écriture RFID. |
 | Connexion ChatGPT | Autorisation réelle du compte, retour depuis un Mac, catalogue et modèle enregistrés sur le Pi | Analyse d’une vraie étiquette avec cet accès encore à qualifier; identités, renouvellement et erreurs couverts par des tests contrôlés. |

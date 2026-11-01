@@ -7,7 +7,7 @@
   const $ = (id) => document.getElementById(id);
   const state = {
     status: null, schema: {main: [], aux: []}, currentTag: null,
-    editorTag: null, editorMode: "create", preview: null,
+    editorTag: null, editorMode: "create", preview: null, previewEpoch: 0, reuseConfirmed: false,
     inventory: [], inventoryView: "all", inventoryBrands: new Set(), inventoryMaterials: new Set(), favorites: [], editingFavorite: null, deletingFavorite: null, lastRead: null,
     activeTab: "inventory", toastTimer: null, sourceQR: null, sourceFavorite: null,
     cameraScan: null, cameraEpoch: 0, cameraTimer: null, cameraStarting: false,
@@ -167,8 +167,13 @@
     disabled("model-source-inspect", !canBrowse() || state.modelSourceBusy);
     disabled("model-source-camera", !canControl() || !state.status?.camera?.available || state.modelSourceBusy);
     disabled("save-favorite", !canBrowse() || Boolean(state.status?.power?.pending));
-    disabled("prepare-write", !readerReady || !state.editorTag || Boolean(state.editorTag?.association_pending) || Boolean(state.stockSource?.completed_at) || (state.editorMode === "create" ? !isBlank(state.editorTag) : isBlank(state.editorTag)));
+    const reuseRequired = Boolean(state.stockSource && state.editorTag && (state.editorTag.reuse_required || !isBlank(state.editorTag)));
+    disabled("reuse-tag-confirm", !readerReady || !reuseRequired || Boolean(state.editorTag?.association_pending));
+    disabled("prepare-write", !readerReady || !state.editorTag || Boolean(state.editorTag?.association_pending) || Boolean(state.stockSource?.completed_at) || (state.editorMode === "create" ? ((!isBlank(state.editorTag) || reuseRequired) && !(state.stockSource && state.reuseConfirmed)) : isBlank(state.editorTag)));
     disabled("confirm-write", !readerReady || !state.preview);
+    setText("confirm-write", state.preview?.reuse
+      ? isSimulation() ? msg("Simuler le remplacement du tag") : msg("Remplacer le contenu du tag")
+      : isSimulation() ? msg("Simuler l’écriture") : msg("Écrire et vérifier le tag"));
     disabled("apply-favorite", !$("favorite-select").value || state.editorMode !== "create");
     disabled("inspect-qr", !canControl() || state.editorMode !== "create");
     disabled("camera-open", !canControl() || state.editorMode !== "create" || !state.status?.camera?.available);
@@ -199,6 +204,7 @@
     disabled("labels-reload", !canControl());
   }
   function invalidatePreview() {
+    state.previewEpoch += 1;
     state.preview = null;
     $("write-preview").hidden = true;
     syncControls();
@@ -256,7 +262,6 @@
     if (!canBrowse() && state.activeTab !== "configuration") showTab("configuration");
     else if (!canControl() && !["inventory", "configuration"].includes(state.activeTab)) showTab("inventory");
     I18n.text($("read-empty").querySelector("p"), simulated ? msg("Choisissez un tag simulé, puis lancez une lecture.") : msg("Posez un tag NFC-V au centre du lecteur, puis lancez une lecture."));
-    setText("confirm-write", simulated ? msg("Simuler l’écriture") : msg("Écrire et vérifier le tag"));
     setText("camera-availability", !canControl() ? msg("Activez l’accès complet dans Paramètres → Accès distant pour utiliser la caméra du Pi.") : status.camera?.available ? msg("Scannez avec la caméra du Pi, ou saisissez le texte d’un code. Vous vérifierez son contenu avant de l’utiliser.") : msg("{0} La saisie du texte reste disponible.", status.camera?.message || msg("Caméra indisponible.")));
     renderConfiguration();
     syncControls();
@@ -510,7 +515,18 @@
     const tag = state.editorTag;
     const note = $("editor-reader-note");
     note.className = "notice";
+    const reuseRequired = Boolean(state.stockSource && tag && (tag.reuse_required || !isBlank(tag)));
+    $("editor-reuse").hidden = !reuseRequired || Boolean(tag?.association_pending);
+    $("reuse-tag-confirm").checked = state.reuseConfirmed;
+    setText("editor-reuse-description", tag?.reuse_source && tag.reuse_source.id !== state.stockSource?.id
+      ? msg("Ce tag est associé à {0}. Après écriture et relecture réussies, cette ancienne fiche sera conservée sans association RFID. Son état, ses notes et sa consommation resteront inchangés.", tag.reuse_source.spool_number)
+      : msg("Le contenu précédent de ce tag sera remplacé par les données de la bobine choisie. Une sauvegarde sera faite avant l’écriture."));
     if (!tag) I18n.text(note, msg("Relisez le tag présenté pour préparer son écriture."));
+    else if (tag.association_pending) I18n.text(note, msg("Ce tag attend son association à la bobine. Confirmer l’association sans réécrire le tag."));
+    else if (reuseRequired) {
+      I18n.text(note, msg("Tag déjà utilisé : vérifiez son contenu, puis confirmez sa réutilisation ci-dessous pour préparer le remplacement."));
+      note.classList.add("warning");
+    }
     else if (state.editorMode === "create" && !isBlank(tag)) {
       I18n.text(note, isSimulation() ? msg("La création nécessite un tag vierge. Dans le simulateur, choisissez « Créer un tag vierge », ou passez en modification pour corriger cette bobine.") : msg("La création nécessite un tag vierge. Présentez-en un autre, ou choisissez « Modifier un tag existant » pour corriger cette bobine."));
       note.classList.add("warning");
@@ -533,6 +549,7 @@
     if ($("camera-dialog").open) $("camera-dialog").close();
     state.qrEpoch += 1;
     state.editorMode = mode;
+    state.reuseConfirmed = false;
     state.qrData = null; state.stockSource = null;
     state.editorTag = clone(tag);
     state.sourceQR = null;
@@ -596,6 +613,12 @@
   function renderPreview(preview) {
     state.preview = preview;
     const container = $("preview-changes"); clear(container);
+    if (preview.reuse) {
+      container.append(node("p", "notice warning", msg("Le contenu du tag {0} va être remplacé. Vérifiez les colonnes Avant et Après, puis confirmez le remplacement.", preview.reused_tag.uid)));
+      const previous = preview.reused_tag.inventory;
+      if (previous && previous.id !== preview.tag.inventory?.id) container.append(node("p", "notice",
+        msg("La fiche {0} sera conservée sans association RFID après réussite du remplacement.", previous.spool_number)));
+    }
     if (preview.tag?.inventory) {
       const item = preview.tag.inventory;
       container.append(node("p", "notice", preview.recreation
@@ -627,13 +650,16 @@
     if (!state.editorTag) throw new Error(msg("Relisez d’abord le tag présenté."));
     if ($("qr-text").value.trim() && !state.sourceQR) throw new Error(msg("Analysez le QR avant de préparer l’écriture, ou effacez-le pour une saisie manuelle."));
     const values = readFields($("editor-form"), state.qrData || state.editorTag, Boolean(state.qrData) || state.editorMode === "update");
+    const epoch = state.previewEpoch;
     const preview = await post("/api/reader/prepare", {
       mode: state.editorMode, main: values.main, aux: values.aux,
+      reuse_tag: Boolean(state.stockSource && state.reuseConfirmed),
       expected_uid: state.editorTag.uid, expected_revision: state.editorTag.revision,
       ...(state.sourceQR ? {qr_raw: state.sourceQR} : {}),
       ...(state.sourceFavorite != null ? {favorite_id: state.sourceFavorite} : {}),
       ...(state.stockSource ? {inventory_id: state.stockSource.id, inventory_version: state.stockSource.version, inventory_recreate: state.stockSource.label_state === "rfid"} : {}),
     });
+    if (epoch !== state.previewEpoch || !canControl()) return;
     renderPreview(preview);
   }
   async function writePreview() {
@@ -944,7 +970,7 @@
     $("qr-text").value = "";
     renderEditorFields(current.main, current.aux); showTab("write", true);
     renderEditorNote();
-    setText("editor-reader-note", msg("Fiche {0} chargée depuis l’inventaire. Posez un tag vierge puis cliquez sur Relire le tag présenté.", current.spool_number));
+    setText("editor-reader-note", msg("Fiche {0} chargée depuis l’inventaire. Posez un tag vierge ou un ancien tag réutilisable, puis cliquez sur Relire le tag présenté.", current.spool_number));
     notify(msg("Fiche {0} chargée sans scan QR. Vérifiez les données avant écriture.", current.spool_number));
   }
   function renderFavorites() {
@@ -1489,14 +1515,26 @@
     const tag = state.currentTag, pending = tag?.association_pending;
     if (!pending) return;
     await post(`/api/inventory/${encodeURIComponent(pending.id)}/associate`, {
-      expected_uid: tag.uid, expected_revision: tag.revision, version: pending.version, recreate: true});
+      expected_uid: tag.uid, expected_revision: tag.revision, version: pending.version, recreate: pending.recreate});
     await scan();
     notify(msg("Tag relu et associé à la fiche existante. Aucun tag n’a été écrit."));
   }));
   $("edit-current").addEventListener("click", () => { setEditorMode("update", state.currentTag); showTab("write"); });
   $("mode-create").addEventListener("click", () => setEditorMode("create"));
   $("mode-update").addEventListener("click", () => setEditorMode("update"));
-  $("load-current").addEventListener("click", (event) => task(event.currentTarget, async () => { const tag = await scan(); if (state.editorMode === "update") setEditorMode("update", tag); else { state.editorTag = clone(tag); renderEditorNote(); } notify(msg("Tag relu. Vérifiez la fiche avant de préparer l’écriture.")); }));
+  $("load-current").addEventListener("click", (event) => task(event.currentTarget, async () => {
+    const source = state.stockSource, epoch = state.qrEpoch;
+    state.reuseConfirmed = false; invalidatePreview();
+    const tag = source ? await post("/api/reader/inspect-inventory", {inventory_id: source.id, inventory_version: source.version, inventory_recreate: source.label_state === "rfid"}) : await scan();
+    if (epoch !== state.qrEpoch || !canControl()) return;
+    if (state.editorMode === "update") setEditorMode("update", tag);
+    else { state.editorTag = clone(tag); renderEditorNote(); }
+    if (tag.association_pending) setCurrentTag(tag);
+    notify(msg("Tag relu. Vérifiez la fiche avant de préparer l’écriture."));
+  }));
+  $("reuse-tag-confirm").addEventListener("change", () => {
+    state.reuseConfirmed = $("reuse-tag-confirm").checked; invalidatePreview(); renderEditorNote();
+  });
   $("editor-form").addEventListener("submit", (event) => { event.preventDefault(); task($("prepare-write"), prepareWrite); });
   $("confirm-write").addEventListener("click", (event) => task(event.currentTarget, writePreview));
   $("favorite-select").addEventListener("change", syncControls);

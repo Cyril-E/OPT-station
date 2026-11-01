@@ -1642,5 +1642,18 @@ window.OPT_ES = Object.freeze({
   "La quantité se modifie uniquement sur une bobine en stock ou en service.": "La cantidad solo puede modificarse en una bobina en stock o en uso.",
   "Le poids initial est inconnu. Renseignez le poids net initial réel pour calculer la consommation.": "El peso inicial es desconocido. Introduzca el peso neto inicial real para calcular el consumo.",
   "La quantité restante dépasse le poids net initial de référence. Corrigez le poids initial si vous le connaissez.": "La cantidad restante supera el peso neto inicial de referencia. Corrija el peso inicial si lo conoce.",
-  "Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.": "Esta ficha ha cambiado. Sus valores se conservan; recargue la cantidad antes de guardar."
+  "Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.": "Esta ficha ha cambiado. Sus valores se conservan; recargue la cantidad antes de guardar.",
+  "Réutiliser ce tag et remplacer son contenu": "Reutilizar este tag y sustituir su contenido",
+  "Simuler le remplacement du tag": "Simular la sustitución del tag",
+  "Remplacer le contenu du tag": "Sustituir el contenido del tag",
+  "Ce tag est associé à {0}. Après écriture et relecture réussies, cette ancienne fiche sera conservée sans association RFID. Son état, ses notes et sa consommation resteront inchangés.": "Este tag está asociado a {0}. Tras escribirlo y verificarlo mediante una nueva lectura, la ficha anterior se conservará sin asociación RFID. Su estado, sus notas y su consumo no cambiarán.",
+  "Le contenu précédent de ce tag sera remplacé par les données de la bobine choisie. Une sauvegarde sera faite avant l’écriture.": "El contenido anterior de este tag se sustituirá por los datos de la bobina seleccionada. Se realizará una copia de seguridad antes de escribir.",
+  "Tag déjà utilisé : vérifiez son contenu, puis confirmez sa réutilisation ci-dessous pour préparer le remplacement.": "Tag ya utilizado: compruebe su contenido y confirme su reutilización abajo para preparar la sustitución.",
+  "Le contenu du tag {0} va être remplacé. Vérifiez les colonnes Avant et Après, puis confirmez le remplacement.": "Se sustituirá el contenido del tag {0}. Compruebe las columnas Antes y Después y confirme la sustitución.",
+  "La fiche {0} sera conservée sans association RFID après réussite du remplacement.": "La ficha {0} se conservará sin asociación RFID una vez completada la sustitución.",
+  "Fiche {0} chargée depuis l’inventaire. Posez un tag vierge ou un ancien tag réutilisable, puis cliquez sur Relire le tag présenté.": "Ficha {0} cargada desde el inventario. Coloque un tag vacío o uno antiguo reutilizable y pulse Volver a leer el tag presentado.",
+  "La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.": "La reutilización de un tag debe prepararse desde la ficha actual de una bobina del inventario.",
+  "Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.": "Este tag ya contiene los datos de esta bobina. No es necesario volver a escribirlo.",
+  "L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.": "La asociación anterior del tag ha cambiado. Vuelva a leer el tag y confirme de nuevo su reutilización.",
+  "La confirmation de réutilisation du tag est invalide.": "La confirmación de reutilización del tag no es válida."
 });

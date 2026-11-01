@@ -1,5 +1,17 @@
 # Versions publiques
 
+## v0.24.0 — 1er novembre 2026
+
+- Création ou recréation d’un RFID depuis l’inventaire sur un tag déjà utilisé, avec choix explicite de réutilisation, aperçu Avant/Après et confirmation du remplacement.
+- Sauvegarde avant l’écriture, conservation des protections et de la mémoire réservée, relecture complète avant transfert de l’association RFID.
+- Ancienne fiche conservée sans association RFID, avec ses notes, son état, son numéro, son historique et sa consommation; reprise journalisée après interruption sans seconde écriture.
+
+La réutilisation physique d’un ancien tag depuis une fiche d’inventaire est confirmée par un essai utilisateur sur Raspberry Pi. Le journal de la station confirme une opération de réutilisation terminée après écriture et relecture.
+
+Vérifications : **869 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **870 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Les essais couvrent le consentement explicite, les bobines actives ou archivées, les deux versions d’inventaire, les écritures concurrentes, les protections, la mémoire réservée, la sauvegarde préalable et la reprise après interruption sans nouvelle écriture. Le parcours complet et l’annulation de l’accord lors d’une relecture sont vérifiés dans le navigateur sur des données isolées; les contrôles de publication ne réécrivent aucun tag réel.
+
+L’archive complète `opt-station-v0.24.0.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune nouvelle dépendance n’est ajoutée. Voir le [guide RFID](docs/29-creation-et-recreation-rfid-inventaire.md).
+
 ## v0.23.0 — 1er novembre 2026
 
 - Ajustement du filament restant depuis les fiches de bobines en stock ou en service, avec aperçu de la consommation recalculée et référence réelle ou nominale explicite.

@@ -73,6 +73,13 @@ class Prepare(ExpectedTag):
     inventory_id: str | None = Field(default=None, max_length=100)
     inventory_version: StrictInt | None = Field(default=None, ge=1)
     inventory_recreate: StrictBool = False
+    reuse_tag: StrictBool = False
+
+
+class InventoryTagSource(Model):
+    inventory_id: str = Field(min_length=1, max_length=100)
+    inventory_version: StrictInt = Field(ge=1)
+    inventory_recreate: StrictBool = False
 
 
 class Commit(Model):
@@ -312,6 +319,7 @@ class Preview:
     inventory_id: str | None = None
     inventory_version: int | None = None
     inventory_recreate: bool = False
+    reuse_from: dict | None = None
 
 
 def local_station(request):
@@ -569,7 +577,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         LOG.exception("Erreur de base de données")
         return JSONResponse({"detail": "La base de données est indisponible. Réessayer après avoir vérifié le stockage."}, status_code=503)
 
-    def tag_snapshot(record=None, observe=False, pending_inventory=None):
+    def tag_snapshot(record=None, observe=False, pending_inventory=None, inspect_only=False, reuse_from=None):
         record = record or reader.read()
         if blank(record):
             result = {"uid": record["uid"], "revision": revision(record), "blank": True, "main": {}, "aux": {}, "instance_uuid": None, "remaining_weight": None, "remaining_estimated": False, "usage": {"main_used": 0, "main_capacity": 0, "aux_used": 0, "aux_capacity": 0}}
@@ -583,19 +591,23 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                             "block_bytes": record.get("block_bytes"), "write_supported": record.get("write_supported", True)}
         result["provenance"] = store.source(record["uid"])
         if pending_inventory is not None:
-            store.check_tag_destination(pending_inventory, result)
+            store.check_tag_destination(pending_inventory, result, reuse_from)
             result["inventory"] = pending_inventory
         elif not result["blank"]:
             candidate = store.pending_replacement(result, hashlib.sha256(bytes(record["image"])).hexdigest())
             if candidate:
                 result["inventory"] = None
                 result["association_pending"] = {"id": candidate["id"], "version": candidate["version"],
-                                                  "spool_number": candidate["spool_number"], "recreate": True}
+                                                  "spool_number": candidate["spool_number"], "recreate": candidate["label_state"] == "rfid"}
                 result.setdefault("warnings", []).append("Ce tag a été écrit, mais son association à la bobine reste à confirmer.")
             else:
-                result["inventory"] = store.observe(result) if observe else store.find(result)
+                result["inventory"] = None if inspect_only else store.observe(result) if observe else store.find(result)
         else:
             result["inventory"] = None
+        if inspect_only:
+            owner = store.tag_owner(record["uid"])
+            result["reuse_source"] = ({"id": owner["id"], "version": owner["version"], "spool_number": owner["spool_number"]}
+                                      if owner else None)
         return result
 
     def expected(record, body):
@@ -826,6 +838,15 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         with reader.lock:
             return tag_snapshot(observe=True)
 
+    @app.post("/api/reader/inspect-inventory")
+    def inspect_inventory_tag(request: Request, body: InventoryTagSource):
+        require_station(request)
+        with reader.lock:
+            item = store.pending(body.inventory_id, body.inventory_version, recreate=body.inventory_recreate)
+            result = tag_snapshot(inspect_only=True)
+            result["reuse_required"] = not result["blank"] or bool(result["reuse_source"] and result["reuse_source"]["id"] != item["id"])
+            return result
+
     @app.post("/api/reader/prepare")
     def prepare(request: Request, body: Prepare):
         require_station(request)
@@ -871,15 +892,20 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                         raise ConflictError("Cette étiquette contient une ancienne fiche. Réimprimer le QR actuel depuis l’inventaire.")
             if body.inventory_id is not None and (not inventory_item or inventory_item["id"] != body.inventory_id):
                 raise ConflictError("L’association nécessite la fiche d’inventaire ou son QR complet actuel.")
+            if body.reuse_tag and (not inventory_item or body.mode != "create" or body.favorite_id):
+                raise DomainError("La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.")
+            reuse_from = store.reuse_source(inventory_item, current["uid"]) if body.reuse_tag else None
             if current.get("write_supported") is False:
                 raise HTTPException(423, current.get("write_reason", "L’écriture n’est pas prise en charge pour ce tag."))
             if body.mode == "create":
-                if not blank(current):
+                if not blank(current) and not body.reuse_tag:
                     raise ConflictError("Le tag contient déjà des données. Utiliser Modifier, ou présenter un tag vierge.")
                 capacity = current.get("usable_capacity", len(current["image"]))
                 created = TagImage.create(current["uid"], body.main, body.aux, capacity=capacity).to_bytes()
                 proposed = TagImage.from_bytes(created + bytes(current["image"])[capacity:], current["uid"])
-                before = {"main": {}, "aux": {}}
+                before = TagImage.from_bytes(bytes(current["image"]), current["uid"]).snapshot() if not blank(current) else {"main": {}, "aux": {}}
+                if body.reuse_tag and proposed.to_bytes() == bytes(current["image"]):
+                    raise DomainError("Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.")
             else:
                 if blank(current):
                     raise ConflictError("Ce tag est vierge. Utiliser Créer un nouveau tag.")
@@ -902,7 +928,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 raise DomainError("Aucune modification à écrire.")
             proposed_record = {**current, "image": proposed.to_bytes()}
             # Détecter une identité déjà liée à un autre tag avant l’écriture.
-            preview_snapshot = tag_snapshot(proposed_record, observe=False, pending_inventory=inventory_item)
+            preview_snapshot = tag_snapshot(proposed_record, observe=False, pending_inventory=inventory_item, reuse_from=reuse_from)
             if (preview_snapshot.get("inventory") or {}).get("label_state") == "qr" and not inventory_item:
                 raise ConflictError("Cette identité possède une fiche QR. Préparer le tag depuis son étiquette complète pour l’associer à cette fiche.")
             stamp = time.monotonic()
@@ -925,9 +951,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 provenance = {"kind": "qr", "raw": body.qr_raw, "qr_kind": report["kind"], "message": report["message"]}
             previews[token] = Preview(current["uid"], revision(current), proposed.to_bytes(), stamp + 300, provenance,
                                       inventory_item["id"] if inventory_item else None,
-                                      inventory_item["version"] if inventory_item else None, body.inventory_recreate)
+                                      inventory_item["version"] if inventory_item else None, body.inventory_recreate, reuse_from)
             return {"preview_id": token, "tag": preview_snapshot, "changes": changes, "expires_in_seconds": 300,
-                    "recreation": body.inventory_recreate}
+                    "recreation": body.inventory_recreate, "reuse": body.reuse_tag,
+                    "reused_tag": {"uid": current["uid"], "inventory": store.tag_owner(current["uid"])} if body.reuse_tag else None}
 
     @app.post("/api/reader/write")
     def write_tag(request: Request, body: Commit):
@@ -940,17 +967,20 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
             if current["uid"] != proposal.uid or revision(current) != proposal.revision:
                 raise ConflictError("Le tag a changé depuis la préparation. Aucune nouvelle écriture n’a été lancée; relire puis préparer à nouveau.")
             if not blank(current):
-                snapshot = tag_snapshot(current, observe=False)
+                snapshot = tag_snapshot(current, observe=False, inspect_only=proposal.reuse_from is not None)
                 if snapshot.get("association_pending"):
                     raise ConflictError("Ce tag attend son association à la bobine. Confirmer l’association sans réécrire le tag.")
             if proposal.inventory_id:
                 target = store.pending(proposal.inventory_id, proposal.inventory_version, recreate=proposal.inventory_recreate)
                 intended = TagImage.from_bytes(proposal.image, proposal.uid).snapshot()
-                store.check_tag_destination(target, intended)
+                store.check_tag_destination(target, intended, proposal.reuse_from)
             operation = store.begin_operation(proposal.uid, proposal.revision, proposal.inventory_id, proposal.inventory_version,
-                                              hashlib.sha256(proposal.image).hexdigest())
+                                              hashlib.sha256(proposal.image).hexdigest(), reuse_from=proposal.reuse_from)
             try:
-                reader.write(proposal.image)
+                if proposal.reuse_from is not None:
+                    reader.write(proposal.image, reuse=True)
+                else:
+                    reader.write(proposal.image)
                 observed = reader.read()
                 if observed["uid"] != proposal.uid or bytes(observed["image"]) != proposal.image:
                     raise ReaderUnavailable("La relecture ne correspond pas à l’écriture demandée.")
@@ -969,8 +999,9 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 if proposal.inventory_id:
                     target = store.pending(proposal.inventory_id, proposal.inventory_version, recreate=proposal.inventory_recreate)
                     store.associate(proposal.inventory_id, proposal.inventory_version,
-                                    tag_snapshot(observed, observe=False, pending_inventory=target),
-                                    recreate=proposal.inventory_recreate, image_hash=hashlib.sha256(proposal.image).hexdigest())
+                                    tag_snapshot(observed, observe=False, pending_inventory=target, reuse_from=proposal.reuse_from),
+                                    recreate=proposal.inventory_recreate, image_hash=hashlib.sha256(proposal.image).hexdigest(),
+                                    reuse_from=proposal.reuse_from)
                 result = tag_snapshot(observed, observe=True)
                 store.end_operation(operation, "complete", revision(observed))
             except (sqlite3.Error, ConflictError) as exc:
@@ -1071,16 +1102,16 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
             expected(current, body)
             if blank(current):
                 raise ConflictError("Le tag est vierge. Préparer son écriture depuis le QR de la bobine.")
-            snapshot = tag_snapshot(current, observe=False, pending_inventory=item)
             image_hash = hashlib.sha256(bytes(current["image"])).hexdigest()
-            if body.recreate:
-                candidate = store.pending_replacement(snapshot, image_hash)
-                if candidate is None or candidate["id"] != item["id"]:
-                    raise ConflictError("Ce tag n’attend pas une association vérifiée. Préparer sa recréation depuis la fiche de la bobine.")
+            candidate = store.pending_replacement(TagImage.from_bytes(bytes(current["image"]), current["uid"]).snapshot(), image_hash)
+            reuse_from = candidate.get("pending_reuse") if candidate and candidate["id"] == item["id"] else None
+            if body.recreate and (candidate is None or candidate["id"] != item["id"]):
+                raise ConflictError("Ce tag n’attend pas une association vérifiée. Préparer sa recréation depuis la fiche de la bobine.")
+            snapshot = tag_snapshot(current, observe=False, pending_inventory=item, reuse_from=reuse_from)
             if (item["main"] != snapshot["main"] or item["aux"] != snapshot["aux"]) and not store.matching_association(
                     identifier, snapshot["uid"], hashlib.sha256(bytes(current["image"])).hexdigest()):
                 raise ConflictError("Les données du tag diffèrent de la fiche QR. Vérifier les deux fiches avant association.")
-            return store.associate(identifier, body.version, snapshot, recreate=body.recreate, image_hash=image_hash)
+            return store.associate(identifier, body.version, snapshot, recreate=body.recreate, image_hash=image_hash, reuse_from=reuse_from)
 
     @app.post("/api/inventory/add")
     def add_inventory(request: Request, body: ExpectedTag):

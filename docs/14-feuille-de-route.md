@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.23.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.23.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.24.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -44,6 +44,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - **Filament restant** : réglage depuis une fiche en stock ou en service, référence réelle ou nominale explicite, consommation recalculée, conflits et inconnues contrôlés, corrections RFID locales et QR actualisés. Essais sur données isolées et contrôle du formulaire sur une station en HTTPS réalisés sans écriture RFID ni changement de son stock; voir le [guide](37-ajuster-filament-restant.md).
 
+## Ajouts en v0.24.0
+
+- **Réutilisation d’un ancien RFID** : création/recréation depuis une fiche avec confirmation de remplacement, transfert après écriture et relecture, ancienne fiche conservée et reprise sans réécriture après interruption. Réutilisation physique confirmée par un essai utilisateur sur Raspberry Pi; les interruptions restent qualifiées par des essais contrôlés. Voir le [guide RFID](29-creation-et-recreation-rfid-inventaire.md).
+
 ## Qualification complémentaire de l’installation
 
 - **Installation complète en une commande** : publiée en v0.17.0, avec téléchargement vérifié, préparation Python, sauvegarde/retour arrière, services, plein écran et HTTPS. La réinstallation réelle et le retour arrière sur une station existante sont validés. L’essai complet sur carte SD vierge reste à faire. Voir le [parcours en une commande](33-installation-une-commande.md) ou le [guide manuel](12-installation-station-reelle.md).
@@ -57,6 +61,8 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 ## Validations récentes
 
+- Réutilisation physique d’un ancien tag RFID depuis l’inventaire confirmée par un essai utilisateur. Une opération terminée après écriture et relecture est également présente dans le journal de la station.
+
 - Édition des fiches de bobines et de modèles par MCP confirmée par un essai utilisateur. Les contrôles automatisés sur données isolées couvrent aussi les conflits, la sauvegarde/restauration et les relectures RFID; les appels de contrôle sur le stock réel restent sans changement de valeurs.
 
 - Sauvegarde nocturne planifiée sur support externe : exécution réussie signalée par la station le 1er novembre 2026, en complément de la création manuelle USB et de l’aperçu de restauration déjà validés.
@@ -65,7 +71,6 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - Notification lors d’une intervention réelle; le déclenchement sur une vraie fin d’impression est validé.
 - Identification IA depuis une vraie étiquette photographiée avec la caméra de la station; l’essai API sur une étiquette de test ne qualifie pas ce parcours matériel complet.
-- Remplacement physique d’un RFID depuis l’inventaire; le parcours est actuellement vérifié avec un lecteur simulé.
 - Autofocus, QR à courte distance, écran tactile et autres profils matériels.
 
 Les données de bobines ne doivent pas être remplacées par des valeurs supposées. Toute nouvelle intégration doit préserver identité, numéro, dates, notes, consommation connue et protections des tags.

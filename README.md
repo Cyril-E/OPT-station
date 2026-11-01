@@ -9,7 +9,7 @@
 - Numéros uniques B0000, B0001…, date d’entrée, notes et recherche dans l’inventaire.
 - États **En stock / En service** indépendants de l’identification QR/RFID, archives et compteur de bobines terminées.
 - Ajustement du filament restant depuis une fiche de bobine, avec aperçu de la consommation recalculée et référence de poids explicite.
-- Création et recréation du RFID depuis une fiche d’inventaire; modèles réutilisables depuis l’inventaire, un tag ou un QR.
+- Création et recréation du RFID depuis une fiche d’inventaire, avec réutilisation confirmée d’un ancien tag; modèles réutilisables depuis l’inventaire, un tag ou un QR.
 - Favoris et modèles modifiables, import/export, étiquettes QR et impression USB NIIMBOT.
 - Suivi PrusaLink en lecture seule et jusqu’à quatre caméras réseau.
 - Assistant IA par clé API ou compte ChatGPT depuis une photo d’étiquette, avec recherche Web facultative et validation des propositions avant remplissage.
@@ -23,7 +23,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.23.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.23.0)**, avec ajustement du filament restant depuis les fiches de bobines en stock ou en service et aperçu de la consommation recalculée. L’interface est disponible en français, anglais, espagnol et allemand. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.24.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.0)**, avec réutilisation des anciens tags RFID depuis les fiches de bobines, confirmation de remplacement et conservation de l’ancienne fiche. L’interface est disponible en français, anglais, espagnol et allemand. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -32,6 +32,10 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.24.0 — Réutiliser un tag RFID](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.0)
+
+- Depuis une fiche de bobine, possibilité explicite de remplacer le contenu d’un ancien tag, avec sauvegarde et relecture avant association. La fiche précédemment liée au tag est conservée. Voir le [guide RFID](docs/29-creation-et-recreation-rfid-inventaire.md).
 
 ### [v0.23.0 — Ajustement du filament restant](https://github.com/Cyril-E/OPT-station/releases/tag/v0.23.0)
 

@@ -85,14 +85,14 @@ class HardwareReader:
             self._last_read = result
             return dict(result)
 
-    def write(self, image):
+    def write(self, image, *, reuse=False):
         with self.lock:
             current = self._last_read
             self._last_read = None
             if current is None:
                 raise WriteRejected("Relire le tag avant de préparer son écriture.")
             self._run("write", image=bytes(image).hex(), expected_uid=current["uid"],
-                      expected_revision=revision(current), backup_dir=str(self.backup_dir))
+                      expected_revision=revision(current), backup_dir=str(self.backup_dir), reuse=reuse)
             self._status_time = 0
 
     def close(self):

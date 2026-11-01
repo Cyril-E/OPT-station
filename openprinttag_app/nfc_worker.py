@@ -164,7 +164,7 @@ def read_record(session):
             "nxp_system_info": nxp.hex()}
 
 
-def check_proposal(current, proposed):
+def check_proposal(current, proposed, *, reuse=False):
     before = bytes.fromhex(current["image"])
     if not current["write_supported"]:
         raise NFCError(current["write_reason"], "protected")
@@ -175,7 +175,7 @@ def check_proposal(current, proposed):
         raise NFCError("L’opération toucherait un bloc réservé du tag.", "protected")
     try:
         after_tag = TagImage.from_bytes(proposed, current["uid"])
-        if not any(before[:usable]):
+        if not any(before[:usable]) or reuse:
             if proposed[2] * 8 != usable:
                 raise DomainError("Le conteneur doit respecter la mémoire utilisateur disponible.")
         else:
@@ -217,7 +217,10 @@ def write_image(session, request):
     if current["uid"] != request["expected_uid"] or revision(record) != request["expected_revision"]:
         raise NFCError("Le tag ou ses protections ont changé. Relire et préparer à nouveau.", "conflict")
     proposed = bytes.fromhex(request["image"])
-    changed = check_proposal(current, proposed)
+    reuse = request.get("reuse", False)
+    if type(reuse) is not bool:
+        raise NFCError("La confirmation de réutilisation du tag est invalide.", "invalid")
+    changed = check_proposal(current, proposed, reuse=reuse)
     try:
         directory = Path(request["backup_dir"])
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -226,7 +229,7 @@ def write_image(session, request):
         save_private(backup, before)
         metadata = {"uid": current["uid"], "before_sha256": hashlib.sha256(before).hexdigest(),
                     "proposed_sha256": hashlib.sha256(proposed).hexdigest(), "blocks": changed,
-                    "security": current["security"], "nxp_system_info": current["nxp_system_info"], "status": "pending"}
+                    "security": current["security"], "nxp_system_info": current["nxp_system_info"], "status": "pending", "reuse": reuse}
         metadata_path = directory / (identifier + ".json")
         save_private(metadata_path, json.dumps(metadata, ensure_ascii=False).encode())
         if sys.platform == "linux":
@@ -243,7 +246,7 @@ def write_image(session, request):
         size = current["block_bytes"]
         uid = bytes.fromhex(current["uid"])[::-1]
         # Finish the payload first on initialization; publish its CC/header last.
-        if not any(before[:current["usable_capacity"]]) and 0 in changed:
+        if (not any(before[:current["usable_capacity"]]) or reuse) and 0 in changed:
             changed = [index for index in changed if index != 0] + [0]
         for block in changed:
             dirty = True  # A failed transport cannot prove that no EEPROM write occurred.

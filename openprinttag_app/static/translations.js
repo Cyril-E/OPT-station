@@ -1642,5 +1642,18 @@ window.OPT_EN = Object.freeze({
   "La quantité se modifie uniquement sur une bobine en stock ou en service.": "Quantity can only be changed on a spool in stock or in use.",
   "Le poids initial est inconnu. Renseignez le poids net initial réel pour calculer la consommation.": "The initial weight is unknown. Enter the actual initial net weight to calculate consumption.",
   "La quantité restante dépasse le poids net initial de référence. Corrigez le poids initial si vous le connaissez.": "The remaining quantity exceeds the initial net weight reference. Correct the initial weight if known.",
-  "Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.": "This record has changed. Your values are preserved; reload the quantity before saving."
+  "Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.": "This record has changed. Your values are preserved; reload the quantity before saving.",
+  "Réutiliser ce tag et remplacer son contenu": "Reuse this tag and replace its contents",
+  "Simuler le remplacement du tag": "Simulate tag replacement",
+  "Remplacer le contenu du tag": "Replace tag contents",
+  "Ce tag est associé à {0}. Après écriture et relecture réussies, cette ancienne fiche sera conservée sans association RFID. Son état, ses notes et sa consommation resteront inchangés.": "This tag is linked to {0}. After a successful write and verification read, that previous record will be kept without an RFID link. Its status, notes and consumption will remain unchanged.",
+  "Le contenu précédent de ce tag sera remplacé par les données de la bobine choisie. Une sauvegarde sera faite avant l’écriture.": "The previous contents of this tag will be replaced with the selected spool data. A backup will be made before writing.",
+  "Tag déjà utilisé : vérifiez son contenu, puis confirmez sa réutilisation ci-dessous pour préparer le remplacement.": "Previously used tag: check its contents, then confirm reuse below to prepare the replacement.",
+  "Le contenu du tag {0} va être remplacé. Vérifiez les colonnes Avant et Après, puis confirmez le remplacement.": "The contents of tag {0} will be replaced. Check the Before and After columns, then confirm replacement.",
+  "La fiche {0} sera conservée sans association RFID après réussite du remplacement.": "Record {0} will be kept without an RFID link once replacement succeeds.",
+  "Fiche {0} chargée depuis l’inventaire. Posez un tag vierge ou un ancien tag réutilisable, puis cliquez sur Relire le tag présenté.": "Record {0} loaded from inventory. Place a blank tag or a reusable old tag, then click Read the presented tag again.",
+  "La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.": "Tag reuse must be prepared from the current inventory spool record.",
+  "Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.": "This tag already contains this spool’s data. No rewrite is needed.",
+  "L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.": "The previous tag link has changed. Read the tag again and reconfirm reuse.",
+  "La confirmation de réutilisation du tag est invalide.": "The tag reuse confirmation is invalid."
 });

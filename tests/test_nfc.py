@@ -97,6 +97,80 @@ def test_initialization_keeps_reserved_counter_and_publishes_header_last(tmp_pat
     assert json.loads(next(tmp_path.glob("*.json")).read_text())["status"] == "verified"
 
 
+def test_reuse_changes_identity_only_with_explicit_permission_and_a_backup(tmp_path):
+    device = Device(bytes(312) + b'reserved')
+    device.image[:] = proposed(device, {'consumed_weight': 700})
+    before = bytes(device.image)
+    replacement = proposed(device, {'consumed_weight': 12})
+    job = request(device, replacement, tmp_path)
+    with pytest.raises(NFCError):
+        write_image(device, job)
+    assert device.writes == [] and bytes(device.image) == before
+    result = write_image(device, {**job, 'reuse': True})
+    assert result['verified'] and bytes(device.image) == replacement
+    assert bytes(device.image[312:]) == b'reserved'
+    assert Path(result['backup']).read_bytes() == before
+    assert json.loads(next(tmp_path.glob('*.json')).read_text())['reuse'] is True
+    assert set(device.writes).isdisjoint({78, 79})
+
+
+@pytest.mark.parametrize('permission', ['true', 1, None])
+def test_worker_rejects_invalid_reuse_permission_before_any_write(tmp_path, permission):
+    device = Device()
+    with pytest.raises(NFCError):
+        write_image(device, {**request(device, proposed(device), tmp_path), 'reuse': permission})
+    assert device.writes == []
+
+
+@pytest.mark.parametrize('protection', ['locked', 'unsupported', 'reserved', 'backup'])
+def test_reuse_preserves_protections_reserved_memory_and_backup_requirement(tmp_path, protection):
+    device = Device(bytes(312) + b'reserved')
+    device.image[:] = proposed(device)
+    replacement = proposed(device, {'consumed_weight': 50})
+    if protection == 'locked':
+        device.security[:] = bytes([1]) * 80
+    elif protection == 'unsupported':
+        device.nxp = None
+    elif protection == 'reserved':
+        replacement = replacement[:-1] + b'x'
+    else:
+        tmp_path = tmp_path/'not-a-directory'; tmp_path.write_text('blocked')
+    before = bytes(device.image)
+    with pytest.raises(NFCError):
+        write_image(device, {**request(device, replacement, tmp_path), 'reuse': True})
+    assert device.writes == [] and bytes(device.image) == before
+
+
+def test_inventory_reuse_reaches_the_real_adapter_with_explicit_permission(tmp_path, monkeypatch):
+    device = Device(bytes(312) + b'reserved'); device.connected = True
+    device.image[:] = proposed(device, {'consumed_weight': 700})
+    before = bytes(device.image); writes = []
+    reader = HardwareReader(tmp_path/'nfc-backups')
+    def run(operation, **values):
+        if operation == 'write':
+            writes.append(values)
+        return execute({'operation': operation, **values}, device)
+    monkeypatch.setattr(reader, '_run', run)
+    app = create_app(Settings(tmp_path, mode='hardware'), reader=reader)
+    with TestClient(app, client=('127.0.0.1', 1)) as client:
+        tag = client.get('/api/reader/tag').json()
+        old = client.post('/api/inventory/add', json={'expected_uid': tag['uid'], 'expected_revision': tag['revision']}).json()
+        target = client.post('/api/inventory/packaged', json={'main': MAIN, 'aux': {'consumed_weight': 25}}).json()
+        inspected = client.post('/api/reader/inspect-inventory', json={'inventory_id': target['id'], 'inventory_version': target['version']}).json()
+        preview = client.post('/api/reader/prepare', json={'mode': 'create', 'expected_uid': inspected['uid'], 'expected_revision': inspected['revision'],
+            'inventory_id': target['id'], 'inventory_version': target['version'], 'reuse_tag': True})
+        assert preview.status_code == 200, preview.text
+        assert writes == []
+        response = client.post('/api/reader/write', json={'preview_id': preview.json()['preview_id']})
+        assert response.status_code == 200, response.text
+        assert response.json()['verified']
+        assert len(writes) == 1 and writes[0]['reuse'] is True
+        assert app.state.store.get_spool(old['id'])['uid'] is None
+        assert app.state.store.get_spool(target['id'])['uid'] == UID
+        assert bytes(device.image[312:]) == b'reserved'
+        assert next((tmp_path/'nfc-backups').glob('*.bin')).read_bytes() == before
+
+
 def test_aux_update_preserves_every_byte_and_block_outside_aux(tmp_path):
     device = Device()
     device.image[:] = proposed(device, {"consumed_weight": 20})

@@ -331,3 +331,244 @@ def test_replacement_association_and_journal_survive_encrypted_backup_restore(st
     same_spool({**updated, "notes_revision": restored["notes_revision"]}, restored)
     assert restored["uid"] == updated["uid"]
     assert app.state.store.operations() == operations
+
+
+def inspect_for(client, item):
+    response = client.post('/api/reader/inspect-inventory', json={
+        'inventory_id': item['id'], 'inventory_version': item['version'],
+        'inventory_recreate': item['label_state'] == 'rfid'})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def reuse_preview(client, item, tag):
+    response = client.post('/api/reader/prepare', json=body(item, tag,
+        recreate=item['label_state'] == 'rfid', reuse_tag=True))
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+@pytest.mark.parametrize('target_kind', ['qr', 'rfid'])
+@pytest.mark.parametrize('previous_state', ['active', 'removed', 'completed'])
+def test_reuse_transfers_only_the_uid_after_verified_write(station, target_kind, previous_state):
+    app, client = station
+    old = rfid(app, client)
+    old = app.state.store.save_spool_notes(old['id'], 'Tare et historique à conserver', 0)
+    old = app.state.store.patch_spool(old['id'], old['version'], aux={'consumed_weight': 500})['item']
+    if previous_state == 'removed':
+        old = app.state.store.remove(old['id'], old['version'])
+    elif previous_state == 'completed':
+        old = client.post(f"/api/inventory/{old['id']}/complete", json={'version': old['version']}).json()
+    target = packaged(client) if target_kind == 'qr' else rfid(app, client)
+    app.state.reader.select(old['uid'])
+    before = app.state.store.list_spools(include_removed=True)
+    tag = inspect_for(client, target)
+    assert tag['reuse_required'] and tag['reuse_source']['id'] == old['id']
+    assert app.state.store.list_spools(include_removed=True) == before
+    preview = reuse_preview(client, target, tag)
+    assert preview['reuse'] and preview['reused_tag']['inventory']['id'] == old['id']
+    assert any(c['name'] == 'instance_uuid' and c['before'] == old['instance_uuid'] and c['after'] == target['instance_uuid'] for c in preview['changes'])
+    assert app.state.store.list_spools(include_removed=True) == before
+    response = commit(client, preview)
+    assert response.status_code == 200, response.text
+    updated = app.state.store.get_spool(target['id'])
+    same_spool(target, updated)
+    assert updated['uid'] == old['uid'] and updated['label_state'] == 'rfid'
+    previous = app.state.store.get_spool(old['id'])
+    same_spool(old, previous)
+    assert previous['usage_state'] == old['usage_state'] and previous['last_seen_at'] == old['last_seen_at']
+    assert previous['uid'] is None and previous['label_state'] == 'qr'
+    assert not previous.get('rfid_sync_pending')
+    assert previous['version'] == old['version'] + 1
+    assert len(app.state.store.list_spools(include_removed=True)) == 2
+    operation = app.state.store.operations()[0]
+    assert operation['status'] == 'complete' and operation['reuse_from']['inventory_id'] == old['id']
+    assert operation['detail'] is None
+
+
+@pytest.mark.parametrize('known_owner', [False, True])
+def test_reuse_requires_explicit_consent_and_inspection_never_observes_inventory(station, monkeypatch, known_owner):
+    app, client = station
+    if known_owner:
+        rfid(app, client)
+    target = packaged(client)
+    before = app.state.store.list_spools(include_removed=True)
+    tag = inspect_for(client, target)
+    monkeypatch.setattr(app.state.reader, 'write', lambda *a, **k: pytest.fail('No consent: no write'))
+    response = client.post('/api/reader/prepare', json=body(target, tag, recreate=False))
+    assert response.status_code == 409
+    assert app.state.store.list_spools(include_removed=True) == before
+
+
+def test_an_unregistered_used_tag_can_be_reused_without_creating_an_old_spool(station):
+    app, client = station
+    target = packaged(client)
+    tag = inspect_for(client, target)
+    assert tag['reuse_source'] is None
+    response = commit(client, reuse_preview(client, target, tag))
+    assert response.status_code == 200, response.text
+    assert len(app.state.store.list_spools(include_removed=True)) == 1
+
+
+def test_a_retired_copy_can_be_inspected_and_reused_without_detaching_the_current_tag(station):
+    app, client = station
+    old = rfid(app, client)
+    preview, _ = prepare(client, old)
+    assert commit(client, preview).status_code == 200
+    current_old = app.state.store.get_spool(old['id'])
+    target = packaged(client)
+    app.state.reader.select(old['uid'])
+    assert client.get('/api/reader/tag').status_code == 409
+    tag = inspect_for(client, target)
+    assert tag['reuse_source'] is None
+    assert commit(client, reuse_preview(client, target, tag)).status_code == 200
+    assert app.state.store.get_spool(old['id']) == current_old
+
+
+def test_a_physically_erased_tag_still_needs_consent_to_move_its_association(station):
+    app, client = station
+    old = rfid(app, client)
+    app.state.reader.write(bytes(320))
+    target = packaged(client)
+    tag = inspect_for(client, target)
+    assert tag['blank'] and tag['reuse_required']
+    assert commit(client, reuse_preview(client, target, tag)).status_code == 200
+    assert app.state.store.get_spool(old['id'])['uid'] is None
+
+
+@pytest.mark.parametrize('changed', ['source', 'target', 'tag'])
+def test_reuse_rechecks_both_inventory_versions_and_the_physical_tag(station, monkeypatch, changed):
+    app, client = station
+    old = rfid(app, client); target = packaged(client)
+    preview = reuse_preview(client, target, inspect_for(client, target))
+    if changed == 'tag':
+        app.state.reader.protect(True, False)
+    else:
+        item = old if changed == 'source' else target
+        app.state.store.set_usage(item['id'], item['version'], 'stock' if item['usage_state'] != 'stock' else 'in_service')
+    monkeypatch.setattr(app.state.reader, 'write', lambda *a, **k: pytest.fail('Stale preparation must not write'))
+    assert commit(client, preview).status_code == 409
+
+
+@pytest.mark.parametrize('target_kind', ['qr', 'rfid'])
+@pytest.mark.parametrize('failure', ['after_write', 'association', 'restart'])
+def test_interrupted_reuse_preserves_both_spools_and_recovers_without_rewriting(station, monkeypatch, target_kind, failure):
+    app, client = station
+    old = rfid(app, client)
+    target = packaged(client) if target_kind == 'qr' else rfid(app, client)
+    app.state.reader.select(old['uid'])
+    preview = reuse_preview(client, target, inspect_for(client, target))
+    original = app.state.reader.write; calls = []
+    def write(image, *, reuse=False):
+        assert reuse
+        calls.append(image); original(image, reuse=reuse)
+        if failure != 'association':
+            raise ReaderUnavailable('Interruption après écriture')
+    monkeypatch.setattr(app.state.reader, 'write', write)
+    if failure == 'association':
+        with app.state.store.connect() as db:
+            db.execute(f"CREATE TRIGGER reject_target BEFORE UPDATE ON spools WHEN OLD.id='{target['id']}' BEGIN SELECT RAISE(ABORT,'test interruption'); END")
+    assert commit(client, preview).status_code == 503
+    assert app.state.store.get_spool(old['id']) == old
+    assert app.state.store.get_spool(target['id']) == target
+    with pytest.raises(ValueError, match='attend la confirmation'):
+        app.state.store.patch_spool(old['id'], old['version'], aux={'consumed_weight': 50})
+    if failure == 'association':
+        with app.state.store.connect() as db:
+            db.execute('DROP TRIGGER reject_target')
+    if failure == 'restart':
+        with app.state.store.connect() as db:
+            db.execute("UPDATE operations SET status='pending' WHERE inventory_id=? AND status='uncertain'", (target['id'],))
+        Store(app.state.settings.database).recover_pending_operations()
+    monkeypatch.setattr(app.state.reader, 'write', lambda *a, **k: pytest.fail('Reconciliation must not rewrite'))
+    current = client.get('/api/reader/tag')
+    assert current.status_code == 200, current.text
+    tag = current.json(); pending = tag['association_pending']
+    assert pending['id'] == target['id'] and pending['recreate'] == (target_kind == 'rfid')
+    response = client.post(f"/api/inventory/{target['id']}/associate", json={**identity(tag), 'version': pending['version'], 'recreate': pending['recreate']})
+    assert response.status_code == 200, response.text
+    assert len(calls) == 1
+    assert app.state.store.get_spool(old['id'])['uid'] is None
+    assert app.state.store.get_spool(target['id'])['uid'] == old['uid']
+    assert app.state.store.operations()[0]['status'] == 'complete'
+
+
+@pytest.mark.parametrize('changes,status', [({'reuse_tag': 'true'}, 422), ({'mode': 'update'}, 409),
+    ({'inventory_id': None, 'inventory_version': None}, 422), ({'favorite_id': 'any'}, 422)])
+def test_reuse_is_strictly_scoped_to_an_inventory_creation(station, changes, status):
+    app, client = station
+    target = packaged(client); tag = inspect_for(client, target)
+    response = client.post('/api/reader/prepare', json={**body(target, tag, recreate=False, reuse_tag=True), **changes})
+    assert response.status_code == status, response.text
+
+
+def test_reused_associations_and_journal_survive_backup_restore(station):
+    app, client = station
+    old = rfid(app, client); target = packaged(client)
+    assert commit(client, reuse_preview(client, target, inspect_for(client, target))).status_code == 200
+    expected = {item['id']: item for item in app.state.store.list_spools(include_removed=True)}
+    operations = app.state.store.operations()
+    backup = client.post('/api/backups/download', json={'scope': 'all', 'password': ''})
+    assert backup.status_code == 200
+    current = app.state.store.get_spool(target['id'])
+    app.state.store.remove(target['id'], current['version'])
+    preview = client.post('/api/backups/restore/preview', json={'content': base64.b64encode(backup.content).decode(), 'password': ''})
+    assert preview.status_code == 200, preview.text
+    restored = client.post('/api/backups/restore/commit', json={'preview_id': preview.json()['preview_id'], 'confirmed': True})
+    assert restored.status_code == 200, restored.text
+    for item in app.state.store.list_spools(include_removed=True):
+        same_spool({**expected[item['id']], 'notes_revision': item['notes_revision']}, item)
+        assert item['uid'] == expected[item['id']]['uid'] and item['label_state'] == expected[item['id']]['label_state']
+    assert app.state.store.operations() == operations
+
+
+def test_reuse_is_refused_remotely_without_full_access(station):
+    app, local = station
+    old = rfid(app, local); target = packaged(local)
+    preview = reuse_preview(local, target, inspect_for(local, target))
+    local.put('/api/configuration/network', json={'mode': 'inventory'})
+    with TestClient(app, client=('192.0.2.42', 1)) as remote:
+        assert remote.post('/api/reader/inspect-inventory', json={'inventory_id': target['id'], 'inventory_version': target['version']}).status_code == 403
+        assert remote.post('/api/reader/prepare', json=body(target, inspect_for(local, target), recreate=False, reuse_tag=True)).status_code == 403
+        assert commit(remote, preview).status_code == 403
+    assert app.state.store.get_spool(old['id']) == old
+
+
+def test_reuse_of_the_same_physical_tag_preserves_local_consumption(station):
+    app, client = station
+    target = rfid(app, client)
+    target = app.state.store.patch_spool(target['id'], target['version'], aux={'consumed_weight': 700})['item']
+    preview = reuse_preview(client, target, inspect_for(client, target))
+    assert commit(client, preview).status_code == 200
+    updated = app.state.store.get_spool(target['id'])
+    same_spool(target, updated)
+    assert updated['uid'] == target['uid'] and updated['aux']['consumed_weight'] == 700
+    assert not updated.get('rfid_sync_pending')
+
+
+def test_two_reuse_previews_on_the_same_tag_cannot_transfer_it_twice(station, monkeypatch):
+    app, client = station
+    old = rfid(app, client); first = packaged(client); second = packaged(client)
+    previews = [reuse_preview(client, item, inspect_for(client, item)) for item in (first, second)]
+    original = app.state.reader.write; calls = []
+    def write(image, *, reuse=False):
+        calls.append(image); original(image, reuse=reuse)
+    monkeypatch.setattr(app.state.reader, 'write', write)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda preview: commit(client, preview), previews))
+    assert sorted(r.status_code for r in responses) == [200, 409]
+    assert len(calls) == 1
+    assert app.state.store.get_spool(old['id'])['uid'] is None
+    records = [app.state.store.get_spool(item['id']) for item in (first, second)]
+    assert sum(item.get('uid') == old['uid'] for item in records) == 1
+
+
+def test_the_current_inventory_qr_can_also_prepare_explicit_tag_reuse(station):
+    from openprinttag_app.spool_qr import encode_spool
+    app, client = station
+    target = packaged(client); tag = inspect_for(client, target)
+    preview = client.post('/api/reader/prepare', json=body(target, tag, recreate=False,
+        reuse_tag=True, qr_raw=encode_spool(target)))
+    assert preview.status_code == 200, preview.text
+    assert commit(client, preview.json()).status_code == 200
+    assert app.state.store.get_spool(target['id'])['uid'] == tag['uid']

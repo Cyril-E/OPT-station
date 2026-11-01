@@ -1642,5 +1642,18 @@ window.OPT_DE = Object.freeze({
   "La quantité se modifie uniquement sur une bobine en stock ou en service.": "Die Menge kann nur bei einer Spule auf Lager oder in Verwendung geändert werden.",
   "Le poids initial est inconnu. Renseignez le poids net initial réel pour calculer la consommation.": "Das Anfangsgewicht ist unbekannt. Geben Sie das tatsächliche Nettoanfangsgewicht an, um den Verbrauch zu berechnen.",
   "La quantité restante dépasse le poids net initial de référence. Corrigez le poids initial si vous le connaissez.": "Die Restmenge überschreitet das Nettoanfangsgewicht als Referenz. Korrigieren Sie das Anfangsgewicht, falls bekannt.",
-  "Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.": "Dieser Eintrag hat sich geändert. Ihre Werte bleiben erhalten; laden Sie die Menge vor dem Speichern neu."
+  "Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.": "Dieser Eintrag hat sich geändert. Ihre Werte bleiben erhalten; laden Sie die Menge vor dem Speichern neu.",
+  "Réutiliser ce tag et remplacer son contenu": "Diesen Tag wiederverwenden und seinen Inhalt ersetzen",
+  "Simuler le remplacement du tag": "Ersetzen des Tags simulieren",
+  "Remplacer le contenu du tag": "Inhalt des Tags ersetzen",
+  "Ce tag est associé à {0}. Après écriture et relecture réussies, cette ancienne fiche sera conservée sans association RFID. Son état, ses notes et sa consommation resteront inchangés.": "Dieser Tag ist {0} zugeordnet. Nach erfolgreichem Schreiben und Kontrolllesen bleibt der bisherige Eintrag ohne RFID-Zuordnung erhalten. Status, Notizen und Verbrauch bleiben unverändert.",
+  "Le contenu précédent de ce tag sera remplacé par les données de la bobine choisie. Une sauvegarde sera faite avant l’écriture.": "Der bisherige Inhalt dieses Tags wird durch die Daten der ausgewählten Spule ersetzt. Vor dem Schreiben wird eine Sicherung erstellt.",
+  "Tag déjà utilisé : vérifiez son contenu, puis confirmez sa réutilisation ci-dessous pour préparer le remplacement.": "Bereits verwendeter Tag: Prüfen Sie seinen Inhalt und bestätigen Sie unten die Wiederverwendung, um das Ersetzen vorzubereiten.",
+  "Le contenu du tag {0} va être remplacé. Vérifiez les colonnes Avant et Après, puis confirmez le remplacement.": "Der Inhalt des Tags {0} wird ersetzt. Prüfen Sie die Spalten Vorher und Nachher und bestätigen Sie anschließend das Ersetzen.",
+  "La fiche {0} sera conservée sans association RFID après réussite du remplacement.": "Eintrag {0} bleibt nach erfolgreichem Ersetzen ohne RFID-Zuordnung erhalten.",
+  "Fiche {0} chargée depuis l’inventaire. Posez un tag vierge ou un ancien tag réutilisable, puis cliquez sur Relire le tag présenté.": "Eintrag {0} aus dem Inventar geladen. Legen Sie einen leeren oder einen wiederverwendbaren alten Tag auf und klicken Sie auf Vorgelegten Tag erneut lesen.",
+  "La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.": "Die Wiederverwendung eines Tags muss vom aktuellen Spuleneintrag im Inventar aus vorbereitet werden.",
+  "Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.": "Dieser Tag enthält bereits die Daten dieser Spule. Ein erneutes Schreiben ist nicht erforderlich.",
+  "L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.": "Die bisherige Zuordnung des Tags hat sich geändert. Lesen Sie den Tag erneut und bestätigen Sie die Wiederverwendung noch einmal.",
+  "La confirmation de réutilisation du tag est invalide.": "Die Bestätigung der Tag-Wiederverwendung ist ungültig."
 });

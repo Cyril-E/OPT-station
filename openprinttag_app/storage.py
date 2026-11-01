@@ -286,33 +286,69 @@ class Store:
             raise ConflictError("La fiche a changé, est hors stock ou son état RFID a changé. Recharger la bobine avant de poursuivre.")
         return item
 
-    def check_tag_destination(self, item, snapshot):
+    def tag_owner(self, uid):
+        with self.connect() as db:
+            return self._spool(db.execute("SELECT * FROM spools WHERE uid=?", (uid,)).fetchone())
+
+    def reuse_source(self, item, uid):
+        owner = self.tag_owner(uid)
+        other = owner if owner and owner["id"] != item["id"] else None
+        return {"uid": uid, "inventory_id": other["id"] if other else None,
+                "inventory_version": other["version"] if other else None}
+
+    def check_tag_destination(self, item, snapshot, reuse_from=None, db=None):
         if item["instance_uuid"] != snapshot["instance_uuid"] or not snapshot.get("uid"):
             raise ConflictError("Le tag ne correspond pas à l’identité de cette bobine.")
-        with self.connect() as db:
-            other = db.execute("SELECT id FROM spools WHERE uid=? AND id!=?", (snapshot["uid"], item["id"])).fetchone()
-        if other:
+        if db is None:
+            with self.connect() as connection:
+                return self.check_tag_destination(item, snapshot, reuse_from, connection)
+        other = db.execute("SELECT id,version FROM spools WHERE uid=? AND id!=?", (snapshot["uid"], item["id"])).fetchone()
+        if reuse_from is not None:
+            if (reuse_from["uid"] != snapshot["uid"] or
+                    (other["id"] if other else None) != reuse_from["inventory_id"] or
+                    (other["version"] if other else None) != reuse_from["inventory_version"]):
+                raise ConflictError("L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.")
+        elif other:
             raise ConflictError("Ce tag est déjà associé à une autre bobine.")
 
     def pending_replacement(self, snapshot, image_hash):
         """Only a journaled, exact write awaiting association can bypass find()."""
         with self.connect() as db:
             row = db.execute("SELECT * FROM spools WHERE instance_uuid=?", (snapshot.get("instance_uuid"),)).fetchone()
-            if row is None or row["label_state"] != "rfid" or not row["in_stock"] or row["completed_at"]:
+            if row is None or not row["in_stock"] or row["completed_at"]:
                 return None
-            operation = db.execute("""SELECT 1 FROM operations WHERE inventory_id=? AND inventory_version=?
-                AND uid=? AND intended_revision=? AND status IN ('uncertain','tag_verified') LIMIT 1""",
+            operation = db.execute("""SELECT * FROM operations WHERE inventory_id=? AND inventory_version=?
+                AND uid=? AND intended_revision=? AND status IN ('uncertain','tag_verified') ORDER BY created_at DESC LIMIT 1""",
                 (row["id"], row["version"], snapshot.get("uid"), image_hash)).fetchone()
-            if operation is None or db.execute("SELECT 1 FROM spools WHERE uid=? AND id!=?", (snapshot.get("uid"), row["id"])).fetchone():
+            if operation is None:
                 return None
-            return self._spool(row)
+            item = self._spool(row)
+            reuse = self.operation_reuse(operation["detail"])
+            self.check_tag_destination(item, snapshot, reuse, db)
+            if reuse is not None:
+                item["pending_reuse"] = reuse
+            return item
 
-    def associate(self, identifier, version, snapshot, recreate=False, image_hash=None):
-        item = self.pending(identifier, version, recreate=recreate)
-        self.check_tag_destination(item, snapshot)
+    def associate(self, identifier, version, snapshot, recreate=False, image_hash=None, reuse_from=None):
         stored = {key: value for key, value in snapshot.items() if key not in {"inventory", "association_pending"}}
         try:
             with self.connect() as db:
+                db.execute("BEGIN IMMEDIATE")
+                row = db.execute("SELECT * FROM spools WHERE id=?", (identifier,)).fetchone()
+                if (row is None or row["version"] != version or row["label_state"] != ("rfid" if recreate else "qr")
+                        or not row["in_stock"] or row["completed_at"]):
+                    raise ConflictError("La fiche a changé pendant l’association. Relire le tag et recharger l’inventaire.")
+                self.check_tag_destination(self._spool(row), snapshot, reuse_from, db)
+                if reuse_from and reuse_from["inventory_id"]:
+                    previous = db.execute("SELECT * FROM spools WHERE id=?", (reuse_from["inventory_id"],)).fetchone()
+                    detached = json.loads(previous["snapshot"])
+                    # Fold local corrections into the preserved inventory data;
+                    # only the physical association is being transferred.
+                    detached.pop("local_edits", None)
+                    detached.update(uid=None, revision=None, protections={"main": False, "aux": False})
+                    detached.pop("memory", None)
+                    db.execute("UPDATE spools SET uid=NULL,label_state='qr',snapshot=?,version=version+1 WHERE id=?",
+                               (dumps(detached), previous["id"]))
                 cursor = db.execute("""UPDATE spools SET uid=?,snapshot=?,last_seen_at=?,label_state='rfid',
                     usage_state=CASE WHEN label_state='qr' THEN 'in_service' ELSE usage_state END,version=version+1
                     WHERE id=? AND version=? AND label_state=? AND in_stock=1 AND completed_at IS NULL""",
@@ -382,7 +418,8 @@ class Store:
                 raise ConflictError("Les notes ont changé. Relisez leur révision avant de les modifier.")
             if (main or aux or usage_state is not None or reset_tag_overrides) and (not row["in_stock"] or row["completed_at"]):
                 raise ConflictError("Seules les notes d’une bobine retirée ou terminée restent modifiables.")
-            if db.execute("SELECT 1 FROM operations WHERE inventory_id=? AND status IN ('pending','uncertain','tag_verified') LIMIT 1", (identifier,)).fetchone():
+            pending_operations = db.execute("SELECT inventory_id,detail FROM operations WHERE status IN ('pending','uncertain','tag_verified')").fetchall()
+            if any(operation["inventory_id"] == identifier or (self.operation_reuse(operation["detail"]) or {}).get("inventory_id") == identifier for operation in pending_operations):
                 raise ConflictError("Cette bobine attend la confirmation d’une écriture RFID. Terminez sa réconciliation avant de modifier la fiche.")
             before = json.loads(row["snapshot"])
             after = patch_snapshot(before, main, aux, rfid=row["label_state"] == "rfid", reset_tag_overrides=reset_tag_overrides)
@@ -593,11 +630,34 @@ class Store:
                 return {"created": False, "item": self._favorite(row)}
             raise
 
-    def begin_operation(self, uid, revision, inventory_id=None, inventory_version=None, intended_revision=None):
+    @staticmethod
+    def operation_reuse(detail):
+        try:
+            envelope = json.loads(detail or "null")
+        except (ValueError, TypeError):
+            return None
+        reuse = envelope.get("rfid_reuse") if isinstance(envelope, dict) else None
+        if (not isinstance(reuse, dict) or set(reuse) != {"uid", "inventory_id", "inventory_version"}
+                or not isinstance(reuse["uid"], str) or not re.fullmatch(r"[0-9A-Fa-f]{16}", reuse["uid"])):
+            return None
+        if reuse["inventory_id"] is None and reuse["inventory_version"] is None:
+            return reuse
+        if (isinstance(reuse["inventory_id"], str) and type(reuse["inventory_version"]) is int
+                and reuse["inventory_version"] > 0):
+            return reuse
+        return None
+
+    @classmethod
+    def _operation_detail(cls, current, message):
+        reuse = cls.operation_reuse(current)
+        return dumps({"rfid_reuse": reuse, "message": message}) if reuse is not None else message
+
+    def begin_operation(self, uid, revision, inventory_id=None, inventory_version=None, intended_revision=None, reuse_from=None):
         identifier = str(uuid.uuid4())
         with self.connect() as db:
-            db.execute("""INSERT INTO operations (id,uid,created_at,status,before_revision,inventory_id,inventory_version,intended_revision)
-                VALUES (?,?,?,?,?,?,?,?)""", (identifier, uid, now(), "pending", revision, inventory_id, inventory_version, intended_revision))
+            detail = dumps({"rfid_reuse": reuse_from, "message": None}) if reuse_from is not None else None
+            db.execute("""INSERT INTO operations (id,uid,created_at,status,before_revision,inventory_id,inventory_version,intended_revision,detail)
+                VALUES (?,?,?,?,?,?,?,?,?)""", (identifier, uid, now(), "pending", revision, inventory_id, inventory_version, intended_revision, detail))
         return identifier
 
     def matching_association(self, identifier, uid, image_revision):
@@ -608,16 +668,25 @@ class Store:
 
     def recover_pending_operations(self):
         with self.connect() as db:
-            db.execute("UPDATE operations SET status='uncertain', detail=? WHERE status='pending'",
-                       ("La station a redémarré avant confirmation. Relire le tag avant toute nouvelle écriture.",))
+            for row in db.execute("SELECT id,detail FROM operations WHERE status='pending'").fetchall():
+                db.execute("UPDATE operations SET status='uncertain', detail=? WHERE id=?",
+                           (self._operation_detail(row["detail"], "La station a redémarré avant confirmation. Relire le tag avant toute nouvelle écriture."), row["id"]))
 
     def end_operation(self, identifier, status, revision=None, detail=None):
         with self.connect() as db:
-            db.execute("UPDATE operations SET status=?,after_revision=?,detail=? WHERE id=?", (status, revision, detail, identifier))
+            row = db.execute("SELECT detail FROM operations WHERE id=?", (identifier,)).fetchone()
+            db.execute("UPDATE operations SET status=?,after_revision=?,detail=? WHERE id=?",
+                       (status, revision, self._operation_detail(row["detail"] if row else None, detail), identifier))
 
     def operations(self):
         with self.connect() as db:
-            return [dict(r) for r in db.execute("SELECT * FROM operations ORDER BY created_at DESC LIMIT 30")]
+            result = [dict(r) for r in db.execute("SELECT * FROM operations ORDER BY created_at DESC LIMIT 30")]
+        for row in result:
+            reuse = self.operation_reuse(row["detail"])
+            if reuse is not None:
+                row["reuse_from"] = reuse
+                row["detail"] = json.loads(row["detail"]).get("message")
+        return result
 
     def source(self, uid):
         with self.connect() as db:
