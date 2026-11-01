@@ -156,7 +156,7 @@ class ChatGPTReturn(Model):
 class AssistantAnalysis(Model):
     scan_id: str | None = Field(default=None, max_length=100)
     image: str | None = Field(default=None, max_length=MAX_IMAGE * 4 // 3 + 100)
-    language: Literal["fr", "en"] = "fr"
+    language: Literal["fr", "en", "es", "de"] = "fr"
 
 
 class PhotoUpload(Model):
@@ -613,7 +613,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -621,7 +621,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     @app.get("/https")
     def https_help():
         markup = (STATIC / "https.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "i18n.js", "https.js", "theme.js", "style.css"):
+        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "https.js", "theme.js", "style.css"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup, headers={"Cache-Control": "no-store"})

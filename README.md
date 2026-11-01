@@ -1,6 +1,6 @@
 # OPT Station — lecteur-écrivain et inventaire de bobines
 
-**OPT Station** lit et écrit le format NFC **OpenPrintTag** et conserve un inventaire local de bobines. L’interface web est disponible en français et en anglais, avec thèmes clair et sombre.
+**OPT Station** lit et écrit le format NFC **OpenPrintTag** et conserve un inventaire local de bobines. L’interface web est disponible en français, anglais, espagnol et allemand, avec thèmes clair et sombre.
 
 ## Fonctions
 
@@ -22,15 +22,20 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.21.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.21.0)**, avec connexion ChatGPT pour l’assistant IA, procédure de connexion détaillée et menu réorganisé ouvrant l’inventaire par défaut. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.22.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.22.0)**, avec interface en espagnol et en allemand en complément du français et de l’anglais, aide HTTPS traduite, formats locaux et langue des propositions IA. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
-La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide bilingue. L’[installateur](docs/33-installation-une-commande.md) conserve l’inventaire et les certificats sur une station existante, sauvegarde les fichiers avant activation et tente un retour arrière en cas d’échec. L’[assistant IA](docs/34-assistant-ia-etiquettes.md) est optionnel : choisir une clé API ou connecter un compte ChatGPT dans Paramètres. La [feuille de route](docs/14-feuille-de-route.md) et les [issues GitHub](https://github.com/Cyril-E/OPT-station/issues) regroupent les validations et évolutions suivies.
+La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres à chaque station et une aide dans les quatre langues de l’interface. L’[installateur](docs/33-installation-une-commande.md) conserve l’inventaire et les certificats sur une station existante, sauvegarde les fichiers avant activation et tente un retour arrière en cas d’échec. L’[assistant IA](docs/34-assistant-ia-etiquettes.md) est optionnel : choisir une clé API ou connecter un compte ChatGPT dans Paramètres. La [feuille de route](docs/14-feuille-de-route.md) et les [issues GitHub](https://github.com/Cyril-E/OPT-station/issues) regroupent les validations et évolutions suivies.
 
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.22.0 — Espagnol et allemand](https://github.com/Cyril-E/OPT-station/releases/tag/v0.22.0)
+
+- Choix **Français / English / Español / Deutsch** dans **Paramètres → Apparence**, également disponible dans l’aide HTTPS.
+- Messages, confirmations, formats des dates et nombres et explications IA dans la langue choisie, avec conservation des saisies et des données des bobines. Voir le [guide des langues](docs/22-langues-interface.md).
 
 ### [v0.21.0 — Connexion ChatGPT et accueil Inventaire](https://github.com/Cyril-E/OPT-station/releases/tag/v0.21.0)
 
@@ -67,7 +72,7 @@ La version comprend les [notifications Chrome](docs/32-notifications-imprimante.
 
 ### [v0.16.1 — Première distribution publique](https://github.com/Cyril-E/OPT-station/releases/tag/v0.16.1)
 
-- Lecture et écriture NFC, inventaire, QR et étiquettes, modèles et favoris, PrusaLink et caméras, notifications Chrome, MCP et interface française/anglaise.
+- Lecture et écriture NFC, inventaire, QR et étiquettes, modèles et favoris, PrusaLink et caméras, notifications Chrome, MCP et interface française/anglaise/espagnole/allemande.
 
 Cette section présente les ajouts de chaque version, de la plus récente à la plus ancienne. Le [journal complet](CHANGELOG.md) et les [publications GitHub](https://github.com/Cyril-E/OPT-station/releases) détaillent les changements et les conditions de validation.
 

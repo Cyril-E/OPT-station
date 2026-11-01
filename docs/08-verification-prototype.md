@@ -2,7 +2,7 @@
 
 ## Vérifications logicielles
 
-La suite de la version **v0.21.0** comprend **789 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **790 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion).
+La suite de la version **v0.22.0** comprend **797 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **798 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion).
 
 Depuis les sources, avec les dépendances de test installées :
 
@@ -24,6 +24,10 @@ OPT_STATION_CADDY=/chemin/vers/caddy .venv/bin/python -m pytest -q tests/test_ht
 ```
 
 Sans Caddy, ce test est ignoré. La qualification complète indiquée ci-dessus inclut son exécution. Les vérifications JavaScript couvrent la langue, les saisies, les préférences, les permissions de notification, la reprise, les doublons entre onglets, les notes de version et les propositions IA avec des API de navigateur contrôlées. Le sommaire est vérifié dans le navigateur aux largeurs 390, 1280 et 1920 pixels, en français/anglais et thèmes clair/sombre, avec conservation d’une saisie non enregistrée.
+
+## Langues de v0.22.0
+
+Les trois dictionnaires anglais/espagnol/allemand couvrent chacun les **1 621 messages** français existants. Les vérifications couvrent les paramètres de traduction, le chargement avant le moteur de langue sur les deux pages, les préférences au rechargement et entre onglets, le mode sans stockage, les pluriels allemands, les champs non enregistrés et les langues des propositions IA avec des réponses contrôlées. Suite complète Mac : **797 réussis**, un test réservé à Linux ignoré; les sept moteurs JavaScript passent.
 
 ## Profils matériels et essais
 

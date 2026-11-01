@@ -17,7 +17,7 @@ def test_browser_assets_revalidate_with_a_content_version(tmp_path):
         page = client.get("/")
         assert page.status_code == 200 and page.headers["cache-control"] == "no-store"
         assets = re.findall(r'(?:src|href)="(/static/[^"?]+)\?v=([a-f0-9]{16})"', page.text)
-        assert {Path(path).name for path, _ in assets} == {"translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"}
+        assert {Path(path).name for path, _ in assets} == {"translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"}
         for path, version in assets:
             response = client.get(path + "?v=" + version)
             assert response.status_code == 200
@@ -32,7 +32,7 @@ def test_asset_version_changes_even_when_deployment_keeps_same_size_and_timestam
     module = importlib.import_module("openprinttag_app.app")
     static = tmp_path / "static"
     static.mkdir()
-    for name in ("translations.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
+    for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
         (static / name).write_text("old content")
     (static / "index.html").write_text('<script src="/static/app.js"></script>')
     monkeypatch.setattr(module, "STATIC", static)

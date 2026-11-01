@@ -4,15 +4,18 @@
 // remain verbatim; changing language never rebuilds or reloads a form.
 (() => {
   const EN = window.OPT_EN || {};
+  const catalogs = {fr: {}, en: EN, es: window.OPT_ES || {}, de: window.OPT_DE || {}};
+  const locales = {fr: "fr-FR", en: "en-GB", es: "es-ES", de: "de-DE"};
+  const supported = (value) => Object.hasOwn(catalogs, value) ? value : "fr";
   let language = "fr", connected = false;
-  try { if (window.localStorage.getItem("opt-station-language") === "en") language = "en"; } catch { /* Per-page choice still works. */ }
+  try { language = supported(window.localStorage.getItem("opt-station-language")); } catch { /* Per-page choice still works. */ }
   const staticText = [], staticAttributes = [];
-  const reverse = new Map(Object.entries(EN).map(([fr, en]) => [en, fr]));
+  const reverse = new Map(Object.values(catalogs).flatMap((catalog) => Object.entries(catalog).map(([fr, target]) => [target, fr])));
   const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const patterns = [];
-  for (const [fr, en] of Object.entries(EN)) {
+  for (const fr of Object.keys(EN)) {
     if (!/\{\d+\}/.test(fr)) continue;
-    for (const candidate of [fr, en]) {
+    for (const candidate of new Set([fr, ...Object.values(catalogs).map((catalog) => catalog[fr]).filter(Boolean)])) {
       const order = [];
       const pieces = candidate.split(/(\{\d+\})/g).map((part) => {
         if (/^\{\d+\}$/.test(part)) { order.push(Number(part.slice(1,-1))); return "([\\s\\S]*?)"; }
@@ -21,9 +24,17 @@
       patterns.push({expression: new RegExp("^" + pieces.join("") + "$"), source: fr, order});
     }
   }
+  const germanPlural = (source) => source === "Depuis {0} jour{1}" ? "en" : /bobine\{1\}/.test(source) ? "n" : "";
   function translate(source, args = []) {
-    const template = language === "en" ? EN[source] ?? source : source;
-    return template.replace(/\{(\d+)\}/g, (match, index) => Number(index) < args.length ? String(args[index] ?? "") : match);
+    const catalog = catalogs[language];
+    const template = Object.hasOwn(catalog, source) ? catalog[source] : source;
+    return template.replace(/\{(\d+)\}/g, (match, index) => {
+      if (Number(index) >= args.length) return match;
+      // These existing French/English templates pass a plural suffix as {1}.
+      // German uses Spulen and (seit) Tagen; all other arguments stay verbatim.
+      if (language === "de" && Number(index) === 1 && germanPlural(source) && args[index]) return germanPlural(source);
+      return String(args[index] ?? "");
+    });
   }
   class Message {
     constructor(source, args) { this.source = source; this.args = args; }
@@ -42,15 +53,19 @@
       const args = [];
       pattern.order.forEach((index, position) => {
         const value = match[position + 1];
-        args[index] = pattern.source === "{0} doit être un nombre{1}." && index === 1 && value === " entier" ? msg(value) : value;
+        if (index === 1 && germanPlural(pattern.source)) args[index] = value ? "s" : "";
+        else args[index] = pattern.source === "{0} doit être un nombre{1}." && index === 1 && (value === " entier" || reverse.get(value) === " entier") ? msg(" entier") : value;
       });
       return new Message(pattern.source, args);
     }
     // Some validation messages append a list of canonical field names.
-    for (const [source, target] of Object.entries(EN)) {
+    for (const source of Object.keys(EN)) {
       if (source.endsWith(":")) {
         if (text.startsWith(source + " ")) return msg("{0}{1}", msg(source), text.slice(source.length));
-        if (text.startsWith(target + " ")) return msg("{0}{1}", msg(source), text.slice(target.length));
+        for (const catalog of Object.values(catalogs)) {
+          const target = catalog[source];
+          if (target && text.startsWith(target + " ")) return msg("{0}{1}", msg(source), text.slice(target.length));
+        }
       }
     }
     return msg(text);
@@ -102,7 +117,7 @@
     if (select) select.value = language;
   }
   function apply(value, save = false) {
-    language = value === "en" ? "en" : "fr";
+    language = supported(value);
     if (save) {
       try { window.localStorage.setItem("opt-station-language", language); }
       catch { const note = document.getElementById("language-storage-note"); if (note) note.hidden = false; }
@@ -124,7 +139,7 @@
     refresh();
   }
   window.OPT_I18N = {msg, message, messages, text, attribute, init, refresh, translate, getLanguage: () => language,
-    locale: () => language === "en" ? "en-GB" : "fr-FR", setLanguage: (value) => apply(value, true)};
+    locale: () => locales[language], setLanguage: (value) => apply(value, true)};
   document.documentElement.lang = language;
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, {once: true}); else init();
   window.addEventListener("storage", (event) => { if (event.key === "opt-station-language") apply(event.newValue); });

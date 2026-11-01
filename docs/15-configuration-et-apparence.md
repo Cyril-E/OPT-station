@@ -8,7 +8,7 @@ Ouvrir l’onglet Configuration pour les préférences d’affichage, le matéri
 
 Le **Sommaire** regroupe les douze rubriques en trois ensembles : **Station**, **Connexions et IA** et **Maintenance**. Cliquer sur une rubrique affiche directement ses réglages, sans recharger la page ni effacer les saisies en cours.
 
-Sur grand écran, le sommaire reste sur le côté pendant le défilement. Sur un écran plus petit, ouvrir le bouton **Sommaire** en haut de la page pour choisir une autre rubrique; il se replie après la sélection. Le sommaire est disponible en français et en anglais, avec tous les niveaux d’accès.
+Sur grand écran, le sommaire reste sur le côté pendant le défilement. Sur un écran plus petit, ouvrir le bouton **Sommaire** en haut de la page pour choisir une autre rubrique; il se replie après la sélection. Le sommaire est disponible dans les quatre langues de l’interface, avec tous les niveaux d’accès.
 
 ## Choisir le thème
 
@@ -18,7 +18,7 @@ Ouvrir **Configuration → Apparence**, puis choisir **Sombre** ou **Clair**. Le
 
 ## Consulter le matériel
 
-Depuis **v0.8.0**, **Apparence → Langue de l’interface** permet aussi de choisir **Français** ou **English**, sans rechargement ni perte des champs saisis. Le choix est conservé pour le navigateur; voir le [guide des langues](22-langues-interface.md). La carte **Accès des IA · Serveur MCP** regroupe son activation persistante, son adresse et sa fenêtre d’information; voir le [guide MCP](21-serveur-mcp.md).
+Depuis **v0.8.0**, **Apparence → Langue de l’interface** permet aussi de choisir **Français**, **English**, **Español** ou **Deutsch**, sans rechargement ni perte des champs saisis. Le choix est conservé pour le navigateur; voir le [guide des langues](22-langues-interface.md). La carte **Accès des IA · Serveur MCP** regroupe son activation persistante, son adresse et sa fenêtre d’information; voir le [guide MCP](21-serveur-mcp.md).
 
 L’onglet **Configuration** présente :
 

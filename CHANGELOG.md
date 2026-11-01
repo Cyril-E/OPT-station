@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.22.0 — 1er novembre 2026
+
+- Issue #4 : espagnol et allemand ajoutés aux langues de l’interface et de l’aide HTTPS, avec les mêmes messages traduits qu’en anglais.
+- Changement de langue immédiat, mémorisé par navigateur et synchronisé entre ses onglets, sans perte des saisies. Formats `es-ES` et `de-DE`, pluriels allemands et langue des propositions IA pris en charge.
+- Les données de bobines, notes, identifiants, QR et RFID restent inchangés. Aucune nouvelle dépendance ni migration de base.
+
+Vérifications : **797 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **798 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Les deux nouvelles langues couvrent chacune les 1 621 messages existants. Les quatre choix, le rechargement, les pluriels allemands et la conservation des saisies ont été contrôlés dans le navigateur, y compris sur la station en HTTPS.
+
+L’archive complète `opt-station-v0.22.0.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune nouvelle dépendance n’est ajoutée.
+
 ## v0.21.0 — 31 octobre 2026
 
 - Menu réorganisé : Inventaire, Imprimante, Lecture, Écriture, Paramètres; navigation clavier conservée.

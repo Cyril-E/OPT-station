@@ -67,11 +67,12 @@ def test_configuration_access_key_masking_revision_clear_and_disabled(station):
     assert KEY not in configure(client, api_key=KEY+'!').text
 
 
-def test_analysis_is_only_a_proposal_and_does_not_touch_stock_or_nfc(station):
+@pytest.mark.parametrize('language', ['fr', 'en', 'es', 'de'])
+def test_analysis_is_only_a_proposal_and_does_not_touch_stock_or_nfc(station, language):
     app, client, fetch = station; configure(client)
     with app.state.store.connect() as db:
         before = list(db.iterdump())
-    response = client.post('/api/assistant/analyse', json={'image': 'data:image/png;base64,'+base64.b64encode(photo()).decode(), 'language': 'en'})
+    response = client.post('/api/assistant/analyse', json={'image': 'data:image/png;base64,'+base64.b64encode(photo()).decode(), 'language': language})
     assert response.status_code == 200, response.text
     result = response.json(); assert result['main'] == {'material_type': 'PETG', 'filament_diameter': 1.75}
     assert result['aux'] == {} and 'empty_container_weight' not in result['main']
@@ -80,7 +81,7 @@ def test_analysis_is_only_a_proposal_and_does_not_touch_stock_or_nfc(station):
     payload, key = fetch.call_args.args
     assert key == KEY and payload['store'] is False
     assert payload['tools'][0]['type'] == 'web_search'
-    assert payload['text']['format']['strict'] is True and 'Output language: en' in payload['instructions']
+    assert payload['text']['format']['strict'] is True and f'Output language: {language}' in payload['instructions']
     assert KEY not in json.dumps(result)
 
 

@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.21.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.21.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.22.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.22.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -8,7 +8,7 @@ La dernière version publiée est **[v0.21.0](https://github.com/Cyril-E/OPT-sta
 - Inventaire avec numéros uniques, états Stock/Service/Terminée, compteur, notes et date d’entrée.
 - QR complets pour les bobines emballées, étiquettes NIIMBOT et création/recréation du RFID depuis une fiche.
 - Modèles et favoris, création depuis RFID/QR/inventaire, modification, suppression et import/export.
-- Configuration du matériel, langues française/anglaise, thèmes et niveaux d’accès réseau persistants.
+- Configuration du matériel, langues française/anglaise/espagnole/allemande, thèmes et niveaux d’accès réseau persistants.
 - PrusaLink en lecture seule et jusqu’à quatre caméras d’imprimante.
 - HTTPS local, aide pour approuver le certificat, démarrage en plein écran et commandes d’alimentation du Pi.
 - Notifications Chrome de fin d’impression et d’intervention avec un onglet ouvert en arrière-plan.
@@ -21,7 +21,7 @@ La dernière version publiée est **[v0.21.0](https://github.com/Cyril-E/OPT-sta
 
 À chaque bilan, consulter les [issues ouvertes du projet](https://github.com/Cyril-E/OPT-station/issues?q=is%3Aissue%20is%3Aopen) et leurs derniers commentaires, en complément de cette feuille de route. Les demandes publiques font partie des évolutions à examiner. Vérifier leur état avant d’annoncer qu’un point est terminé.
 
-Demandes suivies le 31 octobre 2026; cette liste ne remplace pas une nouvelle consultation :
+Demandes suivies le 1er novembre 2026; cette liste ne remplace pas une nouvelle consultation :
 
 - [#1 — Filtres d’inventaire Tout / Stock / Production / Terminée, et sélections par marque et matière présentes dans le stock](https://github.com/Cyril-E/OPT-station/issues/1).
 - [#2 — Photos dans les fiches et modèles, depuis la caméra ou un fichier](https://github.com/Cyril-E/OPT-station/issues/2).
@@ -29,11 +29,15 @@ Demandes suivies le 31 octobre 2026; cette liste ne remplace pas une nouvelle co
 
 ## Demandes intégrées en v0.20.0
 
-Les demandes #1 et #2 sont implémentées dans **v0.20.0** : vues Tout/Stock/Production/Terminées, sélections multiples de marques et matières, photos jointes aux bobines et aux modèles/favoris, capture ou import, sauvegarde/restauration. Voir le [guide des filtres et photos](35-filtres-et-photos.md). Les issues #1 et #2 ont été fermées après leur livraison et vérification. L’issue #3 est traitée dans **v0.21.0** et a été fermée après contrôle du menu. Aucune issue ouverte lors du dernier bilan; consulter GitHub pour les nouvelles demandes.
+Les demandes #1 et #2 sont implémentées dans **v0.20.0** : vues Tout/Stock/Production/Terminées, sélections multiples de marques et matières, photos jointes aux bobines et aux modèles/favoris, capture ou import, sauvegarde/restauration. Voir le [guide des filtres et photos](35-filtres-et-photos.md). Les issues #1 et #2 ont été fermées après leur livraison et vérification. L’issue #3 est traitée dans **v0.21.0** et a été fermée après contrôle du menu. La demande [#4 — Espagnol et allemand](https://github.com/Cyril-E/OPT-station/issues/4) est intégrée dans **v0.22.0**, après contrôle des quatre langues et de la mémorisation sur le Pi en HTTPS. L’issue est fermée après publication de cette version.
 
 ## Ajouts en v0.21.0
 
 La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture / Écriture / Paramètres, ouvre l’inventaire par défaut et ajoute la [connexion ChatGPT de l’assistant](36-connexion-chatgpt.md), avec choix d’accès explicite, catalogue du compte, retour depuis un autre ordinateur et renouvellement de session. La connexion réelle, l’autorisation du forfait, le catalogue, l’enregistrement du modèle et l’ouverture sur l’inventaire sont vérifiés sur Raspberry Pi. L’analyse d’une étiquette avec l’accès ChatGPT reste à qualifier.
+
+## Ajouts en v0.22.0
+
+- **Issue #4 — Espagnol et allemand** : choix Français / English / Español / Deutsch dans Paramètres et l’aide HTTPS, messages et accessibilité traduits, formats de nombres et dates, explications de l’assistant IA dans la langue choisie. Préférence par navigateur sans rechargement et sans modification des données. Les quatre langues et la conservation des saisies sont vérifiées sur Raspberry Pi et dans un navigateur de test.
 
 ## Qualification complémentaire de l’installation
 
@@ -50,12 +54,13 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - Édition des fiches de bobines et de modèles par MCP confirmée par un essai utilisateur. Les contrôles automatisés sur données isolées couvrent aussi les conflits, la sauvegarde/restauration et les relectures RFID; les appels de contrôle sur le stock réel restent sans changement de valeurs.
 
+- Sauvegarde nocturne planifiée sur support externe : exécution réussie signalée par la station le 1er novembre 2026, en complément de la création manuelle USB et de l’aperçu de restauration déjà validés.
+
 ## Essais matériels complémentaires
 
 - Notification lors d’une intervention réelle; le déclenchement sur une vraie fin d’impression est validé.
 - Identification IA depuis une vraie étiquette photographiée avec la caméra de la station; l’essai API sur une étiquette de test ne qualifie pas ce parcours matériel complet.
 - Remplacement physique d’un RFID depuis l’inventaire; le parcours est actuellement vérifié avec un lecteur simulé.
-- Exécution nocturne d’une sauvegarde planifiée sur support externe inscriptible; création manuelle sur USB et aperçu de restauration validés.
 - Autofocus, QR à courte distance, écran tactile et autres profils matériels.
 
 Les données de bobines ne doivent pas être remplacées par des valeurs supposées. Toute nouvelle intégration doit préserver identité, numéro, dates, notes, consommation connue et protections des tags.

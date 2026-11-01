@@ -122,7 +122,7 @@ Les fonctions matérielles nécessitent un client local ou le partage complet. L
 
 ## Multilingue
 
-Les textes français et anglais sont séparés de la logique d’interface. Le choix est mémorisé par navigateur. Les champs, valeurs et unités OpenPrintTag, données API/CBOR, identifiants et QR bruts conservent leur représentation. Les contenus saisis ne sont pas traduits automatiquement; voir le [guide des langues](22-langues-interface.md).
+Les textes français, anglais, espagnols et allemands sont séparés de la logique d’interface. Le choix est mémorisé par navigateur. Les champs, valeurs et unités OpenPrintTag, données API/CBOR, identifiants et QR bruts conservent leur représentation. Les contenus saisis ne sont pas traduits automatiquement; voir le [guide des langues](22-langues-interface.md).
 
 ## Adaptateur NFC matériel
 
