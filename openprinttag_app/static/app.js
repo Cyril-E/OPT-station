@@ -785,6 +785,7 @@
       if (current) showDetail(current);
     }
   }
+  document.addEventListener("opt-station-inventory-updated", () => { if (canBrowse()) task(null, refreshStock); });
   function completionButton(item, className = "button secondary") {
     const button = node("button", className, msg("Marquer comme terminée")); button.type = "button";
     I18n.attribute(button, "aria-label", msg("Marquer {0} comme terminée", spoolName(item)));
@@ -847,6 +848,10 @@
       openFavorite(null, {name: profile.suggested_name || "", main: profile.main, kind: "model", warnings: profile.warnings});
     })); actions.append(model);
     if (canControl() && item.in_stock && !item.completed_at) {
+      if (item.main?.material_class === "FFF") {
+        const send = node("button", "button secondary", msg("Envoyer vers Prusa Connect")); send.type = "button"; send.id = "detail-connect-export";
+        send.addEventListener("click", () => window.OPT_CONNECT_EXPORT.open(item)); actions.append(send);
+      }
       const prepare = node("button", "button primary", item.label_state === "rfid" ? msg("Recréer le tag RFID") : msg("Créer le tag RFID")); prepare.type = "button";
       prepare.addEventListener("click", () => task(prepare, () => prepareInventoryTag(item))); actions.append(prepare);
     }

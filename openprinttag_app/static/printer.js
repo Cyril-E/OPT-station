@@ -109,7 +109,6 @@
     $("printer-username").value = p.username;
     $("printer-secret").value = ""; $("printer-clear-secret").checked = false;
     set("printer-secret-state", p.secret_saved ? msg("Secret enregistré; laisser vide pour le conserver.") : msg("Aucun secret enregistré."));
-    $("printer-connect-uuid").value = record.connect.printer_uuid;
     $("printer-camera-editors").replaceChildren();
     record.cameras.forEach(cameraEditor);
     set("printer-ffmpeg-note", record.camera_capture_available ? msg("Capture RTSP disponible sur cette station. Actualisation des images toutes les 5 à 10 secondes selon la caméra, pendant la consultation.") : msg("La lecture RTSP nécessite FFmpeg sur le Pi. Les sources JPEG/PNG restent utilisables."));
@@ -137,7 +136,7 @@
     return {revision: configuration.revision,
       printer: {enabled: $("printer-enabled").checked, name: value("printer-config-name"), url: value("printer-url"),
         auth: value("printer-auth"), username: value("printer-username"), secret: $("printer-secret").value || null,
-        clear_secret: $("printer-clear-secret").checked}, cameras, connect: {printer_uuid: value("printer-connect-uuid")}};
+        clear_secret: $("printer-clear-secret").checked}, cameras, connect: {printer_uuid: configuration.connect.printer_uuid}};
   }
   async function save(test = false) {
     if (!access || !configuration || saving) return;
@@ -259,7 +258,7 @@
     const next = Boolean(event.detail.access);
     if (access && !next) {
       epoch++; clearViews(); configuration = null; latest = null; dirty = false;
-      ["printer-url", "printer-secret", "printer-username", "printer-connect-uuid"].forEach((id) => { $(id).value = ""; });
+      ["printer-url", "printer-secret", "printer-username"].forEach((id) => { $(id).value = ""; });
       $("printer-camera-editors").replaceChildren(); set("printer-settings-result", "");
       render({name: msg("Imprimante"), connected: false, configured: false, cameras: [], message: msg("Activez l’accès complet dans Paramètres → Accès distant pour consulter le suivi.")});
     }

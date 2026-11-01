@@ -58,9 +58,14 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - **Installation complète en une commande** : publiée en v0.17.0, avec téléchargement vérifié, préparation Python, sauvegarde/retour arrière, services, plein écran et HTTPS. La réinstallation réelle et le retour arrière sur une station existante sont validés. L’essai complet sur carte SD vierge reste à faire. Voir le [parcours en une commande](33-installation-une-commande.md) ou le [guide manuel](12-installation-station-reelle.md).
 
+## Ajouts en v0.25.0
+
+- **Prusa Connect et consommation** : collecteur optionnel sur le Pi, réception des compteurs absolus par UUID d’instance, contrôle du poids initial, corrections manuelles prioritaires et conservation de la précision RFID face aux arrondis cloud. Connexion réelle, renouvellement, lectures au repos et actualisations successives pendant une impression vérifiés. Le collecteur travaille même lorsque l’interface est fermée.
+- **Envoi vers l’entrepôt** : aperçu depuis une fiche, correction des poids, enregistrement du matériau, contrôle des doublons et relecture dans le catalogue qui alimente l’interface Connect. Transfert réel d’un lot de bobines actives et réparation de fiches invisibles validés, avec conservation des fiches déjà présentes, des données connues et des notes, sans écriture RFID. Voir le [guide Connect](39-prusa-connect-et-entrepot.md).
+- **Limites à qualifier séparément** : l’actualisation automatique depuis un lot d’entrepôt distinct reste à vérifier. Les quantités déjà connues suivent un flux Connect → OPT Station ; l’envoi de fiches vers Connect reste explicite. Une synchronisation continue des fiches dans les deux sens est une évolution distincte.
+
 ## Pistes reportées après les retours de validation
 
-- **Prusa Connect et consommation** : qualifier les informations et identités réellement exposées par les API avant une synchronisation avec l’inventaire. La préparation actuelle des réglages ne réalise aucune synchronisation.
 - **Aperçu QR** : améliorer la taille et la visibilité de l’image existante et qualifier le placement avec une caméra adaptée.
 - **Bibliothèque générale de photos** : onglet autonome reporté; les pièces jointes des fiches sont disponibles depuis v0.20.0.
 - **Interface** : ajustements graphiques ciblés et qualification du tactile selon l’écran utilisé.

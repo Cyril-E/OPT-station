@@ -122,6 +122,8 @@ Une première intégration en lecture seule et quatre emplacements de caméras s
 
 Sources officielles consultées le 25 octobre 2026. Le profil de référence utilise une CORE One en firmware 8.0.0+17068; un autre modèle ou firmware doit être vérifié séparément.
 
+Complément du **1er novembre 2026** : le client web Connect 2026.39 fournit les UUID de bobines chargées, leurs compteurs et l’entrepôt via GraphQL. L’adaptateur disponible en v0.25.0 et les limites d’autorisation et de synchronisation sont décrits dans le [guide Connect et entrepôt](39-prusa-connect-et-entrepot.md). Les tableaux ci-dessus conservent l’état de l’étude initiale du 25 octobre.
+
 | Référence | Version ou empreinte de la copie étudiée |
 | --- | --- |
 | [PrusaLink OpenAPI v1](https://github.com/prusa3d/Prusa-Link-Web/blob/a67f306bc878009be0e27864a01a1837e5c4cf06/spec/openapi.yaml) | `1.0.0-draft`; commit `a67f306bc878009be0e27864a01a1837e5c4cf06`; SHA-256 `e0a5f7abc4df5d4043fb1115cdca6b6ca45bbc549060f27896c6290b05aff976` |

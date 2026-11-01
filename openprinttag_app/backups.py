@@ -38,7 +38,7 @@ MAGIC = b"OPTBAK1\n"
 PLAIN_MAGIC = b"OPTBAK0\n"
 MAX_ARCHIVE = 128 * 1024 * 1024
 MAX_PLAIN = 256 * 1024 * 1024
-CONFIG_FILES = ("network-settings.json", "printer-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json", "ai-settings.json")
+CONFIG_FILES = ("network-settings.json", "printer-settings.json", "connect-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json", "ai-settings.json")
 TABLES = ("metadata", "spools", "favorites", "simulated_tags", "state", "tag_sources", "operations", "label_jobs", "inventory_notes", "photos")
 NFC_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,140}\.(?:bin|json)\Z")
 
@@ -596,10 +596,12 @@ class BackupManager:
                 for name, value in configurations.items():
                     private_json(folder / name, value)
                 from .printer import PrinterConfiguration
+                from .prusa_connect import ConnectConfiguration
                 from .mcp_server import MCPConfiguration
                 from .labels import LabelPrinter
                 from .app import PrinterSettings
                 printer = PrinterConfiguration(folder)
+                ConnectConfiguration(folder)
                 if "printer-settings.json" in configurations:
                     # Reuse the public request contract, then the secret-aware loader.
                     raw = printer.record()
@@ -697,6 +699,8 @@ class BackupManager:
                             if name == "backup-settings.json":
                                 value["enabled"] = False
                                 value["station_id"] = self.configuration["station_id"]
+                            if name == "connect-settings.json":
+                                value["enabled"] = False
                             if isinstance(value, dict) and "revision" in value:
                                 current = read_json(path.read_bytes()) if path.exists() else {}
                                 value["revision"] = max(value["revision"], current.get("revision", 0)) + 1

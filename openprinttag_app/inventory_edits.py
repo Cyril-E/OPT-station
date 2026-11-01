@@ -77,8 +77,22 @@ def patch_snapshot(snapshot, main=None, aux=None, *, rfid=False, reset_tag_overr
 def observe_with_edits(observed, previous):
     validate_local_edits(previous)
     edits = previous.get("local_edits")
+    cloud = previous.get("connect_sync")
+    if cloud:
+        observed = deepcopy(observed)
+        observed["connect_sync"] = deepcopy(cloud)
     if not edits:
         return observed
+    if cloud and cloud.get("managed") is True and not cloud.get("manual_hold"):
+        # A newer physical NFC counter acknowledges a cloud correction as well.
+        # Manual corrections still use the exact-field reconciliation below.
+        expected = cloud.get("consumed_weight")
+        actual = observed.get("aux", {}).get("consumed_weight")
+        if (type(expected) in {int, float} and type(actual) in {int, float}
+                and actual >= expected - 0.001 and edits["aux"].get("consumed_weight") == expected):
+            edits = deepcopy(edits)
+            edits["aux"].pop("consumed_weight", None)
+            observed["connect_sync"]["tag_caught_up"] = True
     # A matching reread acknowledges that field. Other local corrections stay
     # explicit even if the printer has changed the physical tag in the meantime.
     return patch_snapshot(observed, edits["main"], edits["aux"], rfid=True)

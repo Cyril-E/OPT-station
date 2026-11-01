@@ -339,6 +339,9 @@ class Store:
                         or not row["in_stock"] or row["completed_at"]):
                     raise ConflictError("La fiche a changé pendant l’association. Relire le tag et recharger l’inventaire.")
                 self.check_tag_destination(self._spool(row), snapshot, reuse_from, db)
+                cloud = json.loads(row["snapshot"]).get("connect_sync")
+                if cloud:
+                    stored["connect_sync"] = cloud
                 if reuse_from and reuse_from["inventory_id"]:
                     previous = db.execute("SELECT * FROM spools WHERE id=?", (reuse_from["inventory_id"],)).fetchone()
                     detached = json.loads(previous["snapshot"])
@@ -390,6 +393,93 @@ class Store:
             raise KeyError("Bobine introuvable.")
         return item
 
+    def sync_connect_consumption(self, sample, checked_at, *, apply=False):
+        """Apply an absolute cloud counter under the same transaction as identity checks.
+
+        No new spool, NFC operation, usage/archive change or material correction.
+        The physical tag observation remains separate through local_edits.
+        """
+        from .prusa_connect import identity, positive
+        result = {**sample, "updated": False, "status": "unmatched"}
+        instance = identity(sample.get("instance_uuid"))
+        if not instance:
+            return {**result, "status": "missing_identity"}
+        with self.connect() as db:
+            if apply:
+                db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM spools WHERE instance_uuid=?", (instance,)).fetchone()
+            if row is None:
+                return result
+            before = json.loads(row["snapshot"])
+            result.update(inventory_id=row["id"], spool_number=f"B{row['sequence_number']:04d}",
+                          version=row["version"], remaining_weight=before.get("remaining_weight"),
+                          local_consumed_weight=before["aux"].get("consumed_weight"))
+            if not row["in_stock"] or row["completed_at"]:
+                return {**result, "status": "archived"}
+            if before["main"].get("material_class") != "FFF":
+                return {**result, "status": "unsupported"}
+            pending = db.execute("SELECT inventory_id,detail FROM operations WHERE status IN ('pending','uncertain','tag_verified')").fetchall()
+            if any(p["inventory_id"] == row["id"] or (self.operation_reuse(p["detail"]) or {}).get("inventory_id") == row["id"] for p in pending):
+                return {**result, "status": "rfid_busy"}
+            cloud = before.get("connect_sync", {})
+            edits = before.get("local_edits", {}).get("aux", {})
+            if cloud.get("manual_hold") or ("consumed_weight" in edits and
+                    not (cloud.get("managed") is True and edits["consumed_weight"] == cloud.get("consumed_weight"))):
+                return {**result, "status": "manual_override"}
+            initial = before["main"].get("actual_netto_full_weight", before["main"].get("nominal_netto_full_weight"))
+            remote = sample.get("initial_weight")
+            consumed = sample.get("consumed_weight")
+            if not positive(initial) or not positive(remote):
+                return {**result, "status": "missing_weight"}
+            if abs(initial - remote) > 1:
+                return {**result, "status": "weight_conflict"}
+            if not positive(consumed, zero=True) or consumed > initial + 0.01:
+                return {**result, "status": "invalid_counter"}
+            current = before["aux"].get("consumed_weight")
+            if current is not None and not positive(current, zero=True):
+                return {**result, "status": "invalid_counter"}
+            if current is not None and consumed < current - 0.001:
+                # Loaded telemetry can omit the RFID counter's fractional gram.
+                # Keep the more precise local value, without treating that loss
+                # of precision as a stale counter or persisting a lower value.
+                if sample.get("source") == "loaded" and float(consumed).is_integer() and current - consumed < 1:
+                    return {**result, "status": "rounded_counter"}
+                return {**result, "status": "older_counter"}
+            if current is not None and consumed <= current + 0.001:
+                return {**result, "status": "unchanged"}
+            if not apply:
+                return {**result, "status": "ready"}
+            after = patch_snapshot(before, aux={"consumed_weight": consumed}, rfid=row["label_state"] == "rfid")
+            after["connect_sync"] = {"version": 1, "managed": True, "manual_hold": False,
+                "read_at": checked_at, "consumed_weight": consumed, "source": sample["source"],
+                "printer_uuid": sample.get("printer_uuid"), "warehouse_id": sample.get("warehouse_id"),
+                "tool_id": sample.get("tool_id"), "rfid_written": False}
+            if row["label_state"] == "qr":
+                encode_spool({**after, "added_at": row["added_at"]})
+            db.execute("UPDATE spools SET snapshot=?,version=version+1 WHERE id=?", (dumps(after), row["id"]))
+            self._bump_inventory(db)
+            return {**result, "updated": True, "status": "updated", "version": row["version"] + 1,
+                    "local_consumed_weight": consumed, "remaining_weight": after["remaining_weight"]}
+
+    def resume_connect_consumption(self, identifier, version):
+        """Explicitly give Connect control of this counter again, preserving its value."""
+        item = self.get_spool(identifier)
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM spools WHERE id=?", (item["id"],)).fetchone()
+            if row["version"] != version or not row["in_stock"] or row["completed_at"]:
+                raise ConflictError("La fiche de bobine a changé ou n’est plus active. Relisez-la avant de reprendre Connect.")
+            pending = db.execute("SELECT inventory_id,detail FROM operations WHERE status IN ('pending','uncertain','tag_verified')").fetchall()
+            if any(p["inventory_id"] == row["id"] or (self.operation_reuse(p["detail"]) or {}).get("inventory_id") == row["id"] for p in pending):
+                raise ConflictError("Terminez l’écriture RFID avant de reprendre Connect.")
+            snapshot = json.loads(row["snapshot"])
+            snapshot["connect_sync"] = {**snapshot.get("connect_sync", {}), "version": 1, "managed": True,
+                                       "manual_hold": False, "resumed_at": now(),
+                                       "consumed_weight": snapshot["aux"].get("consumed_weight"), "rfid_written": False}
+            db.execute("UPDATE spools SET snapshot=?,version=version+1 WHERE id=?", (dumps(snapshot), item["id"]))
+            self._bump_inventory(db)
+            return self._spool(db.execute("SELECT * FROM spools WHERE id=?", (item["id"],)).fetchone())
+
     @staticmethod
     def _validate_notes(text):
         if not isinstance(text, str) or len(text) > MAX_NOTES_LENGTH or "\x00" in text:
@@ -423,6 +513,10 @@ class Store:
                 raise ConflictError("Cette bobine attend la confirmation d’une écriture RFID. Terminez sa réconciliation avant de modifier la fiche.")
             before = json.loads(row["snapshot"])
             after = patch_snapshot(before, main, aux, rfid=row["label_state"] == "rfid", reset_tag_overrides=reset_tag_overrides)
+            if ((aux and "consumed_weight" in aux and before["aux"] != after["aux"])
+                    or reset_tag_overrides and before.get("connect_sync")):
+                after["connect_sync"] = {"version": 1, "managed": False, "rfid_written": False,
+                                         **before.get("connect_sync", {}), "manual_hold": True}
             if row["label_state"] == "qr" and after != before:
                 encode_spool({**after, "added_at": row["added_at"]})
             next_usage = row["usage_state"] if usage_state is None else usage_state

@@ -12,6 +12,7 @@
 - Création et recréation du RFID depuis une fiche d’inventaire, avec réutilisation confirmée d’un ancien tag; modèles réutilisables depuis l’inventaire, un tag ou un QR.
 - Favoris et modèles modifiables, import/export, étiquettes QR et impression USB NIIMBOT.
 - Suivi PrusaLink en lecture seule et jusqu’à quatre caméras réseau.
+- Suivi de consommation Prusa Connect par identité de bobine, actualisation de l’inventaire et envoi explicite vers l’entrepôt avec contrôle des doublons.
 - Assistant IA par clé API ou compte ChatGPT depuis une photo d’étiquette, avec recherche Web facultative et validation des propositions avant remplissage.
 - Sommaire de Configuration avec accès direct aux réglages et navigation adaptée à l’écran.
 - Accès réseau configurable et serveur MCP optionnel : treize outils pour consulter et corriger les fiches de bobines, et gérer les favoris et modèles.
@@ -23,7 +24,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.24.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.0)**, avec réutilisation des anciens tags RFID depuis les fiches de bobines, confirmation de remplacement et conservation de l’ancienne fiche. L’interface est disponible en français, anglais, espagnol et allemand. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.25.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.25.0)**, avec suivi de consommation Prusa Connect et envoi des bobines vers l’entrepôt. L’interface est disponible en français, anglais, espagnol et allemand. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS et le démarrage en plein écran. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -32,6 +33,12 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.25.0 — Consommation Prusa Connect et entrepôt](https://github.com/Cyril-E/OPT-station/releases/tag/v0.25.0)
+
+- Actualisation optionnelle de la consommation de la bobine chargée et des quantités connues dans l’entrepôt, avec rapprochement exact par UUID, priorité aux corrections manuelles et conservation de la précision RFID. Le collecteur travaille sur le Pi même lorsque l’interface est fermée.
+- Depuis une fiche d’inventaire, **Envoyer vers Prusa Connect** : aperçu, correction des poids si nécessaire, contrôle des doublons, identité conservée et vérification dans le catalogue de l’entrepôt. Les fiches déjà présentes sont conservées ; une reprise après interruption ne recrée pas la bobine.
+- Accès et renouvellement de session dans **Paramètres → Prusa Connect · Consommations et entrepôt**. L’intégration utilise le client web Connect actuel et une session dédiée ; l’envoi reste explicite, sans synchronisation bidirectionnelle des fiches ni écriture RFID. Voir le [guide Connect](docs/39-prusa-connect-et-entrepot.md).
 
 ### [v0.24.1 — Compatibilité RFID et consommation Prusa](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.1)
 
@@ -125,6 +132,7 @@ Ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765). **Configuration → Maté
 - [Configuration et apparence](docs/15-configuration-et-apparence.md), [langues](docs/22-langues-interface.md) et [accès réseau](docs/13-acces-reseau.md).
 - [Suivi PrusaLink et caméras](docs/17-suivi-imprimante-et-cameras.md), avec [étude des API](docs/16-etude-api-imprimante.md).
 - [Réception, QR et étiquettes](docs/19-stock-qr-et-etiquettes.md), [numéros et notes](docs/24-numeros-et-notes-inventaire.md), [archives](docs/23-bobines-terminees-et-archives.md).
+- [Prusa Connect et entrepôt](docs/39-prusa-connect-et-entrepot.md) : configuration de la session dédiée, réception des consommations par UUID et envoi explicite des bobines, disponibles depuis v0.25.0.
 - [Modèles depuis RFID/QR](docs/28-modeles-depuis-rfid-et-qr.md), [états et modèles depuis l’inventaire](docs/30-utilisation-et-modeles-inventaire.md), [création et recréation RFID](docs/29-creation-et-recreation-rfid-inventaire.md).
 - [Filtres et photos des fiches](docs/35-filtres-et-photos.md).
 - [Import/export de bibliothèque](docs/25-import-export-bibliotheque.md), [sauvegardes et restauration](docs/26-sauvegardes-et-restauration.md), [mises à jour](docs/27-detection-mises-a-jour.md).

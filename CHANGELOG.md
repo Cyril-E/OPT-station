@@ -1,5 +1,24 @@
 # Versions publiques
 
+## v0.25.0 — 1er novembre 2026
+
+- Prusa Connect : collecteur optionnel sur le Pi pour les compteurs absolus des bobines FFF chargées, avec rapprochement exact par UUID d’instance et contrôle du poids initial.
+- Consultation de l’entrepôt Connect et récupération optionnelle des quantités des bobines déjà connues, sans création de doublons ni écriture dans le cloud.
+- Paramètres dédiés, accès utilisateur privé et renouvellement facultatif d’une session dédiée, options désactivées par défaut et intégrées aux sauvegardes. Une restauration désactive Connect jusqu’à vérification.
+- Corrections manuelles prioritaires avec suspension du compteur concerné et reprise explicite ; compteur ancien, archive, identité ambiguë, erreur ou écriture RFID en attente conservés sans modification automatique.
+- Provenance Connect visible par MCP, contrôle des versions et relecture NFC conservés, sans ajouter d’outil de commande cloud ni d’écriture matérielle.
+- Compteurs chargés transmis en grammes entiers : conservation de la précision RFID locale lorsqu’un écart inférieur à un gramme vient de cet arrondi, sans baisse du compteur.
+- Envoi explicite d’une bobine active vers l’entrepôt Connect depuis sa fiche : aperçu, numéro visible, identité NFC conservée, données compatibles et notes, contrôle des doublons et relecture. Un journal persistant permet la reprise après une réponse perdue sans seconde création aveugle ; les fiches déjà présentes ne sont pas écrasées.
+- Enregistrement de la référence matériau dans le catalogue Connect et contrôle de l’affichage dans l’entrepôt ; réparation des fiches précédemment invisibles sans recréer les bobines. Les poids et la consommation peuvent être corrigés dans la fenêtre d’envoi, avec conservation des données connues et sans écriture RFID.
+
+Le contrat est celui du client web Connect actuel ; la connexion et les réponses réelles doivent être qualifiées sur chaque installation. Voir le [guide Connect et entrepôt](docs/39-prusa-connect-et-entrepot.md).
+
+Connexion réelle et renouvellement automatique vérifiés sur Pi, puis actualisations successives de l’inventaire pendant une impression et concordance à sa fin. Les lectures répétées sont idempotentes et la précision RFID existante est conservée face aux compteurs cloud arrondis. L’envoi d’un lot de bobines actives et la réparation de fiches invisibles sont vérifiés par relecture et dans l’interface de l’entrepôt Connect : une fiche par UUID, conservation des fiches déjà présentes, des quantités et des notes, sans écriture RFID. Les valeurs manquantes ne sont complétées qu’après confirmation explicite.
+
+La synchronisation continue des fiches dans les deux sens reste une évolution distincte ; l’envoi vers Connect est individuel et explicite. Les lectures automatiques peuvent actualiser les quantités des bobines déjà connues.
+
+Vérifications : **948 tests réussis sur Mac**, avec deux exclusions liées à l’environnement, **950 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. L’archive complète `opt-station-v0.25.0.tar.gz` et son SHA-256 accompagnent cette préversion.
+
 ## v0.24.1 — 1er novembre 2026
 
 - Avertissement avant écriture si une bobine FFF ne contient pas de masse initiale ou de longueur initiale positive, données utilisées par le suivi de consommation Prusa.

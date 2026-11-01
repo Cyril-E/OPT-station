@@ -55,13 +55,13 @@ ffmpeg -version
 
 Vérifier la présence de FFmpeg sur la station avant de configurer une source RTSP. Aucune dépendance Python supplémentaire n’est nécessaire. La capture produit une image de largeur 960 pixels, avec délai borné; les requêtes simultanées partagent la même capture par caméra.
 
-## Préparer Prusa Connect
+## Complément Prusa Connect
 
-**Prusa Connect — préparer le suivi de consommation** permet de conserver l’UUID de l’imprimante Connect, facultativement. **L’autorisation du compte et la lecture des consommations cloud ne sont pas encore implémentées.** Ne pas saisir de mot de passe de compte ou de jeton temporaire dans les champs PrusaLink.
+La version `0.25.0` ajoute un collecteur Connect distinct de PrusaLink, désactivé par défaut. Dans **Paramètres → Prusa Connect · Consommations et entrepôt**, il permet de consulter les compteurs des bobines chargées et l’entrepôt, puis d’activer l’actualisation des quantités locales par UUID d’instance. Les identifiants PrusaLink restent distincts.
 
-Le prochain adaptateur devra fournir une mesure datée, la consommation réelle en grammes et l’UUID d’instance de la bobine chargée. L’inventaire ne pourra être actualisé que si cette identité correspond sans ambiguïté à une bobine du stock. Les estimations du fichier, masses brutes bobine comprise et données périmées ne seront pas assimilées à cette mesure. La relecture NFC reste active.
+L’accès utilise l’import d’une session utilisateur dédiée, avec renouvellement facultatif, et les lectures du client web actuel ; ce n’est pas une API tierce stable ni un parcours OAuth enregistré au nom d’OPT Station. Les valeurs sont des compteurs totaux en grammes, jamais une estimation du fichier. La date affichée est celle de leur lecture cloud. La relecture NFC conserve son rôle et les écritures physiques restent explicites.
 
-Le firmware CORE One 8 annonce de nouvelles données de bobine transmises à Connect; leur contrat de lecture et l’autorisation durable pour une application tierce restent à valider. Voir les [sources et limites de l’étude](16-etude-api-imprimante.md#firmware-8-openprinttag-et-inventaire).
+Voir le [guide Connect et entrepôt](39-prusa-connect-et-entrepot.md) pour la configuration, les conflits, les sauvegardes et les essais réels restant à qualifier. La synchronisation complète des fiches dans les deux sens n’est pas réalisée.
 
 ## Accès et sauvegarde
 
@@ -77,4 +77,4 @@ Les vérifications logicielles et les limites matérielles de la version courant
 
 Les essais matériels couvrent les captures RTSP, leur affichage et leur agrandissement, ainsi que la connexion PrusaLink par clé API sur une **CORE One, firmware 8.0.0+17068**. Le suivi a été validé au repos puis pendant des impressions réelles. Aucune commande de chauffe, pause ou lancement de travail n’est envoyée par ce suivi.
 
-La réponse v1 observée au repos fournit états, températures, axes, vitesse, débit et ventilateurs, sans mesure de poids ou de consommation. Cette observation ne suffit pas à conclure sur les réponses pendant une impression. La synchronisation de consommation via Prusa Connect reste à implémenter et à qualifier.
+La réponse PrusaLink v1 observée au repos fournit états, températures, axes, vitesse, débit et ventilateurs, sans mesure de poids ou de consommation. Cette observation ne suffit pas à conclure sur les réponses pendant une impression. Le collecteur Connect fournit un suivi distinct : le rapprochement d’une bobine chargée au repos et l’actualisation automatique de sa consommation pendant une impression réelle sont vérifiés. Les valeurs reçues de Connect sont en grammes entiers.

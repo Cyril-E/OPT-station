@@ -36,6 +36,9 @@ from .prusa_product import resolve_prusa_product
 from .nfc import HardwareReader
 from .network import NetworkAccess, NetworkAccessError
 from .printer import PrinterConfiguration, PrinterError, PrusaLinkMonitor
+from .installation import installation_busy
+from .prusa_connect import ConnectConfiguration, ConnectError, ConnectMonitor
+from .connect_export import WarehouseExporter
 from .printer_events import PrinterEvents, event_frame
 from .printer_cameras import PrinterCameras
 from .readers import ReaderUnavailable, SimulatedReader, WriteRejected, revision
@@ -303,6 +306,41 @@ class ConnectPreparation(Model):
     printer_uuid: str = Field(default="", max_length=36)
 
 
+class ConnectSettings(Model):
+    revision: StrictInt = Field(ge=0)
+    enabled: StrictBool = False
+    organization_id: str = Field(default="", max_length=36)
+    printer_uuid: str = Field(default="", max_length=36)
+    sync_consumption: StrictBool = False
+    sync_warehouse: StrictBool = False
+    poll_seconds: StrictInt = Field(default=30, ge=30, le=900)
+    access_token: str | None = Field(default=None, max_length=16384)
+    refresh_token: str | None = Field(default=None, max_length=16384)
+    client_id: str = Field(max_length=200)
+    clear_access_token: StrictBool = False
+    clear_refresh_token: StrictBool = False
+
+
+class ConnectResume(Model):
+    version: StrictInt = Field(ge=1)
+
+
+class ConnectExportPreview(Model):
+    version: StrictInt = Field(ge=1)
+    notes_revision: StrictInt = Field(ge=0)
+
+
+class ConnectExportRequest(ConnectExportPreview):
+    fingerprint: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class ConnectExportValues(Model):
+    version: StrictInt = Field(ge=1)
+    nominal_initial_weight: float = Field(strict=True, gt=0, allow_inf_nan=False)
+    actual_initial_weight: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
+    consumed_weight: float = Field(strict=True, ge=0, allow_inf_nan=False)
+
+
 class PrinterSettings(Model):
     revision: StrictInt = Field(ge=0)
     printer: PrinterDevice
@@ -345,7 +383,7 @@ def blank(record):
 
 def create_app(settings: Settings | None = None, camera: CameraScanner | None = None, reader=None,
                printer_fetch=None, printer_capture=None, label_runner=None, power_backend=None, updates_fetch=None,
-               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None):
+               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None, connect_fetch=None):
     settings = settings or Settings.from_env()
     https = HTTPSConfiguration.load(settings.https_config)
     if https.url:
@@ -369,6 +407,11 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                                     **({"fetch": printer_fetch} if printer_fetch else {}))
     label_printer = LabelPrinter(settings.data_dir, store, runner=label_runner)
     maintenance = MaintenanceGate()
+    connect_configuration = ConnectConfiguration(settings.data_dir, printer_configuration.record()["connect"]["printer_uuid"])
+    connect_monitor = ConnectMonitor(connect_configuration, store, maintenance=maintenance,
+                                     allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive and not installation_busy(),
+                                     **({"fetch": connect_fetch} if connect_fetch else {}))
+    connect_exporter = WarehouseExporter(connect_monitor)
     library_transfer = LibraryTransfer(store)
     assistant = LabelAssistant(settings.data_dir, **({"fetch": assistant_fetch} if assistant_fetch else {}), **({"chatgpt_fetch": chatgpt_fetch} if chatgpt_fetch else {}))
 
@@ -387,19 +430,26 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                              allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive)
 
     def reload_configuration():
-        nonlocal network, mcp_configuration, printer_configuration
+        nonlocal network, mcp_configuration, printer_configuration, connect_configuration, connect_exporter
         network = NetworkAccess(settings.data_dir, settings.network_enabled, settings.network_url)
         mcp_configuration = MCPConfiguration(settings.data_dir)
         printer_configuration = PrinterConfiguration(settings.data_dir)
         printer_monitor.configuration = printer_configuration
         printer_monitor._revision = None
         printer_events.reset()
+        connect_configuration = ConnectConfiguration(settings.data_dir, printer_configuration.record()["connect"]["printer_uuid"])
+        connect_monitor.configuration = connect_configuration
+        connect_monitor.client.configuration = connect_configuration
+        connect_exporter = WarehouseExporter(connect_monitor)
+        connect_monitor.settings_changed()
         printer_cameras.configuration = printer_configuration
         label_printer.configuration = LabelPrinter(settings.data_dir, store).configuration
         previews.clear()
         library_transfer.previews.clear()
         app.state.network, app.state.mcp_configuration = network, mcp_configuration
         app.state.printer_configuration = printer_configuration
+        app.state.connect_configuration = connect_configuration
+        app.state.connect_exporter = connect_exporter
         updates.reload()
         assistant.reload()
 
@@ -411,11 +461,13 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     async def lifespan(app):
         backups.start()
         updates.start()
+        connect_monitor.start()
         try:
             yield
         finally:
             backups.close()
             updates.close()
+            connect_monitor.close()
             printer_cameras.close()
             camera.close()
             assistant.chatgpt.close()
@@ -428,6 +480,9 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     app.state.assistant = assistant
     app.state.network = network
     app.state.printer_configuration = printer_configuration
+    app.state.connect_configuration = connect_configuration
+    app.state.connect_monitor = connect_monitor
+    app.state.connect_exporter = connect_exporter
     app.state.printer_monitor = printer_monitor
     app.state.printer_events = printer_events
     app.state.printer_cameras = printer_cameras
@@ -519,6 +574,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     @app.exception_handler(ConflictError)
     async def conflict_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=409)
+
+    @app.exception_handler(ConnectError)
+    async def connect_handler(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
 
     @app.exception_handler(ReaderUnavailable)
     async def reader_handler(request, exc):
@@ -632,7 +691,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -751,7 +810,67 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     @app.get("/api/printer/status")
     def printer_status(request: Request, refresh: bool = False):
         require_printer_access(request)
-        return printer_monitor.snapshot(force=refresh)
+        return {**printer_monitor.snapshot(force=refresh), "connect": connect_monitor.public()}
+
+    @app.get("/api/configuration/connect")
+    def connect_settings(request: Request):
+        require_printer_access(request)
+        return connect_configuration.public()
+
+    @app.put("/api/configuration/connect")
+    def save_connect_settings(request: Request, body: ConnectSettings):
+        require_printer_access(request)
+        try:
+            record = connect_configuration.save(body.model_dump())
+            connect_monitor.settings_changed()
+            return record
+        except ConnectError:
+            raise
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        except OSError:
+            raise HTTPException(503, "Impossible d’enregistrer les accès Connect sur la station.") from None
+
+    @app.get("/api/printer/connect")
+    def connect_status(request: Request):
+        require_printer_access(request)
+        return connect_monitor.public()
+
+    @app.post("/api/printer/connect/test")
+    def test_connect(request: Request):
+        require_printer_access(request)
+        return connect_monitor.check(apply=False, force=True)
+
+    @app.post("/api/printer/connect/resume/{identifier}")
+    def resume_connect(identifier: str, request: Request, body: ConnectResume):
+        require_printer_access(request)
+        result = store.resume_connect_consumption(identifier, body.version)
+        connect_monitor.settings_changed()
+        return {"item": result, "rfid_written": False}
+
+    @app.post("/api/inventory/{identifier}/connect/preview")
+    def preview_connect_export(identifier: str, request: Request, body: ConnectExportPreview):
+        require_printer_access(request)
+        return connect_exporter.preview(identifier, body.version, body.notes_revision)
+
+    @app.post("/api/inventory/{identifier}/connect/export")
+    def export_to_connect(identifier: str, request: Request, body: ConnectExportRequest):
+        require_printer_access(request)
+        return connect_exporter.export(identifier, body.version, body.notes_revision, body.fingerprint)
+
+    @app.post("/api/inventory/{identifier}/connect/values")
+    def save_connect_export_values(identifier: str, request: Request, body: ConnectExportValues):
+        require_printer_access(request)
+        item = store.get_spool(identifier)
+        if item["version"] != body.version:
+            raise ConflictError("Cette fiche a changé. Rechargez-la avant l’envoi vers Connect.")
+        main = {"nominal_netto_full_weight": body.nominal_initial_weight}
+        if body.actual_initial_weight is not None:
+            main["actual_netto_full_weight"] = body.actual_initial_weight
+        aux = {"consumed_weight": body.consumed_weight}
+        if all(item["main"].get(k) == v for k, v in main.items()) and item["aux"].get("consumed_weight") == body.consumed_weight:
+            return {"item": item, "updated": False, "rfid_written": False}
+        return {**store.patch_spool(identifier, body.version, main=main, aux=aux), "updated": True}
 
     @app.get("/api/printer/events")
     async def printer_event_stream(request: Request):

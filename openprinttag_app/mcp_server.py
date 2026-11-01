@@ -69,6 +69,9 @@ def make_server(store, inventory_lock=None):
         "may be stored only as nominal_full_length in millimetres; identify it as an estimate in notes or the report. "
         "Never calculate actual_full_length, invent a missing mass/density, or reset an existing consumption to make a tag usable. "
         "The station handles RFID numeric encoding; do not round stored measurements or consumption to work around it. "
+        "Connect may update absolute consumption in the background; reread each version before editing. "
+        "connect_sync describes its source without certifying a physical RFID write. An explicit consumption correction holds Connect "
+        "for that spool until the user resumes it in the Printer tab; no cloud/credential controls are exposed by MCP. "
         "No NFC writes, stock removal, camera, printing, power or credential tools are exposed."))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
     create = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -107,6 +110,13 @@ def make_server(store, inventory_lock=None):
         result["inventory_editing"] = {"tool": "update_spool", "main_and_aux": "partial patch; null clears a field",
                                        "notes": "provide notes_revision; empty text clears notes", "remaining_weight": "derived from initial net mass minus consumed_weight",
                                        "physical_tag_written": False}
+        result["connect_consumption"] = {
+            "metadata": "connect_sync; server-side cloud observation, never proof of a physical RFID write",
+            "counter": "aux.consumed_weight is an absolute total in grams, not a per-print delta",
+            "concurrency": "background updates can change versions; always reread the spool before editing",
+            "manual_correction": "an explicit consumption change holds automatic Connect updates until the user resumes them in the Printer tab",
+            "cloud_control_tools": False,
+        }
         result["prusa_tracking"] = {
             "material_class": "FFF",
             "required_positive": {
