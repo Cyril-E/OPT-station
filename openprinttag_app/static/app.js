@@ -613,6 +613,11 @@
   function renderPreview(preview) {
     state.preview = preview;
     const container = $("preview-changes"); clear(container);
+    const trackingMissing = preview.prusa_tracking_missing || [];
+    if (trackingMissing.includes("initial_weight")) container.append(node("p", "notice warning",
+      msg("Suivi de consommation Prusa : renseignez un poids net initial réel ou nominal positif. Une valeur inconnue reste vide.")));
+    if (trackingMissing.includes("initial_length")) container.append(node("p", "notice warning",
+      msg("Suivi de consommation Prusa : renseignez une longueur initiale nominale ou réelle positive dans « Autres données matériau ». Une estimation doit rester nominale, pas mesurée.")));
     if (preview.reuse) {
       container.append(node("p", "notice warning", msg("Le contenu du tag {0} va être remplacé. Vérifiez les colonnes Avant et Après, puis confirmez le remplacement.", preview.reused_tag.uid)));
       const previous = preview.reused_tag.inventory;

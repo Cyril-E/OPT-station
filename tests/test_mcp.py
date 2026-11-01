@@ -100,6 +100,32 @@ def test_inventory_queries_preserve_unknowns_and_do_not_read_hardware(station, m
     assert structured(tool(client, "list_inventory", {"offset": 1}))["items"] == []
 
 
+def test_schema_explains_prusa_tracking_without_changing_data_or_hardware(station, monkeypatch):
+    app, client = station
+    item, _ = rfid_spool(app.state.store, {"consumed_weight": 123.25})
+    enable(client)
+    monkeypatch.setattr(app.state.reader, "read", lambda: pytest.fail("Schema must not access NFC"))
+    with app.state.store.connect() as db:
+        before = list(db.iterdump())
+    schema = structured(tool(client, "get_material_schema"))
+    requirements = schema["prusa_tracking"]
+    assert requirements["required_positive"]["initial_length"] == {
+        "preference": ["actual_full_length", "nominal_full_length"], "unit": "mm"}
+    assert requirements["required_positive"]["initial_weight"]["unit"] == "g"
+    estimation = requirements["length_estimation"]
+    assert estimation["destination"] == "nominal_full_length"
+    assert estimation["requires_user_authorization"] and estimation["preserve_existing_lengths"]
+    assert estimation["actual_full_length_is_never_estimated"]
+    assert not requirements["physical_tag_written"] and requirements["consumption"]["preserve_known_values"]
+    initialized = rpc(client, "initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+        "clientInfo": {"name": "test", "version": "1"}}).json()["result"]
+    assert "nominal_full_length in millimetres" in initialized["instructions"]
+    assert "never calculate actual_full_length" in initialized["instructions"].lower()
+    assert app.state.store.get_spool(item["id"])["aux"]["consumed_weight"] == 123.25
+    with app.state.store.connect() as db:
+        assert list(db.iterdump()) == before
+
+
 @pytest.mark.parametrize("name,kind,list_tool", [("create_favorite", "favorite", "list_favorites"), ("create_spool_model", "model", "list_spool_models")])
 def test_creation_is_visible_in_ui_reusable_and_idempotent(station, name, kind, list_tool):
     _, client = station

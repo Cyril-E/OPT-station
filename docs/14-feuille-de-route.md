@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.24.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.24.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.1)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -48,6 +48,12 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - **Réutilisation d’un ancien RFID** : création/recréation depuis une fiche avec confirmation de remplacement, transfert après écriture et relecture, ancienne fiche conservée et reprise sans réécriture après interruption. Réutilisation physique confirmée par un essai utilisateur sur Raspberry Pi; les interruptions restent qualifiées par des essais contrôlés. Voir le [guide RFID](29-creation-et-recreation-rfid-inventaire.md).
 
+## Ajouts en v0.24.1
+
+- Avertissement avant écriture pour les données initiales requises par Prusa, sans remplir automatiquement une mesure inconnue. Voir le [guide](38-suivi-consommation-prusa.md).
+- Correction du format des nombres RFID : entiers exacts ou décimaux en simple précision pour les champs écrits, sans migration automatique des tags existants. Sur CORE One, firmware 8.0.0+17068 : chargement sans alerte confirmé par un essai utilisateur, puis augmentation de la consommation après impression réelle vérifiée par relecture physique et actualisation de l’inventaire par NFC.
+- Schéma et consignes MCP : exigences Prusa, unités, estimation nominale avec autorisation et conservation des données connues, sans nouvel outil matériel.
+
 ## Qualification complémentaire de l’installation
 
 - **Installation complète en une commande** : publiée en v0.17.0, avec téléchargement vérifié, préparation Python, sauvegarde/retour arrière, services, plein écran et HTTPS. La réinstallation réelle et le retour arrière sur une station existante sont validés. L’essai complet sur carte SD vierge reste à faire. Voir le [parcours en une commande](33-installation-une-commande.md) ou le [guide manuel](12-installation-station-reelle.md).
@@ -61,6 +67,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 ## Validations récentes
 
+- Tag RFID réécrit depuis la station : chargement accepté sans alerte sur CORE One et consommation existante correctement affichée, après correction de l’encodage numérique et avec une longueur initiale renseignée. Après une impression réelle, augmentation du compteur et baisse du restant vérifiées sur le tag, puis inventaire actualisé à la relecture NFC. Identité, données matériau, notes et état conservés; les autres bobines sont inchangées. Le chargement sur l’imprimante est confirmé par un essai utilisateur; l’écriture, la sauvegarde et les relectures sont vérifiées sur la station.
+
+- Notifications Chrome : réception lors d’une demande d’intervention réelle confirmée par un essai utilisateur, en complément de la fin d’impression déjà validée.
+
 - Réutilisation physique d’un ancien tag RFID depuis l’inventaire confirmée par un essai utilisateur. Une opération terminée après écriture et relecture est également présente dans le journal de la station.
 
 - Édition des fiches de bobines et de modèles par MCP confirmée par un essai utilisateur. Les contrôles automatisés sur données isolées couvrent aussi les conflits, la sauvegarde/restauration et les relectures RFID; les appels de contrôle sur le stock réel restent sans changement de valeurs.
@@ -69,7 +79,6 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 ## Essais matériels complémentaires
 
-- Notification lors d’une intervention réelle; le déclenchement sur une vraie fin d’impression est validé.
 - Identification IA depuis une vraie étiquette photographiée avec la caméra de la station; l’essai API sur une étiquette de test ne qualifie pas ce parcours matériel complet.
 - Autofocus, QR à courte distance, écran tactile et autres profils matériels.
 

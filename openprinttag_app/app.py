@@ -50,6 +50,7 @@ from .updates import ReleaseMonitor
 from .assistant import LabelAssistant, AssistantError, MAX_IMAGE
 from .photos import MAX_UPLOAD
 from .chatgpt import ChatGPTError
+from .printer_tracking import missing_prusa_tracking_data
 
 LOG = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -954,6 +955,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                                       inventory_item["version"] if inventory_item else None, body.inventory_recreate, reuse_from)
             return {"preview_id": token, "tag": preview_snapshot, "changes": changes, "expires_in_seconds": 300,
                     "recreation": body.inventory_recreate, "reuse": body.reuse_tag,
+                    "prusa_tracking_missing": missing_prusa_tracking_data(preview_snapshot["main"]),
                     "reused_tag": {"uid": current["uid"], "inventory": store.tag_owner(current["uid"])} if body.reuse_tag else None}
 
     @app.post("/api/reader/write")

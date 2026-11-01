@@ -16,6 +16,7 @@ import hashlib
 import io
 import math
 import re
+import struct
 import uuid
 from functools import lru_cache
 from pathlib import Path
@@ -282,13 +283,57 @@ def _json_map(region: str, values: dict[int, Any]) -> dict[str, Any]:
     return {known[key]["name"]: _from_wire(value, known[key]) for key, value in values.items() if key in known}
 
 
-def _encode_map(values: dict[int, Any], indefinite: bool = False) -> bytes:
+class _RFIDFloat:
+    """An explicitly single-precision CBOR number, not a CBOR extension tag."""
+
+    def __init__(self, raw: bytes):
+        self.raw = raw
+
+
+def _rfid_number(value: int | float) -> int | _RFIDFloat:
+    # JSON often represents whole masses as floats. Integer encoding preserves
+    # their exact values and avoids depending on half-float decoding in readers.
+    if isinstance(value, int):
+        return value
+    if value.is_integer() and -(2**64) <= value < 2**64:
+        return int(value)
+    try:
+        raw = struct.pack(">f", value)
+    except (OverflowError, struct.error) as exc:
+        raise DomainError("La valeur numérique dépasse la plage prise en charge par le RFID.") from exc
+    encoded_value = struct.unpack(">f", raw)[0]
+    if not math.isfinite(encoded_value) or (value != 0 and encoded_value == 0):
+        raise DomainError("La valeur numérique dépasse la plage prise en charge par le RFID.")
+    return _RFIDFloat(raw)
+
+
+def _number_types(region: str, names=None) -> dict[int, str]:
+    return {field["key"]: field["type"] for name, field in _definitions()[region].items()
+            if (names is None or name in names) and field["type"] in {"number", "color_lab"}}
+
+
+def _encode_rfid_float(encoder, value):
+    if not isinstance(value, _RFIDFloat):
+        raise cbor2.CBOREncodeError("Unsupported CBOR value")
+    encoder.write(b"\xfa" + value.raw)
+
+
+def _encode_map(values: dict[int, Any], indefinite: bool = False,
+                number_types: dict[int, str] | None = None) -> bytes:
+    # Limit conversion to known numeric fields being written. Existing fields
+    # outside a patch and opaque/unknown values retain the previous encoding path.
+    values = dict(values)
+    for key, kind in (number_types or {}).items():
+        if key in values:
+            values[key] = ([_rfid_number(item) for item in values[key]] if kind == "color_lab"
+                           else _rfid_number(values[key]))
     try:
         if not indefinite:
-            encoded = cbor2.dumps(values, canonical=True)
+            encoded = cbor2.dumps(values, canonical=True, default=_encode_rfid_float)
         else:
             # Aux roots are recommended as indefinite-length maps by the specification.
-            encoded = b"\xbf" + b"".join(cbor2.dumps(key, canonical=True) + cbor2.dumps(values[key], canonical=True) for key in sorted(values)) + b"\xff"
+            encoded = b"\xbf" + b"".join(cbor2.dumps(key, canonical=True) + cbor2.dumps(
+                values[key], canonical=True, default=_encode_rfid_float) for key in sorted(values)) + b"\xff"
     except (cbor2.CBOREncodeError, ValueError, RecursionError) as exc:
         raise DomainError("Les valeurs de la région ne peuvent pas être réencodées en CBOR sans perte.") from exc
     # Section CBOR size is bounded independently of the allocated region size.
@@ -449,8 +494,8 @@ class TagImage:
         aux = validate_fields("aux", aux or {}, partial=False)
         main.setdefault("instance_uuid", str(uuid.uuid4()))
         _check_mass_total(main, aux)
-        main_encoded = _encode_map(_wire_map("main", main))
-        aux_encoded = _encode_map(_wire_map("aux", aux), indefinite=True)
+        main_encoded = _encode_map(_wire_map("main", main), number_types=_number_types("main"))
+        aux_encoded = _encode_map(_wire_map("aux", aux), indefinite=True, number_types=_number_types("aux"))
         tlv_header_size = 4 if capacity - 7 > 254 else 2
         message_length = capacity - 4 - tlv_header_size - 1
         short_payload_size = message_length - 3 - len(MIME_TYPE)
@@ -548,7 +593,8 @@ class TagImage:
         _check_mass_total(main, aux)
         image = bytearray(self._image)
         for region in changed:
-            encoded = _encode_map(maps[region], indefinite=region == "aux")
+            encoded = _encode_map(maps[region], indefinite=region == "aux",
+                                  number_types=_number_types(region, patches[region]))
             offset, capacity = self.regions[region]
             if len(encoded) > capacity:
                 raise DomainError(f"La région {region} nécessite {len(encoded)} octets pour seulement {capacity} disponibles.")

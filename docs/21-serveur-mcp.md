@@ -58,6 +58,14 @@ Pour reporter les corrections sur le RFID, utiliser le parcours explicite **Recr
 
 Les corrections et les dernières valeurs du tag sont incluses dans les sauvegardes d’inventaire. Le schéma SQLite reste à 5. Lors d’un retour à une version antérieure, restaurer ensemble les sources et les données sauvegardées avant la mise à jour afin de préserver les règles de réconciliation.
 
+## Préparer les données du suivi de consommation Prusa
+
+Depuis **v0.24.1**, `get_material_schema` contient une rubrique `prusa_tracking` avec les données positives nécessaires : masse nette initiale en grammes et longueur initiale en millimètres, valeur réelle en priorité puis nominale. Le diamètre et la densité ne remplacent pas une longueur manquante sur le tag.
+
+Conserver une longueur fabricant déjà renseignée. Si l’utilisateur autorise une estimation à partir d’une masse nette initiale, d’une densité et d’un diamètre connus, l’enregistrer seulement dans `nominal_full_length` et la décrire comme estimée dans les notes ou le compte rendu. Ne pas calculer `actual_full_length`, inventer une masse manquante ni remettre une consommation connue à zéro. Pour un modèle réutilisable, utiliser la masse nominale, sans copier les mesures d’une bobine particulière. Les exigences et la formule avec leurs unités figurent dans le schéma; voir le [guide Prusa](38-suivi-consommation-prusa.md).
+
+Le serveur applicatif s’occupe de l’encodage RFID des nombres : le client conserve les mesures connues et n’arrondit pas la consommation pour contourner un format binaire. Les outils MCP ne modifient pas le tag physique; une fiche RFID corrigée doit être reportée sur son tag par le parcours d’écriture/recréation avec sauvegarde et relecture. Le catalogue reste à treize outils. Reconnecter le client ou actualiser son schéma pour charger ces précisions.
+
 ## Modifier ou supprimer une fiche
 
 Dans l’interface, utiliser **Inventaire → Vos favoris et modèles → Modifier** ou **Supprimer** sur la fiche concernée. La suppression demande confirmation, affiche son nom et retire définitivement cette définition de la bibliothèque. Les bobines déjà créées gardent leurs données, quantités, identité, provenance et QR; leurs tags ne sont pas réécrits. Les valeurs déjà saisies dans un formulaire de bobine sont également conservées si le modèle disparaît dans un autre client.

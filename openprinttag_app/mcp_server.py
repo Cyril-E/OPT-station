@@ -64,6 +64,11 @@ def make_server(store, inventory_lock=None):
         "Supply only explicit corrections, including consumption if known, never guessed weights. Inventory edits do not write the RFID. "
         "rfid_sync_pending signals local corrections kept across tag rereads until matching values are read or the tag is recreated. "
         "last_rfid_data contains the latest observed tag values. reset_tag_overrides explicitly restores those possibly old values, without reading hardware. "
+        "For FFF printer usage tracking, check get_material_schema.prusa_tracking: positive initial net mass and initial filament length are required. "
+        "Preserve existing manufacturer lengths. With user authorization, a length calculated from known net mass, density and filament diameter "
+        "may be stored only as nominal_full_length in millimetres; identify it as an estimate in notes or the report. "
+        "Never calculate actual_full_length, invent a missing mass/density, or reset an existing consumption to make a tag usable. "
+        "The station handles RFID numeric encoding; do not round stored measurements or consumption to work around it. "
         "No NFC writes, stock removal, camera, printing, power or credential tools are exposed."))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
     create = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -93,7 +98,7 @@ def make_server(store, inventory_lock=None):
 
     @server.tool(annotations=read)
     def get_material_schema() -> dict:
-        """Read field names, canonical enums, units and constraints. Main and Aux apply to inventory edits; templates use reusable Main fields only."""
+        """Read field names, canonical enums, units, constraints and Prusa tracking requirements. Main and Aux apply to inventory edits; templates use reusable Main fields only."""
         result = get_schema()
         result["template_excluded_fields"] = ["instance_uuid", "brand_specific_instance_id", "actual_netto_full_weight",
                                                "actual_full_length", "manufactured_date", "expiration_date", "write_protection"]
@@ -102,6 +107,25 @@ def make_server(store, inventory_lock=None):
         result["inventory_editing"] = {"tool": "update_spool", "main_and_aux": "partial patch; null clears a field",
                                        "notes": "provide notes_revision; empty text clears notes", "remaining_weight": "derived from initial net mass minus consumed_weight",
                                        "physical_tag_written": False}
+        result["prusa_tracking"] = {
+            "material_class": "FFF",
+            "required_positive": {
+                "initial_weight": {"preference": ["actual_netto_full_weight", "nominal_netto_full_weight"], "unit": "g"},
+                "initial_length": {"preference": ["actual_full_length", "nominal_full_length"], "unit": "mm"},
+            },
+            "length_estimation": {
+                "requires_known": ["initial_net_mass_g", "density_g_cm3", "filament_diameter_mm"],
+                "formula_mm": "initial_net_mass_g * 1000 / (density_g_cm3 * pi * filament_diameter_mm**2 / 4)",
+                "destination": "nominal_full_length", "requires_user_authorization": True,
+                "preserve_existing_lengths": True, "actual_full_length_is_never_estimated": True,
+                "provenance": "Identify calculated nominal lengths as estimates in notes or the report.",
+                "templates": "Use nominal net mass only; never copy per-spool measured mass or actual length.",
+            },
+            "consumption": {"field": "aux.consumed_weight", "unit": "g", "preserve_known_values": True,
+                            "unknown": "Leave unset unless explicitly known; never reset to make tracking work."},
+            "rfid_numbers": "The station writes known numbers as exact integers or IEEE-754 single precision; clients keep their known data.",
+            "physical_tag_written": False,
+        }
         return result
 
     @server.tool(annotations=change)

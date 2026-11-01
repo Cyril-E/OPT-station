@@ -1,5 +1,17 @@
 # Versions publiques
 
+## v0.24.1 — 1er novembre 2026
+
+- Avertissement avant écriture si une bobine FFF ne contient pas de masse initiale ou de longueur initiale positive, données utilisées par le suivi de consommation Prusa.
+- Encodage des nombres RFID écrits sous forme d’entiers exacts ou de décimaux en simple précision, au lieu de laisser apparaître des doubles non pris en charge par le lecteur Prusa publié. Une mise à jour partielle conserve les autres champs et les données inconnues; les anciens tags ne sont pas réécrits automatiquement.
+- Aucune valeur inconnue n’est remplie automatiquement. Les longueurs mesurées et les estimations nominales restent distinctes; voir le [guide de suivi Prusa](docs/38-suivi-consommation-prusa.md).
+- Le schéma et les consignes MCP précisent les masses et longueurs requises, les unités, l’estimation nominale autorisée et la préservation des consommations connues. Le catalogue reste limité à treize outils, sans écriture RFID matérielle.
+- Notifications Chrome : réception lors d’une demande d’intervention réelle confirmée par un essai utilisateur, en complément de la fin d’impression déjà validée.
+
+Le chargement sans alerte et l’affichage de la consommation existante sont confirmés par un essai utilisateur sur CORE One, firmware 8.0.0+17068, après réécriture vérifiée du tag. L’augmentation de la consommation après une impression réelle et la mise à jour de l’inventaire ont ensuite été vérifiées par relecture NFC sur le Pi. La station n’a pas réécrit le tag pendant ce contrôle.
+
+Vérifications : **896 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **897 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. L’archive complète et son SHA-256 accompagnent cette préversion.
+
 ## v0.24.0 — 1er novembre 2026
 
 - Création ou recréation d’un RFID depuis l’inventaire sur un tag déjà utilisé, avec choix explicite de réutilisation, aperçu Avant/Après et confirmation du remplacement.

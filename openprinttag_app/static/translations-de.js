@@ -1655,5 +1655,7 @@ window.OPT_DE = Object.freeze({
   "La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.": "Die Wiederverwendung eines Tags muss vom aktuellen Spuleneintrag im Inventar aus vorbereitet werden.",
   "Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.": "Dieser Tag enthält bereits die Daten dieser Spule. Ein erneutes Schreiben ist nicht erforderlich.",
   "L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.": "Die bisherige Zuordnung des Tags hat sich geändert. Lesen Sie den Tag erneut und bestätigen Sie die Wiederverwendung noch einmal.",
-  "La confirmation de réutilisation du tag est invalide.": "Die Bestätigung der Tag-Wiederverwendung ist ungültig."
+  "La confirmation de réutilisation du tag est invalide.": "Die Bestätigung der Tag-Wiederverwendung ist ungültig.",
+  "Suivi de consommation Prusa : renseignez un poids net initial réel ou nominal positif. Une valeur inconnue reste vide.": "Prusa-Verbrauchsverfolgung: Geben Sie ein positives tatsächliches oder nominelles Anfangsnettogewicht an. Unbekannte Werte bleiben leer.",
+  "Suivi de consommation Prusa : renseignez une longueur initiale nominale ou réelle positive dans « Autres données matériau ». Une estimation doit rester nominale, pas mesurée.": "Prusa-Verbrauchsverfolgung: Geben Sie unter „Weitere Materialdaten“ eine positive nominelle oder tatsächliche Anfangslänge an. Eine Schätzung gilt als nominell, nicht als gemessen."
 });

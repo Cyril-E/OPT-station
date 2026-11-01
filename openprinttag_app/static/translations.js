@@ -1655,5 +1655,7 @@ window.OPT_EN = Object.freeze({
   "La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.": "Tag reuse must be prepared from the current inventory spool record.",
   "Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.": "This tag already contains this spool’s data. No rewrite is needed.",
   "L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.": "The previous tag link has changed. Read the tag again and reconfirm reuse.",
-  "La confirmation de réutilisation du tag est invalide.": "The tag reuse confirmation is invalid."
+  "La confirmation de réutilisation du tag est invalide.": "The tag reuse confirmation is invalid.",
+  "Suivi de consommation Prusa : renseignez un poids net initial réel ou nominal positif. Une valeur inconnue reste vide.": "Prusa consumption tracking: enter a positive actual or nominal initial net weight. Unknown values stay blank.",
+  "Suivi de consommation Prusa : renseignez une longueur initiale nominale ou réelle positive dans « Autres données matériau ». Une estimation doit rester nominale, pas mesurée.": "Prusa consumption tracking: enter a positive nominal or actual initial length under “Other material data”. Keep an estimate as nominal, not measured."
 });

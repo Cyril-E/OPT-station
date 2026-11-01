@@ -1655,5 +1655,7 @@ window.OPT_ES = Object.freeze({
   "La réutilisation d’un tag doit être préparée depuis la fiche actuelle d’une bobine de l’inventaire.": "La reutilización de un tag debe prepararse desde la ficha actual de una bobina del inventario.",
   "Ce tag contient déjà les données de cette bobine. Aucune réécriture n’est nécessaire.": "Este tag ya contiene los datos de esta bobina. No es necesario volver a escribirlo.",
   "L’ancienne association du tag a changé. Relire le tag et confirmer sa réutilisation à nouveau.": "La asociación anterior del tag ha cambiado. Vuelva a leer el tag y confirme de nuevo su reutilización.",
-  "La confirmation de réutilisation du tag est invalide.": "La confirmación de reutilización del tag no es válida."
+  "La confirmation de réutilisation du tag est invalide.": "La confirmación de reutilización del tag no es válida.",
+  "Suivi de consommation Prusa : renseignez un poids net initial réel ou nominal positif. Une valeur inconnue reste vide.": "Seguimiento del consumo Prusa: introduzca un peso neto inicial real o nominal positivo. Los valores desconocidos se dejan vacíos.",
+  "Suivi de consommation Prusa : renseignez une longueur initiale nominale ou réelle positive dans « Autres données matériau ». Une estimation doit rester nominale, pas mesurée.": "Seguimiento del consumo Prusa: introduzca una longitud inicial nominal o real positiva en « Otros datos del material ». Una estimación debe indicarse como nominal, no como medida."
 });

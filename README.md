@@ -33,6 +33,12 @@ La version comprend les [notifications Chrome](docs/32-notifications-imprimante.
 
 ## Nouveautés
 
+### [v0.24.1 — Compatibilité RFID et consommation Prusa](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.1)
+
+- L’aperçu d’écriture avertit lorsque la masse ou la longueur initiale manque, sans inventer de mesure ni remettre à zéro la consommation. Voir le [guide Prusa](docs/38-suivi-consommation-prusa.md).
+- Les nombres écrits sur RFID utilisent des entiers ou la simple précision compatible avec le lecteur Prusa publié. Chargement sans alerte, consommation après impression et inventaire actualisé à la relecture NFC vérifiés sur CORE One, firmware 8.0.0+17068.
+- Le MCP expose les exigences de suivi et les unités pour préparer les prochaines fiches; une longueur estimée reste nominale et les consommations connues sont conservées.
+
 ### [v0.24.0 — Réutiliser un tag RFID](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.0)
 
 - Depuis une fiche de bobine, possibilité explicite de remplacer le contenu d’un ancien tag, avec sauvegarde et relecture avant association. La fiche précédemment liée au tag est conservée. Voir le [guide RFID](docs/29-creation-et-recreation-rfid-inventaire.md).

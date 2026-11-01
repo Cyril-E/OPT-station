@@ -2,7 +2,7 @@
 
 ## Vérifications logicielles
 
-La suite de la version **v0.24.0** comprend **869 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **870 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion). Elle couvre aussi l’ajustement du filament restant et la réutilisation d’un ancien RFID, les associations concurrentes et la reprise journalisée sans seconde écriture.
+La suite de la version **v0.24.1** comprend **896 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **897 tests réussis sur Raspberry Pi**. Elle vérifie le codec OpenPrintTag, les protections et interruptions NFC en simulation, le stockage, les migrations, les QR, les étiquettes, les sauvegardes, le MCP, les droits réseau, PrusaLink, HTTPS, les événements d’imprimante et les propositions de l’assistant IA avec des réponses API contrôlées, ainsi que les filtres combinés, les photos des fiches et la connexion ChatGPT (identité signée, retour local ou manuel, reprise, permissions, renouvellement et déconnexion). Elle couvre aussi l’ajustement du filament restant et la réutilisation d’un ancien RFID, les associations concurrentes et la reprise journalisée sans seconde écriture. Les contrôles du format numérique RFID vérifient les entiers et décimaux, les composantes Lab, la conservation des champs non modifiés et des valeurs inconnues, ainsi que les exigences Prusa exposées au MCP sans accès matériel.
 
 Depuis les sources, avec les dépendances de test installées :
 
@@ -35,12 +35,13 @@ Les trois dictionnaires anglais/espagnol/allemand couvrent chacun les **1 621 me
 | --- | --- | --- |
 | Lecture et écriture NFC | Raspberry Pi 5, ACS ACR1552U-M1 USB, NFC-V/SLIX2 | Lecture et écriture initiale suivie de relecture vérifiées. Les nouveaux lecteurs, tags et firmwares demandent leurs propres essais. |
 | Remplacement et réutilisation d’un RFID depuis l’inventaire | Réutilisation physique confirmée sur Raspberry Pi avec ACS ACR1552U-M1; conservation des fiches et reprises testées avec un lecteur simulé | Autres profils matériels et scénarios d’interruption physique à qualifier. |
+| Chargement et consommation du tag par l’imprimante | CORE One, firmware 8.0.0+17068, NFC-V/SLIX2 réécrit avec des nombres compatibles et une longueur initiale renseignée | Chargement sans alerte confirmé par un essai utilisateur. Augmentation de la consommation après impression réelle et actualisation de l’inventaire vérifiées par relecture NFC sur le Pi. Les autres profils et la synchronisation continue Prusa Connect demandent leurs propres essais. |
 | Acquisition QR | Caméra OV5647 et ZXing-C++ | Courte distance, autofocus et autres capteurs à qualifier selon le montage. |
 | Photos des fiches | Import navigateur, capture caméra OV5647, sauvegarde/restauration sur données isolées | Capture physique vérifiée sans modifier le stock réel; aucune écriture RFID. |
 | Connexion ChatGPT | Autorisation réelle du compte, retour depuis un Mac, catalogue et modèle enregistrés sur le Pi | Analyse d’une vraie étiquette avec cet accès encore à qualifier; identités, renouvellement et erreurs couverts par des tests contrôlés. |
 | Impression d’étiquettes | NIIMBOT B3S_P USB, 70 × 40 mm | QR papier relu. Le profil B1 n’est pas qualifié physiquement. |
 | PrusaLink | CORE One, firmware 8.0.0+17068 | Suivi en lecture seule au repos et pendant des impressions; aucune commande de mouvement ou de travail. |
-| Notifications Chrome | HTTPS, certificat approuvé, Chrome sur macOS | Notification de test et déclenchement sur une vraie fin d’impression validés. Intervention réelle encore à qualifier. |
+| Notifications Chrome | HTTPS, certificat approuvé, Chrome sur macOS | Notification de test et déclenchement sur une vraie fin d’impression validés. Réception lors d’une demande d’intervention réelle confirmée par un essai utilisateur. |
 | Démarrage et alimentation | Raspberry Pi OS 64 bits, session graphique et services systemd | Plein écran, arrêt et redémarrage vérifiés. Le tactile dépend de l’écran retenu. |
 | Sauvegardes planifiées | Moteur testé sur destinations temporaires; sauvegarde manuelle USB et aperçu de restauration validés | Exécution nocturne planifiée sur support externe encore à qualifier. |
 
