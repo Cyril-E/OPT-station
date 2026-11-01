@@ -1,11 +1,12 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.22.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.22.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.23.0](https://github.com/Cyril-E/OPT-station/releases/tag/v0.23.0)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
 - Lecture et écriture OpenPrintTag NFC-V/SLIX2 : aperçu, sauvegarde avant écriture et contrôle par relecture.
 - Inventaire avec numéros uniques, états Stock/Service/Terminée, compteur, notes et date d’entrée.
+- Ajustement du filament restant depuis les fiches en stock ou en service, avec aperçu du recalcul de consommation et référence de poids explicite.
 - QR complets pour les bobines emballées, étiquettes NIIMBOT et création/recréation du RFID depuis une fiche.
 - Modèles et favoris, création depuis RFID/QR/inventaire, modification, suppression et import/export.
 - Configuration du matériel, langues française/anglaise/espagnole/allemande, thèmes et niveaux d’accès réseau persistants.
@@ -38,6 +39,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 ## Ajouts en v0.22.0
 
 - **Issue #4 — Espagnol et allemand** : choix Français / English / Español / Deutsch dans Paramètres et l’aide HTTPS, messages et accessibilité traduits, formats de nombres et dates, explications de l’assistant IA dans la langue choisie. Préférence par navigateur sans rechargement et sans modification des données. Les quatre langues et la conservation des saisies sont vérifiées sur Raspberry Pi et dans un navigateur de test.
+
+## Ajouts en v0.23.0
+
+- **Filament restant** : réglage depuis une fiche en stock ou en service, référence réelle ou nominale explicite, consommation recalculée, conflits et inconnues contrôlés, corrections RFID locales et QR actualisés. Essais sur données isolées et contrôle du formulaire sur une station en HTTPS réalisés sans écriture RFID ni changement de son stock; voir le [guide](37-ajuster-filament-restant.md).
 
 ## Qualification complémentaire de l’installation
 

@@ -159,6 +159,12 @@ class AssistantAnalysis(Model):
     language: Literal["fr", "en", "es", "de"] = "fr"
 
 
+class RemainingWeight(Model):
+    version: StrictInt = Field(ge=1)
+    remaining_weight: float = Field(strict=True, ge=0, allow_inf_nan=False)
+    actual_initial_weight: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
+
+
 class PhotoUpload(Model):
     image: str | None = Field(default=None, max_length=MAX_UPLOAD * 4 // 3 + 100)
     scan_id: str | None = Field(default=None, max_length=100)
@@ -1019,6 +1025,11 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     def inventory_usage(identifier: str, body: UsageState):
         with reader.lock:
             return store.set_usage(identifier, body.version, body.usage_state)
+
+    @app.post("/api/inventory/{identifier}/remaining")
+    def inventory_remaining(identifier: str, body: RemainingWeight):
+        with reader.lock:
+            return store.set_remaining_weight(identifier, body.version, body.remaining_weight, body.actual_initial_weight)
 
     @app.post("/api/inventory/{identifier}/model-source")
     def inventory_model_source(identifier: str, body: Version):

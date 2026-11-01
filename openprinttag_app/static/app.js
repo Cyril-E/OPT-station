@@ -21,6 +21,7 @@
     labelPreview: null, labelRequestId: null, labelsSettings: null, labelsDirty: false, labelsLoading: false,
     inventoryNotes: null, inventoryNotesDirty: false, inventoryNotesBusy: false,
     spoolNotesDrafts: new Map(),
+    remainingDrafts: new Map(),
   };
   const coreMain = new Set([
     "material_class", "material_type", "brand_name", "material_name", "gtin",
@@ -184,6 +185,9 @@
     $("spool-notes").disabled = !canBrowse() || !draft || draft.busy || Boolean(state.status?.power?.pending);
     disabled("spool-notes-save", !canBrowse() || !draft?.dirty || draft?.busy || Boolean(state.status?.power?.pending));
     disabled("spool-notes-reload", !canBrowse() || !draft || draft.busy);
+    const remaining = state.detailItem && state.remainingDrafts.get(state.detailItem.id);
+    const quantityBlocked = !canBrowse() || !remaining || remaining.busy || Boolean(state.status?.power?.pending) || !state.detailItem?.in_stock || Boolean(state.detailItem?.completed_at);
+    ["spool-remaining", "spool-initial-weight", "spool-remaining-save", "spool-remaining-reload"].forEach(id => disabled(id, quantityBlocked));
     disabled("confirm-delete-favorite", !canBrowse() || !state.deletingFavorite || Boolean(state.status?.power?.pending));
     disabled("packaged-camera", !canControl() || !state.status?.camera?.available || state.packagedAnalyzing);
     disabled("label-print", !canControl() || !state.labelPreview?.print_enabled);
@@ -230,7 +234,7 @@
     state.previousStationAccess = canControl();
     if (!canBrowse()) {
       state.currentTag = null; state.inventory = []; state.favorites = [];
-      state.inventoryNotes = null; state.inventoryNotesDirty = false; state.spoolNotesDrafts.clear();
+      state.inventoryNotes = null; state.inventoryNotesDirty = false; state.spoolNotesDrafts.clear(); state.remainingDrafts.clear();
       $("inventory-notes").value = ""; $("spool-notes").value = "";
       clear($("inventory-list")); clear($("favorites-list"));
       ["detail-dialog", "favorite-dialog", "delete-favorite-dialog", "packaged-dialog", "label-dialog", "model-source-dialog"].forEach((id) => { if ($(id).open) $(id).close(); });
@@ -768,6 +772,7 @@
     state.detailItem = item;
     setText("detail-title", spoolTitle(item));
     renderSpoolNotes(item);
+    renderRemaining(item);
     const content = $("detail-content"); clear(content);
     const summary = node("div", "detail-summary");
     for (const [label, value] of [[msg("Utilisation"), usageState(item)], [msg("Identification"), identification(item)], [msg("Entrée en stock"), stockDate(item)], [msg("Ancienneté"), stockAge(item)], [msg("Restant connu"), grams(item.remaining_weight)], [msg("Consommé"), grams(item.aux?.consumed_weight)], [msg("Dernière lecture"), formatDate(item.last_seen_at)]]) {
@@ -786,6 +791,12 @@
     const actions = node("div", "detail-actions"), label = node("button", "button secondary", msg("Afficher / imprimer le QR")); label.type = "button";
     label.addEventListener("click", () => task(label, async () => { $("detail-dialog").close(); await openLabel(item); })); actions.append(label);
     if (item.in_stock && !item.completed_at) {
+      const remaining = node("button", "button secondary", msg("Ajuster le filament restant")); remaining.type = "button"; remaining.id = "detail-change-remaining";
+      remaining.addEventListener("click", () => {
+        const draft = state.remainingDrafts.get(item.id); if (!draft) return;
+        draft.visible = true; renderRemaining(item); $("spool-remaining").focus();
+      });
+      actions.append(remaining);
       const usage = node("button", "button secondary", item.usage_state === "stock" ? msg("Passer en service") : msg("Remettre en stock")); usage.type = "button"; usage.id = "detail-change-usage";
       usage.addEventListener("click", () => task(usage, async () => {
         try {
@@ -816,6 +827,62 @@
   }
 
   function notesSavedText(updated) { return updated ? msg("Notes enregistrées le {0}.", formatDate(updated)) : msg("Aucune note enregistrée."); }
+
+  function renderRemaining(item) {
+    let draft = state.remainingDrafts.get(item.id);
+    if (!draft || (!draft.visible && !draft.busy)) {
+      draft = {version: item.version, remaining: item.remaining_weight == null ? "" : String(item.remaining_weight),
+        actual: item.main?.actual_netto_full_weight == null ? "" : String(item.main.actual_netto_full_weight),
+        reference: item.main?.actual_netto_full_weight ?? item.main?.nominal_netto_full_weight ?? null,
+        nominal: item.main?.actual_netto_full_weight == null, visible: false, busy: false, message: null};
+      state.remainingDrafts.set(item.id, draft);
+    }
+    $("spool-quantity-form").hidden = !draft.visible || !item.in_stock || Boolean(item.completed_at);
+    if ($("spool-remaining").value !== draft.remaining) $("spool-remaining").value = draft.remaining;
+    if ($("spool-initial-weight").value !== draft.actual) $("spool-initial-weight").value = draft.actual;
+    const actual = draft.actual.trim() === "" ? null : Number(draft.actual);
+    const initial = actual ?? draft.reference;
+    const amount = draft.remaining.trim() === "" ? null : Number(draft.remaining);
+    $("spool-initial-weight").setCustomValidity(actual != null && (!Number.isFinite(actual) || actual <= 0) ? String(msg("Le poids net initial réel doit être strictement positif, en grammes.")) : "");
+    $("spool-initial-weight").required = draft.reference == null;
+    setText("spool-remaining-reference", initial == null ? msg("Le poids initial est inconnu. Renseignez le poids net initial réel pour calculer la consommation.") :
+      actual != null || !draft.nominal ? msg("Poids net initial de référence : {0} g (réel).", numberFormat.format(initial)) :
+      msg("Référence nominale : {0} g. La consommation recalculée reste estimée.", numberFormat.format(initial)));
+    setText("spool-remaining-preview", amount != null && Number.isFinite(amount) && amount >= 0 && Number.isFinite(initial) && initial >= amount ?
+      msg("Consommation après enregistrement : {0} g.", numberFormat.format(initial - amount)) : "");
+    setText("spool-remaining-result", draft.version !== item.version ? msg("Cette fiche a changé. Vos valeurs sont conservées ; rechargez la quantité avant de l’enregistrer.") : draft.message || "");
+    syncControls();
+  }
+
+  async function saveRemaining() {
+    const item = state.detailItem, draft = item && state.remainingDrafts.get(item.id);
+    if (!draft || draft.busy || !canBrowse() || !$("spool-quantity-form").reportValidity()) return;
+    draft.busy = true; draft.message = null; syncControls();
+    try {
+      const result = await post(`/api/inventory/${encodeURIComponent(item.id)}/remaining`, {
+        version: draft.version, remaining_weight: Number(draft.remaining),
+        actual_initial_weight: draft.actual.trim() === "" ? null : Number(draft.actual)});
+      state.remainingDrafts.delete(item.id);
+      await refreshStock();
+      notify(result.updated ? msg("Quantité restante enregistrée. La consommation a été recalculée.") : msg("La quantité restante est déjà à jour."));
+    } catch (error) {
+      draft.message = error.message;
+      if ($("detail-dialog").open && state.detailItem?.id === item.id) renderRemaining(state.detailItem);
+      throw error;
+    } finally { draft.busy = false; syncControls(); }
+  }
+
+  async function reloadRemaining() {
+    const item = state.detailItem, draft = item && state.remainingDrafts.get(item.id);
+    if (!draft || draft.busy || !canBrowse()) return;
+    draft.busy = true; syncControls();
+    try {
+      const current = await api(`/api/inventory/${encodeURIComponent(item.id)}`);
+      if (!$("detail-dialog").open || state.detailItem?.id !== item.id || !canBrowse()) return;
+      state.remainingDrafts.delete(item.id); showDetail(current);
+      state.remainingDrafts.get(item.id).visible = true; renderRemaining(current);
+    } finally { draft.busy = false; syncControls(); }
+  }
   async function refreshInventoryNotes(force = false) {
     if (!canBrowse() || state.inventoryNotesBusy) return;
     state.inventoryNotesBusy = true; syncControls();
@@ -1381,6 +1448,13 @@
   }));
   $("refresh-inventory").addEventListener("click", (event) => task(event.currentTarget, () => Promise.all([refreshStock(), refreshInventoryNotes()])));
   $("inventory-notes").addEventListener("input", () => { state.inventoryNotesDirty = $("inventory-notes").value !== state.inventoryNotes?.text; setText("inventory-notes-result", state.inventoryNotesDirty ? msg("Modifications non enregistrées.") : notesSavedText(state.inventoryNotes?.updated_at)); syncControls(); });
+  ["spool-remaining", "spool-initial-weight"].forEach(id => $(id).addEventListener("input", () => {
+    const item = state.detailItem, draft = item && state.remainingDrafts.get(item.id); if (!draft || draft.busy) return;
+    draft.remaining = $("spool-remaining").value; draft.actual = $("spool-initial-weight").value; draft.message = null;
+    renderRemaining(item);
+  }));
+  $("spool-quantity-form").addEventListener("submit", event => { event.preventDefault(); task(null, saveRemaining); });
+  $("spool-remaining-reload").addEventListener("click", () => task(null, reloadRemaining));
   $("inventory-notes-form").addEventListener("submit", (event) => { event.preventDefault(); task($("inventory-notes-save"), saveInventoryNotes); });
   $("inventory-notes-reload").addEventListener("click", (event) => task(event.currentTarget, () => refreshInventoryNotes(true)));
   $("spool-notes").addEventListener("input", () => {

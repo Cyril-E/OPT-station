@@ -1,7 +1,9 @@
 """Stockage partagé entre la station et ses clients web, sans écriture NFC implicite."""
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from decimal import Decimal
 import json
+import math
 from pathlib import Path
 import re
 import sqlite3
@@ -402,6 +404,30 @@ class Store:
         with self.connect() as db:
             row = db.execute("SELECT text,revision,updated_at FROM inventory_notes WHERE id=1").fetchone()
             return dict(row)
+
+    def set_remaining_weight(self, identifier, version, remaining_weight, actual_initial_weight=None):
+        """Convert an explicit net remainder into consumption using a known initial mass."""
+        if type(remaining_weight) not in {int, float} or not math.isfinite(remaining_weight) or remaining_weight < 0:
+            raise ValueError("Indiquez une quantité restante positive ou nulle, en grammes.")
+        if actual_initial_weight is not None and (type(actual_initial_weight) not in {int, float}
+                or not math.isfinite(actual_initial_weight) or actual_initial_weight <= 0):
+            raise ValueError("Le poids net initial réel doit être strictement positif, en grammes.")
+        item = self.get_spool(identifier)
+        if item["version"] != version:
+            raise ConflictError("Cette fiche a changé. Rechargez la quantité avant de la modifier.")
+        if not item["in_stock"] or item["completed_at"]:
+            raise ConflictError("La quantité se modifie uniquement sur une bobine en stock ou en service.")
+        initial = (actual_initial_weight if actual_initial_weight is not None else
+                   item["main"].get("actual_netto_full_weight", item["main"].get("nominal_netto_full_weight")))
+        if initial is None:
+            raise ValueError("Le poids initial est inconnu. Renseignez le poids net initial réel pour calculer la consommation.")
+        if remaining_weight > initial:
+            raise ValueError("La quantité restante dépasse le poids net initial de référence. Corrigez le poids initial si vous le connaissez.")
+        consumed = float(Decimal(str(initial)) - Decimal(str(remaining_weight)))
+        main = {"actual_netto_full_weight": actual_initial_weight} if actual_initial_weight is not None else None
+        # patch_spool rechecks the version and active status inside its transaction.
+        # Its RFID correction handling preserves the last physical observation.
+        return self.patch_spool(item["id"], version, main=main, aux={"consumed_weight": consumed})
 
     def save_inventory_notes(self, text, revision):
         self._validate_notes(text)

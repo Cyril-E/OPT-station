@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.23.0 — 1er novembre 2026
+
+- Ajustement du filament restant depuis les fiches de bobines en stock ou en service, avec aperçu de la consommation recalculée et référence réelle ou nominale explicite.
+- Correction optionnelle du poids net initial réel connu, contrôle des valeurs et conflits de version, conservation des saisies et notes, sans écriture RFID implicite ni archivage automatique à zéro.
+- QR actualisés lors de leur génération et corrections RFID locales conservées à la relecture, incluses dans les sauvegardes. Interface dans les quatre langues. Voir le [guide du restant](docs/37-ajuster-filament-restant.md).
+
+Vérifications : **831 tests réussis sur Mac**, avec un test réservé à Linux ignoré, et **832 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Les essais sur données isolées couvrent les bobines QR/RFID en stock ou en service, les références réelles/nominales/inconnues, les quantités fractionnaires ou nulles, les valeurs invalides, les accès réseau, les conflits, les relectures RFID et la sauvegarde/restauration. La saisie, le recalcul, la conservation des notes et le changement de langue sont vérifiés dans le navigateur; le formulaire est contrôlé sur la station en HTTPS sans modifier son inventaire ni écrire de tag.
+
+L’archive complète `opt-station-v0.23.0.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune nouvelle dépendance n’est ajoutée.
+
 ## v0.22.0 — 1er novembre 2026
 
 - Issue #4 : espagnol et allemand ajoutés aux langues de l’interface et de l’aide HTTPS, avec les mêmes messages traduits qu’en anglais.
