@@ -339,3 +339,81 @@ def test_real_transport_identifies_the_station_for_account_and_graphql(monkeypat
     assert ConnectClient(cfg).teams() == []
     assert seen == [TOKEN_URL, GRAPHQL_URL]
     assert cfg.read()["refresh_token"] == "test-only-rotated"
+
+
+def warehouse_row(instance, **changes):
+    return {"id": str(uuid.uuid4()), "name": "Fixture warehouse item", "archived": False,
+            "nominalNettoFullWeight": 1000, "consumedWeight": 100,
+            "materialPackageInstance": {"uuid": instance, "actualNettoFullWeight": 1025}, **changes}
+
+
+def test_inventory_presence_includes_loaded_spool_but_filters_unknown_archived_and_duplicate_identities(tmp_path):
+    store = Store(tmp_path / "inventory.sqlite3"); item = add(store)
+    cfg = ConnectConfiguration(tmp_path); configure(cfg)
+    cloud = Cloud(item); foreign = str(uuid.uuid4())
+    cloud.warehouse = [warehouse_row(item["instance_uuid"]), warehouse_row(foreign)]
+    monitor = ConnectMonitor(cfg, store, fetch=cloud)
+    assert monitor.inventory_warehouse() == {"instances": [], "checked_at": None, "stale": False}
+    monitor.check(force=True)
+    calls = len(cloud.calls)
+    presence = monitor.inventory_warehouse()
+    assert presence["instances"] == [item["instance_uuid"]] and presence["checked_at"] and not presence["stale"]
+    assert len(cloud.calls) == calls and store.get_spool(item["id"]) == item
+    cloud.warehouse.append(warehouse_row(item["instance_uuid"]))
+    monitor.check(force=True)
+    assert monitor.inventory_warehouse()["instances"] == []
+    cloud.warehouse = [warehouse_row(item["instance_uuid"], archived=True)]
+    monitor.check(force=True)
+    assert monitor.inventory_warehouse()["instances"] == []
+
+
+def test_inventory_presence_marks_outages_and_old_observations_then_removes_deleted_or_other_organization_items(tmp_path):
+    store = Store(tmp_path / "inventory.sqlite3"); item = add(store)
+    cfg = ConnectConfiguration(tmp_path); configure(cfg)
+    cloud = Cloud(item); cloud.warehouse = [warehouse_row(item["instance_uuid"])]
+    stamp = [time.time()]
+    monitor = ConnectMonitor(cfg, store, fetch=cloud, clock=lambda: stamp[0])
+    monitor.check(force=True); known = monitor.inventory_warehouse()
+    stamp[0] += 61
+    assert monitor.inventory_warehouse() == {**known, "stale": True}
+    cloud.fail = True; monitor.check(force=True)
+    assert monitor.inventory_warehouse() == {**known, "stale": True}
+    cloud.fail = False; cloud.warehouse = []; monitor.check(force=True)
+    assert monitor.inventory_warehouse()["instances"] == [] and not monitor.inventory_warehouse()["stale"]
+    cloud.warehouse = [warehouse_row(item["instance_uuid"])]; monitor.check(force=True)
+    configure(cfg, organization_id=str(uuid.uuid4()))
+    assert monitor.inventory_warehouse() == {"instances": [], "checked_at": None, "stale": False}
+    assert store.get_spool(item["id"]) == item
+
+
+def test_inventory_presence_status_does_not_wait_for_cloud_or_credential_locks(tmp_path):
+    store = Store(tmp_path / "inventory.sqlite3"); item = add(store)
+    cfg = ConnectConfiguration(tmp_path); configure(cfg)
+    cloud = Cloud(item); cloud.warehouse = [warehouse_row(item["instance_uuid"])]
+    monitor = ConnectMonitor(cfg, store, fetch=cloud); monitor.check(force=True)
+    # A status request must remain responsive while another thread is waiting
+    # for the network with both of the collector's locks held.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with monitor.lock, cfg.lock:
+            value = pool.submit(monitor.inventory_warehouse).result(timeout=1)
+    assert value["instances"] == [item["instance_uuid"]]
+
+
+def test_inventory_only_remote_status_shows_presence_without_cloud_secrets_or_foreign_stock(tmp_path):
+    app = create_app(Settings(tmp_path, network_enabled=True))
+    with TestClient(app, client=("192.0.2.9", 1)) as client:
+        app.state.connect_monitor.close()
+        item = add(app.state.store); foreign = str(uuid.uuid4())
+        cloud = Cloud(item); cloud.warehouse = [warehouse_row(item["instance_uuid"]), warehouse_row(foreign)]
+        app.state.connect_monitor.client.fetch = cloud; configure(app.state.connect_configuration)
+        app.state.connect_monitor.check(force=True)
+        calls = len(cloud.calls)
+        response = client.get("/api/status")
+        assert response.status_code == 200 and not response.json()["station_access"]
+        assert response.json()["connect_warehouse"]["instances"] == [item["instance_uuid"]]
+        assert TOKEN not in response.text and foreign not in response.text and ORG not in response.text
+        assert len(cloud.calls) == calls and app.state.store.get_spool(item["id"]) == item
+    hidden = create_app(Settings(tmp_path / "disabled"))
+    with TestClient(hidden, client=("192.0.2.9", 1)) as client:
+        hidden.state.network.set_mode("disabled")
+        assert client.get("/api/status").json()["connect_warehouse"] is None

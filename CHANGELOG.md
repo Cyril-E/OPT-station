@@ -1,5 +1,14 @@
 # Versions publiques
 
+## v0.25.1 — 1er novembre 2026
+
+- Icône de présence dans l’entrepôt Prusa Connect à côté du numéro de bobine, avec date de vérification et état à revérifier en cas de lecture indisponible ou ancienne. Visible aussi en accès Inventaire, dans les quatre langues et les deux thèmes.
+- Le repère utilise les lectures déjà effectuées par le collecteur, sans nouvelle requête cloud par ligne ni modification des fiches. Il indique la présence de la bobine, sans certifier une synchronisation continue de toutes ses données.
+
+Affichage vérifié sur Raspberry Pi en HTTPS, sur les bobines de l’inventaire présentes dans l’entrepôt. Les thèmes clair et sombre sont contrôlés dans le navigateur ; les essais couvrent aussi les coupures, les observations anciennes, les suppressions, les doublons, le changement d’organisation et l’accès Inventaire sans accès complet.
+
+Vérifications : **952 tests réussis sur Mac**, avec deux exclusions liées à l’environnement, **954 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. L’archive complète `opt-station-v0.25.1.tar.gz` et son SHA-256 accompagnent cette préversion.
+
 ## v0.25.0 — 1er novembre 2026
 
 - Prusa Connect : collecteur optionnel sur le Pi pour les compteurs absolus des bobines FFF chargées, avec rapprochement exact par UUID d’instance et contrôle du poids initial.

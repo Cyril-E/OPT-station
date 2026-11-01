@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.24.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.24.1)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.25.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.25.1)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -63,6 +63,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 - **Prusa Connect et consommation** : collecteur optionnel sur le Pi, réception des compteurs absolus par UUID d’instance, contrôle du poids initial, corrections manuelles prioritaires et conservation de la précision RFID face aux arrondis cloud. Connexion réelle, renouvellement, lectures au repos et actualisations successives pendant une impression vérifiés. Le collecteur travaille même lorsque l’interface est fermée.
 - **Envoi vers l’entrepôt** : aperçu depuis une fiche, correction des poids, enregistrement du matériau, contrôle des doublons et relecture dans le catalogue qui alimente l’interface Connect. Transfert réel d’un lot de bobines actives et réparation de fiches invisibles validés, avec conservation des fiches déjà présentes, des données connues et des notes, sans écriture RFID. Voir le [guide Connect](39-prusa-connect-et-entrepot.md).
 - **Limites à qualifier séparément** : l’actualisation automatique depuis un lot d’entrepôt distinct reste à vérifier. Les quantités déjà connues suivent un flux Connect → OPT Station ; l’envoi de fiches vers Connect reste explicite. Une synchronisation continue des fiches dans les deux sens est une évolution distincte.
+
+## Ajouts en v0.25.1
+
+- **Présence dans l’entrepôt Connect** : nuage coché dans l’inventaire, date de vérification et état orange à revérifier après une erreur ou une lecture ancienne. Affichage également en accès Inventaire, dans les quatre langues et les deux thèmes. Il utilise le collecteur existant et ne modifie pas les fiches ; il ne certifie pas une synchronisation continue de toutes leurs données. Contrôlé sur le Pi en HTTPS. Voir le [guide Connect](39-prusa-connect-et-entrepot.md).
 
 ## Pistes reportées après les retours de validation
 

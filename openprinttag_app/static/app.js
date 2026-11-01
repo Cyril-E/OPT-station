@@ -723,7 +723,22 @@
         const identityCell = node("td");
         const identityButton = node("button", "table-link spool-cell"); identityButton.type = "button";
         I18n.attribute(identityButton, "aria-label", msg("Détail de {0}", spoolTitle(item)));
-        const description = node("span"); description.append(node("span", "spool-number", item.spool_number), node("strong", "", spoolName(item)), node("small", "", item.main?.brand_name || msg("Marque non renseignée")));
+        const description = node("span"), heading = node("span", "spool-heading");
+        heading.append(node("span", "spool-number", item.spool_number));
+        const warehouse = state.status?.connect_warehouse;
+        if (warehouse?.instances?.includes(item.instance_uuid)) {
+          const label = warehouse.stale ? msg("Prusa Connect : présence à revérifier. Dernière confirmation le {0}.", formatDate(warehouse.checked_at))
+            : msg("Présente dans l’entrepôt Prusa Connect. Vérifiée le {0}.", formatDate(warehouse.checked_at));
+          const badge = node("span", "spool-connect-icon" + (warehouse.stale ? " stale" : ""));
+          badge.setAttribute("role", "img"); I18n.attribute(badge, "aria-label", label); I18n.attribute(badge, "title", label);
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), cloud = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+          cloud.setAttribute("d", "M6 18H5a4 4 0 0 1-.7-7.9 7 7 0 0 1 13.4-1.7A5 5 0 0 1 19 18h-1M8 16l3 3 5-6");
+          svg.append(cloud); badge.append(svg); heading.append(badge);
+          I18n.attribute(identityButton, "aria-label", msg("Détail de {0}. {1}", spoolTitle(item), label));
+          I18n.attribute(identityButton, "title", label);
+        }
+        description.append(heading, node("strong", "", spoolName(item)), node("small", "", item.main?.brand_name || msg("Marque non renseignée")));
         if (item.notes) description.append(node("small", "spool-notes-indicator", msg("Notes disponibles")));
         if (item.rfid_sync_pending) description.append(node("small", "spool-notes-indicator", msg("RFID à actualiser")));
         description.append(node("span", `status-chip ${item.usage_state === "stock" ? "qr-stock" : "in-stock"}`, usageState(item)), node("small", "", identification(item)));
@@ -1638,12 +1653,14 @@
       const libraryChanged = next.library_revision !== state.status.library_revision;
       const completedChanged = next.completed_spools_count !== state.status.completed_spools_count;
       const inventoryChanged = next.inventory_revision !== state.status.inventory_revision;
+      const warehouseChanged = JSON.stringify(next.connect_warehouse) !== JSON.stringify(state.status.connect_warehouse);
       const notesChanged = next.inventory_notes_revision !== state.status.inventory_notes_revision;
       if (!next.reader?.connected || (state.status.reader?.present && !next.reader?.present)) invalidatePreview();
       state.status = next;
       renderStatus();
       if (libraryChanged && canBrowse()) await refreshFavorites();
       if ((completedChanged || inventoryChanged) && canBrowse()) await refreshStock();
+      else if (warehouseChanged && canBrowse()) renderInventory();
       if (notesChanged && canBrowse()) await refreshInventoryNotes();
       if (state.previousRemoteAccess === false && canBrowse()) {
         state.schema = await api("/api/schema");

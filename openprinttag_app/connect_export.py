@@ -231,6 +231,7 @@ class WarehouseExporter:
                           "created": False, "verified": not mismatch, "visible_in_connect": True, "differences": mismatch, "inventory_changed": False, "rfid_written": False}
                 # A previously existing record is linked, never overwritten by another export.
                 self._save(key, {"version": 1, "phase": "verified", "warehouse_id": existing["id"], "at": utc(), "fingerprint": expected})
+                self.monitor.warehouse_changed()
                 return result
             if journal and journal.get("warehouse_id") and existing and journal["warehouse_id"] != existing["id"]:
                 raise ConnectError("export_duplicate", "L’identité Connect ne correspond pas à l’envoi enregistré.", 409)
@@ -268,6 +269,7 @@ class WarehouseExporter:
                     raise ConnectError("uncertain", "La fiche existe côté Connect, mais sa visibilité dans l’entrepôt n’est pas encore confirmée.", 503)
                 record.update(phase="verified", verified_at=utc())
                 self._save(key, record)
+                self.monitor.warehouse_changed()
                 return {"status": "created" if created else "reconciled", "warehouse_id": remote["id"], "spool_number": item["spool_number"],
                         "created": created, "verified": True, "visible_in_connect": True, "differences": [], "inventory_changed": False, "rfid_written": False}
             except ConnectError as exc:

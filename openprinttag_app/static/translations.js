@@ -1807,5 +1807,8 @@ window.OPT_EN = Object.freeze({
   "Le matériau de la fiche Connect diffère. Vérifiez sa référence avant de réparer son affichage.": "The material in the Connect record differs. Check its reference before repairing its display.",
   "L’enregistrement du matériau Connect n’est pas confirmé. Relisez l’entrepôt avant de reprendre.": "Connect material registration is unconfirmed. Read the warehouse again before resuming.",
   "Renseignez le poids net initial nominal, en grammes, puis enregistrez les valeurs.": "Enter the nominal initial net weight in grams, then save the values.",
-  "Renseignez une consommation connue, comprise entre zéro et le poids net initial, puis enregistrez les valeurs.": "Enter a known consumption between zero and the initial net weight, then save the values."
+  "Renseignez une consommation connue, comprise entre zéro et le poids net initial, puis enregistrez les valeurs.": "Enter a known consumption between zero and the initial net weight, then save the values.",
+  "Présente dans l’entrepôt Prusa Connect. Vérifiée le {0}.": "Present in the Prusa Connect warehouse. Checked on {0}.",
+  "Prusa Connect : présence à revérifier. Dernière confirmation le {0}.": "Prusa Connect: presence needs checking. Last confirmed on {0}.",
+  "Détail de {0}. {1}": "Details for {0}. {1}"
 });

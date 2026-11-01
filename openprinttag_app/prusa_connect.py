@@ -453,12 +453,38 @@ class ConnectMonitor:
         self.wake = threading.Event()
         self.thread = None
         self._last_attempt = float("-inf")
+        self._warehouse_presence = None
         self._state = {"connected": False, "stale": False, "checked_at": None, "message": "Prusa Connect est désactivé.", "spools": [], "warehouse": None}
 
     def settings_changed(self):
         with self.lock:
             self._last_attempt = float("-inf")
             self._state = {"connected": False, "stale": False, "checked_at": None, "message": "Réglages Connect enregistrés. Lancez le test de connexion.", "spools": [], "warehouse": None}
+        self.wake.set()
+
+    def inventory_warehouse(self):
+        """Cached presence for inventory readers; no cloud call or network lock.
+
+        Configuration records and this cache are replaced atomically, never
+        edited in place. Reading them must not wait for a slow cloud request.
+        Only identities already in the local inventory may leave this method.
+        """
+        cached, config = self._warehouse_presence, self.configuration.record
+        if not cached or config["organization_id"] != cached["configured_organization"]:
+            return {"instances": [], "checked_at": None, "stale": False}
+        with self.store.connect() as db:
+            known = {row[0] for row in db.execute("SELECT instance_uuid FROM spools")}
+        stale = (not config["enabled"] or not self._state["connected"]
+                 or bool((self._state.get("warehouse") or {}).get("error"))
+                 or config["revision"] != cached["configuration_revision"]
+                 or self.clock() - cached["at"] > max(60, 2 * config["poll_seconds"]))
+        return {"instances": sorted(known.intersection(cached["instances"])),
+                "checked_at": cached["checked_at"], "stale": stale}
+
+    def warehouse_changed(self):
+        """Refresh the existing collector promptly after a confirmed export."""
+        with self.lock:
+            self._last_attempt = float("-inf")
         self.wake.set()
 
     def public(self):
@@ -524,6 +550,12 @@ class ConnectMonitor:
                         self.maintenance.leave()
                 known = {x["instance_uuid"] for x in self.store.list_spools(include_removed=True)}
                 matched = sum(identity((x.get("materialPackageInstance") or {}).get("uuid")) in known for x in warehouse)
+                if warehouse_error is None:
+                    present = [identity((x.get("materialPackageInstance") or {}).get("uuid"))
+                               for x in warehouse if x.get("archived") is False and identity(x.get("id"))]
+                    self._warehouse_presence = {"configured_organization": config["organization_id"],
+                        "configuration_revision": config["revision"], "at": self.clock(), "checked_at": checked,
+                        "instances": tuple(x for x in set(present) if x and present.count(x) == 1)}
                 self._state = {"connected": True, "stale": False, "checked_at": checked,
                     "message": "Lecture Connect réussie. Les compteurs sont rapprochés par l’identité de chaque bobine.",
                     "teams": teams, "printers": [{"id": p["id"], "name": str(p.get("name") or "")[:150], "state": p.get("state")} for p in printers],

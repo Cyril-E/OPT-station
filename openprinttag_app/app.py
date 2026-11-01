@@ -727,6 +727,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 "assistant": assistant.public() if station_access(request) else None,
                 "library_revision": store.library_revision(),
                 "inventory_revision": store.inventory_revision() if local_station(request) or network.mode != "disabled" else None,
+                "connect_warehouse": connect_monitor.inventory_warehouse() if local_station(request) or network.mode != "disabled" else None,
                 "inventory_notes_revision": store.inventory_notes()["revision"] if local_station(request) or network.mode != "disabled" else None,
                 "completed_spools_count": store.completed_count() if local_station(request) or network.mode != "disabled" else None,
                 "reader": reader.status(), "camera": camera.status(), "specification_commit": "060e420892d66c062c8af440c97701aab96bac79"}
