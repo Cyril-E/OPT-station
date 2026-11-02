@@ -39,7 +39,6 @@
       : !installation?.supported ? msg('Le service de mise à jour doit être installé une fois sur le Pi. Voir le guide de mise à jour.')
       : status?.repository?.toLowerCase() !== 'cyril-e/opt-station' ? msg('L’installation en un clic utilise uniquement les versions publiques du dépôt officiel OPT Station.')
       : installation.message);
-    $('update-install-progress').hidden = !(installation?.phase && installation.phase !== 'idle') && !intent;
     if (installation) {
       text('update-install-message', installation.message || '');
       $('update-install-meter').value = installation.percent || 0;
@@ -50,6 +49,9 @@
         if (reload) window.location.reload();
       }
     }
+    // The server retains its last result across page loads. A completed job
+    // belongs in Settings; only ongoing work and failures need the global banner.
+    $('update-install-progress').hidden = !(pending || intent || ['failed','recovery_required'].includes(installation?.phase));
     reconnect();
     $("updates-banner").hidden = $("updates-sidebar").hidden = !available;
     $("updates-release-link").hidden = !status?.latest?.url;

@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.26.1](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.1)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.26.2](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.2)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -76,6 +76,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - **Installation et restauration** : opérations sur les fichiers utilisateur avec les seuls droits du compte, sous-processus d’archivage sans droits administrateur, sauvegardes système dans un dossier protégé hors du compte et protection des copies contre la substitution de liens. Les essais isolés de droits réels et les restaurations légitimes sont validés sur Linux ; l’installation de cette version depuis l’application sera contrôlée après sa publication.
 - **Requêtes web** : limite cumulée avant analyse JSON, indépendante de la taille annoncée, avec conservation des limites particulières des photos, imports, analyses IA et restaurations. Les chemins MCP et le passage par HTTPS sont contrôlés.
+
+## Correctif en v0.26.2
+
+- **Bandeau de progression** : masqué après une installation réussie, y compris après rechargement, actualisation du statut et changement de langue. Le résultat reste consultable dans Paramètres ; les erreurs et demandes de reprise restent visibles. La reconnexion et le rechargement automatique sont conservés et contrôlés dans les essais d’interface.
 
 ## Pistes reportées après les retours de validation
 

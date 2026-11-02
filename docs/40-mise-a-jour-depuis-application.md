@@ -8,6 +8,8 @@ Fonction disponible depuis **v0.26.0**. La détection des versions et leurs note
 2. Quand une version plus récente est proposée, consulter ses nouveautés si souhaité, puis cliquer **Mettre à jour**. Le bouton est présent dans le bandeau, dans la fenêtre des nouveautés et dans Paramètres.
 3. Laisser le Pi alimenté. La page affiche l’avancement, puis se reconnecte automatiquement pendant le redémarrage de l’application. Aucun redémarrage du Pi n’est lancé.
 
+À partir de **v0.26.2**, le bandeau de progression disparaît après une réussite et ne revient plus au rechargement de la page. Le dernier résultat reste consultable dans cette rubrique des Paramètres. Les alertes d’échec et de reprise nécessaire restent visibles jusqu’à résolution.
+
 Le bouton exige l’accès local sur le Pi ou l’accès complet depuis le réseau. L’accès Inventaire permet de consulter les versions et l’avancement. Les réglages GitHub modifiés doivent être enregistrés avant l’installation. Une opération NFC, un scan QR, une analyse IA, une impression d’étiquette ou une sauvegarde en cours doit être terminée avant le lancement.
 
 La mise à jour commence uniquement sur demande : une nouvelle publication ou un redémarrage du Pi ne lance aucune installation spontanée. Si la réponse au clic est perdue, la page recherche le résultat ; elle ne renvoie pas automatiquement une seconde demande.

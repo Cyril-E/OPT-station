@@ -31,7 +31,7 @@ const window = {location:{reload(){reloads++;}}, OPT_I18N: {
   message: value => value,
   text(element, value) { element.textContent = value; }
 }};
-vm.runInNewContext(fs.readFileSync(path.join(root, 'updates.js'), 'utf8'), {
+function loadPage() { vm.runInNewContext(fs.readFileSync(path.join(root, 'updates.js'), 'utf8'), {
   window, document, Date, Boolean,
   AbortSignal, setTimeout(callback) { timers.push(callback); return timers.length; },
   sessionStorage:{getItem:key=>saved.get(key),setItem:(key,value)=>saved.set(key,value),removeItem:key=>saved.delete(key)},
@@ -41,7 +41,8 @@ vm.runInNewContext(fs.readFileSync(path.join(root, 'updates.js'), 'utf8'), {
     const answer = answers.shift();
     return answer instanceof Error ? Promise.reject(answer) : Promise.resolve({ok:true,json:async()=>answer});
   }
-});
+}); }
+loadPage();
 const get = id => elements.get('updates-' + id);
 const emit = updates => events['opt-station-status']({detail: {access: false, updates}});
 assert.equal(get('banner').hidden, true);
@@ -106,5 +107,31 @@ console.log('Release notes: inventory access, all entry points, plain text, lang
   assert.equal(calls.filter(call=>call.options.method==='POST').length,1);
   assert.equal(get('install').hidden,true);
   assert.equal(timers.length,0);
+  assert.equal(elements.get('update-install-progress').hidden,true);
+
+  // A fresh page receives the durable successful job again from the Pi. It
+  // must not revive the progress banner or enter another reload loop.
+  const completedStatus = {...offered,installed_version:'999.0.0',update_available:false,installation:complete};
+  loadPage();
+  events['opt-station-status']({detail:{access:true,updates:completedStatus}});
+  assert.equal(elements.get('update-install-progress').hidden,true);
+  events['opt-station-language']();
+  events['opt-station-status']({detail:{access:true,updates:completedStatus}});
+  assert.equal(elements.get('update-install-progress').hidden,true);
+  assert.equal(reloads,1);
+  assert.equal(timers.length,0);
+
+  // Unsuccessful terminal states still need a persistent, visible explanation.
+  for (const phase of ['failed','recovery_required']) {
+    loadPage();
+    events['opt-station-status']({detail:{access:true,updates:{...completedStatus,
+      installation:{...complete,phase,message:'Attention: '+phase}}}});
+    assert.equal(elements.get('update-install-progress').hidden,false);
+    assert.equal(elements.get('update-install-message').textContent,'Attention: '+phase);
+    assert.equal(timers.length,0);
+  }
+  events['opt-station-status']({detail:{access:true,updates:{...offered,installation}}});
+  assert.equal(elements.get('update-install-progress').hidden,true);
   console.log('In-app installation: access, one click, duplicate prevention, restart outage, polling and automatic reload verified.');
+  console.log('Completed progress stays hidden after reload, polling and language changes; failure/recovery alerts remain visible.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

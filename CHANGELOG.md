@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.26.2 — 2 novembre 2026
+
+- Correction du bandeau de progression restant à 100 % après une mise à jour réussie : il disparaît après réception du résultat final et ne revient plus après rechargement, actualisation du statut ou changement de langue.
+- Le dernier résultat reste consultable dans Paramètres. Les opérations en cours, les échecs et les demandes de reprise restent affichés ; la reconnexion et le rechargement automatique après installation sont conservés.
+- Régression reproduite puis vérifiée dans le moteur d’interface, avec contrôle d’un nouveau chargement de page, des statuts répétés et des alertes d’erreur. Les correctifs de sécurité de v0.26.1 sont conservés.
+
+Vérifications : **986 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, et les sept moteurs JavaScript. Les tests dédiés vérifient également la conservation de la reconnexion, l’absence de rechargement en boucle et la visibilité des alertes d’échec et de reprise.
+
+L’archive complète `opt-station-v0.26.2.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6**, aucune dépendance n’est ajoutée et les données de la station ne sont pas modifiées par ce correctif d’affichage.
+
 ## v0.26.1 — 2 novembre 2026
 
 - Correction de la frontière entre le compte de station et les opérations système de l’installateur : capture, écriture, validation des unités et restauration des fichiers utilisateur utilisent les seuls droits de ce compte. Les sous-processus d’archivage abandonnent également les droits administrateur.
