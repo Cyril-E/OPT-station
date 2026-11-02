@@ -26,6 +26,7 @@ import tomllib
 from urllib.request import urlopen
 
 MARKER = "# Managed by OPT Station installer"
+MANAGED_UPDATE_PROTOCOL = 1
 LOCK = Path("/run/lock/opt-station-install.lock")
 SYSTEM_ROOT = Path("/")
 SYSTEM_FILES = (
@@ -33,6 +34,12 @@ SYSTEM_FILES = (
     "/etc/systemd/system/opt-station-https.service", "/etc/firefox/policies/policies.json",
     "/usr/local/share/ca-certificates/opt-station.crt", "/etc/lightdm/lightdm.conf.d/50-opt-station.conf",
     "/etc/systemd/system/default.target", "/etc/lightdm/lightdm.conf",
+    "/usr/local/lib/opt-station-updater/update-worker.py", "/usr/local/lib/opt-station-updater/bootstrap.py",
+    "/usr/local/lib/opt-station-updater/install-station.py", "/etc/opt-station/updater.json",
+    "/var/lib/opt-station-updater/info.json", "/etc/systemd/system/opt-station-update.service",
+    "/etc/systemd/system/opt-station-update.path",
+    "/etc/systemd/system/multi-user.target.wants/opt-station-update.service",
+    "/etc/systemd/system/multi-user.target.wants/opt-station-update.path",
 )
 PACKAGES = ("python3-venv", "python3-numpy", "python3-pil", "pcscd", "libccid", "pcsc-tools",
             "python3-pyscard", "ca-certificates", "ffmpeg")
@@ -98,6 +105,19 @@ def profile(arguments):
     if not data or mode not in {"hardware", "simulation"}:
         raise ValueError("Le service existant doit préciser --data-dir et un mode reconnu.")
     return Path(data).resolve(), mode, "--camera" in arguments, int(option("--port", "8765"))
+
+
+def managed_source(source):
+    root = system_path('/var/lib/opt-station-updater/releases')
+    if not source.is_relative_to(root) or os.geteuid() != 0:
+        return False
+    # The root process must never import scripts writable by the web account.
+    for path in [source, *source.parents, *(source / 'deploy' / name for name in
+                  ('bootstrap.py', 'install-station.py', 'install-https.py', 'install-updater.py', 'update-worker.py'))]:
+        info = path.lstat()
+        if path.is_symlink() or info.st_uid != 0 or info.st_mode & 0o022:
+            return False
+    return True
 
 
 @contextmanager
@@ -248,8 +268,9 @@ class Installer:
     def preflight(self):
         bootstrap = load("opt_bootstrap", self.source / "deploy/bootstrap.py")
         bootstrap.supported_platform()
-        if (not self.source.is_relative_to(self.home / "apps") or self.source == self.stable
-                or self.source.stat().st_uid != self.account.pw_uid or '$' in str(self.source)
+        protected = getattr(self.args, 'managed_update', False) and managed_source(self.source)
+        if ((not protected and (not self.source.is_relative_to(self.home / "apps")
+                               or self.source.stat().st_uid != self.account.pw_uid)) or self.source == self.stable or '$' in str(self.source)
                 or any(ord(c) < 32 for c in str(self.source))):
             raise ValueError("Les sources doivent être préparées dans un nouveau dossier apps du compte de la station.")
         if self.stable.exists() and not self.stable.is_symlink():
@@ -362,6 +383,10 @@ class Installer:
             "enabled": self.enabled, "gateway_active": self.gateway_active, "gateway_enabled": self.gateway_enabled,
         }, indent=2) + "\n")
 
+    def report(self, phase):
+        """The independent updater supplies a durable progress callback."""
+        pass
+
     def wait_http(self, port):
         deadline = time.monotonic() + 60
         while True:
@@ -411,6 +436,8 @@ class Installer:
                 run("tar", "--acls", "--xattrs", "-xzpf", self.backup / "data-before.tar.gz", "-C", self.data)
             run("systemctl", "daemon-reload", check=False)
             run("update-ca-certificates", check=False, capture_output=True)
+            action = 'start' if system_path('/etc/systemd/system/opt-station-update.path').exists() else 'stop'
+            run('systemctl', action, 'opt-station-update.path', check=False)
         self.userctl("daemon-reload", check=False)
         if self.enabled:
             self.userctl("enable", "openprinttag.service", check=False)
@@ -432,10 +459,12 @@ class Installer:
         https.addresses(socket.gethostname().split(".")[0], https.discover_addresses())
         packages = [*PACKAGES, *(CAMERA_PACKAGES if self.camera else ()), *(DESKTOP_PACKAGES if self.kiosk else ())]
         print("Installation des dépendances système…", flush=True)
+        self.report('dependencies')
         run("apt-get", "update")
         run("apt-get", "install", "--yes", "--no-install-recommends", *packages)
         run("systemctl", "enable", "--now", "pcscd.socket")
         print("Préparation de Python avec les dépendances verrouillées…", flush=True)
+        self.report('python')
         self.as_user("python3", "-m", "venv", "--system-site-packages", self.source / ".venv")
         python = self.source / ".venv/bin/python"
         arguments = [str(python), "-m", "pip", "install", "--only-binary=:all:", "-r", "requirements.lock"]
@@ -455,6 +484,7 @@ class Installer:
             if state.get("busy", True) or state.get("pending"):
                 raise ValueError("Une opération a commencé. Terminez-la puis relancez l’installation.")
         print("Sauvegarde privée et activation de la nouvelle version…", flush=True)
+        self.report('backup')
         try:
             if self.display_active:
                 self.userctl("stop", "openprinttag-display.service")
@@ -464,6 +494,7 @@ class Installer:
             run("loginctl", "enable-linger", self.account.pw_name)
             run("systemctl", "start", f"user@{self.account.pw_uid}.service")
             self.snapshot()
+            self.report('activating')
             self.data_mutated = True
             self.data.mkdir(parents=True, exist_ok=True, mode=0o700)
             os.chown(self.data, self.account.pw_uid, self.account.pw_gid)
@@ -498,13 +529,19 @@ class Installer:
             arguments = ["python3", self.source / "deploy/install-https.py", "--user", self.account.pw_name, "--source", self.source]
             if not self.camera:
                 arguments.append("--no-camera")
+            self.report('https')
             run(*arguments)
             # HTTPS helper has already verified TLS through the station's own CA.
             self.wait_http(8766)
+            self.report('verifying')
             receipt = {"version": 1, "application_version": self.new_version, "source": str(self.source),
                        "data_dir": str(self.data), "kiosk": self.kiosk, "camera": self.camera,
                        "archive_sha256": self.args.archive_sha256, "backup": str(self.backup)}
             tx.write(self.receipt, json.dumps(receipt, indent=2) + "\n", uid, gid)
+            updater = load('opt_update_installer', self.source / 'deploy/install-updater.py')
+            updater.ROOT = SYSTEM_ROOT
+            updater.configure(self.source, self.account, tx, runner=lambda arguments, **kwargs: run(*arguments, **kwargs),
+                              reset_recovery=not getattr(self.args, 'managed_update', False))
         except BaseException:
             print("Échec de l’activation : restauration de la version précédente…", file=sys.stderr)
             try:
@@ -534,6 +571,7 @@ def main(argv=None):
     parser.add_argument("--no-kiosk", action="store_true")
     parser.add_argument("--no-camera", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--managed-update", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     account = pwd.getpwnam(args.user or "")
     if account.pw_uid == 0:

@@ -18,6 +18,8 @@ import sqlite3
 import subprocess
 import sys
 import tarfile
+import time
+import uuid
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -254,6 +256,8 @@ class Host:
             else:
                 with tarfile.open(name) as archive: archive.extractall(target, filter="data")
         elif args[0] == "systemctl":
+            if self.failure == 'updater' and 'opt-station-update.path' in args and '--now' in args:
+                raise subprocess.CalledProcessError(1, args)
             command = next((a for a in args[1:] if not a.startswith("--")), "")
             gateway = "opt-station-https.service" in args
             active, enabled = (self.gateway_active, self.gateway_enabled) if gateway else (self.active, self.enabled)
@@ -548,3 +552,127 @@ def test_installer_public_directories_and_cleanup_under_private_umask(tmp_path, 
         assert not config.parent.exists()
     finally:
         os.umask(previous)
+
+
+@pytest.mark.parametrize('failure', [None, 'https', 'snapshot', 'unit-validation', 'rollback-unconfirmed', 'updater'])
+def test_managed_update_runs_verified_sources_and_preserves_or_restores_station(tmp_path, monkeypatch, failure):
+    worker = module('update_worker_' + str(failure), 'update-worker.py')
+    host = Host(tmp_path, monkeypatch, existing=True)
+    base = host.system('/var/lib/opt-station-updater'); base.mkdir(parents=True)
+    monkeypatch.setattr(worker, 'BASE', base)
+    body = {'id':str(uuid.uuid4()), 'tag':'v0.26.1', 'requested_at':time.time()}
+    asset = tmp_path / 'release.tar.gz'
+    names = set(bootstrap.REQUIRED) | {str(p.relative_to(ROOT)) for p in (ROOT / 'deploy').iterdir() if p.is_file()}
+    with tarfile.open(asset, 'w:gz') as archive:
+        for name in names:
+            raw = b'[project]\nversion="0.26.1"\n' if name == 'pyproject.toml' else (ROOT / name).read_bytes()
+            member = tarfile.TarInfo(name); member.size = len(raw); member.mode = 0o644
+            archive.addfile(member, io.BytesIO(raw))
+    digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+    row = release('v0.26.1', published_at='2026-11-02T08:00:00Z')
+    row['assets'][0]['digest'] = 'sha256:' + digest
+    calls = []
+    def fetch(url, limit, target=None):
+        calls.append(url)
+        if url == bootstrap.API + '/tags/v0.26.1': return json.dumps(row).encode()
+        if url.endswith('.sha256'): return (digest + '  opt-station-v0.26.1.tar.gz\n').encode()
+        assert url == 'https://github.com/Cyril-E/OPT-station/releases/download/v0.26.1/opt-station-v0.26.1.tar.gz'
+        assert target is not None
+        target.write(asset.read_bytes()); return b''
+    expected = base / 'releases' / body['id'] / 'source'
+    host.source = expected
+    host.failure = 'https' if failure == 'rollback-unconfirmed' else failure
+    monkeypatch.setattr(installer, 'managed_source', lambda source: source == expected)
+    real_load = worker.load
+    def verified_load(name, path):
+        assert path == expected / 'deploy/install-station.py'
+        assert path.read_bytes() == (ROOT / 'deploy/install-station.py').read_bytes()
+        return installer
+    monkeypatch.setattr(worker, 'load', verified_load)
+    def health(url):
+        if url.endswith('/api/system/power'): return {'busy':False, 'pending':False}
+        if failure == 'rollback-unconfirmed' and host.live_source == host.old_source:
+            return {'version':'unexpected', 'mode':'hardware'}
+        return {'version':installer.version(host.live_source / 'pyproject.toml')[0], 'mode':'hardware'}
+    monkeypatch.setattr(installer, 'read_json', health)
+    secret_before = (host.data / 'printer-settings.json').read_bytes()
+    phases = []
+    if failure:
+        with pytest.raises(Exception): worker.perform(body, host.account, bootstrap, installer, phases.append, fetch=fetch)
+        assert phases[-1] == ('recovery_required' if failure == 'rollback-unconfirmed' else 'failed')
+        assert host.stable.resolve() == host.old_source
+    else:
+        worker.perform(body, host.account, bootstrap, installer, phases.append, fetch=fetch)
+        assert phases[-1] == 'complete' and host.stable.resolve() == expected
+        assert 'backup' in phases and 'activating' in phases and 'https' in phases
+        assert host.system('/etc/systemd/system/opt-station-update.path').is_file()
+        assert host.system('/usr/local/lib/opt-station-updater/update-worker.py').read_bytes() == (ROOT / 'deploy/update-worker.py').read_bytes()
+    assert (host.data / 'printer-settings.json').read_bytes() == secret_before
+    assert host.ca.read_text() == 'existing-public-ca\n'
+    with sqlite3.connect(host.data / 'inventory.sqlite3') as db:
+        assert db.execute('SELECT * FROM spools').fetchone() == ('B0003', 'empty spool 278 g')
+    assert len(calls) == 3
+
+
+def test_worker_request_rejects_symlinks_extra_fields_and_expiration(tmp_path, monkeypatch):
+    worker = module('update_worker_request_test', 'update-worker.py')
+    monkeypatch.setattr(worker, 'BASE', tmp_path)
+    incoming = tmp_path / 'incoming'; incoming.mkdir()
+    path = incoming / 'request.json'
+    account = SimpleNamespace(pw_uid=os.getuid())
+    body = {'id':str(uuid.uuid4()), 'tag':'v999.0.0', 'requested_at':time.time()}
+    for bad in ({**body, 'command':'sudo something'}, {**body, 'requested_at':0}, {**body, 'id':'not-a-uuid'}):
+        path.write_text(json.dumps(bad))
+        with pytest.raises(ValueError): worker.request(account, time.time())
+    path.unlink(); other = tmp_path / 'secret'; other.write_text(json.dumps(body)); path.symlink_to(other)
+    with pytest.raises(OSError): worker.request(account, time.time())
+    assert other.read_text() == json.dumps(body)
+    path.unlink(); path.write_text(json.dumps(body))
+    assert worker.request(account, time.time()) == body
+
+
+def test_worker_boot_reports_interrupted_update_without_restarting_it(tmp_path, monkeypatch):
+    worker = module('update_worker_recovery_test', 'update-worker.py')
+    monkeypatch.setattr(worker, 'BASE', tmp_path)
+    config = tmp_path / 'config.json'; config.write_text('{"user":"maker"}')
+    monkeypatch.setattr(worker, 'CONFIG', config)
+    monkeypatch.setattr(worker.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(worker.pwd, 'getpwnam', lambda name: SimpleNamespace(pw_uid=1000))
+    monkeypatch.setattr(worker, 'load', lambda name, path: SimpleNamespace(supported_platform=lambda: None))
+    (tmp_path / 'state.json').write_text(json.dumps({'phase':'activating','percent':70,'id':str(uuid.uuid4())}))
+    worker.main()
+    assert json.loads((tmp_path / 'state.json').read_text())['phase'] == 'recovery_required'
+    assert not (tmp_path / 'releases').exists()
+
+
+def test_worker_never_replays_a_request_recorded_before_an_interruption(tmp_path, monkeypatch):
+    worker = module('update_worker_no_replay_test', 'update-worker.py')
+    monkeypatch.setattr(worker, 'BASE', tmp_path)
+    config = tmp_path / 'config.json'; config.write_text('{"user":"maker"}')
+    monkeypatch.setattr(worker, 'CONFIG', config)
+    monkeypatch.setattr(worker.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(worker.pwd, 'getpwnam', lambda name: SimpleNamespace(pw_uid=os.getuid() or 1000))
+    monkeypatch.setattr(worker, 'load', lambda name, path: SimpleNamespace(
+        supported_platform=lambda: None, version_key=bootstrap.version_key))
+    body = {'id':str(uuid.uuid4()), 'tag':'v999.0.0', 'requested_at':time.time()}
+    incoming = tmp_path / 'incoming'; incoming.mkdir(); path = incoming / 'request.json'
+    path.write_text(json.dumps(body))
+    state = {'id':body['id'],'tag':body['tag'],'phase':'checking','percent':3}
+    (tmp_path / 'state.json').write_text(json.dumps(state))
+    # Simulate a systemd stop after the state write but before consuming the file.
+    worker.main(recover_only=True)
+    assert path.exists()
+    assert json.loads((tmp_path / 'state.json').read_text())['phase'] == 'recovery_required'
+    monkeypatch.setattr(worker, 'request', lambda account, now: body)
+    worker.main()
+    assert not path.exists() and not (tmp_path / 'releases').exists()
+    assert json.loads((tmp_path / 'state.json').read_text())['phase'] == 'recovery_required'
+
+
+def test_successful_manual_reinstallation_clears_the_recovery_block(tmp_path, monkeypatch):
+    host = Host(tmp_path, monkeypatch, existing=True)
+    state = host.system('/var/lib/opt-station-updater/state.json'); state.parent.mkdir(parents=True)
+    state.write_text('{"phase":"recovery_required","percent":70}')
+    host.install()
+    assert json.loads(state.read_text())['phase'] == 'idle'
+    assert host.active and host.gateway_active and host.ca.read_text() == 'existing-public-ca\n'

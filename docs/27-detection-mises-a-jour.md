@@ -1,6 +1,8 @@
 # Détection des nouvelles versions GitHub
 
-Dans Configuration → Mises à jour d’OPT Station, la station peut consulter les versions publiées et indiquer si une mise à jour existe. Elle ne télécharge ni n’installe cette mise à jour.
+Dans Configuration → Mises à jour d’OPT Station, la station peut consulter les versions publiées et indiquer si une mise à jour existe. La détection seule ne télécharge ni n’installe cette mise à jour.
+
+Depuis **v0.26.0**, le bouton **Mettre à jour** permet une [installation en un clic depuis l’application](40-mise-a-jour-depuis-application.md), à votre demande. Elle utilise un service système distinct, inclus dans l’installation en une commande ; les releases antérieures ne contiennent pas ce service.
 
 ## Activation
 
@@ -41,7 +43,7 @@ Un contrôle est limité à dix pages de cent releases, 2 Mo par page et un budg
 
 Les réglages sont enregistrés dans **`updates-settings.json`**, avec droits `0600`. Le jeton n’est jamais renvoyé au navigateur, ajouté à un lien ou affiché dans les erreurs. L’état et les métadonnées nécessaires au cache sont dans **`updates-state.json`**, sans secret. Les changements de dépôt, de canal ou de secret invalident les résultats précédents; un contrôle lancé avec d’anciens réglages ne peut pas les remplacer.
 
-Les sauvegardes de configuration incluent les réglages GitHub et le jeton, avec ou sans mot de passe selon le choix de protection. Leur validation et leur restauration utilisent les mêmes règles que le formulaire. Après restauration, la station recharge ces réglages et invalide l’ancien état de vérification. La base courante utilise le **schéma 5**. Conserver les données et les sources sauvegardées avant toute mise à jour.
+Les sauvegardes de configuration incluent les réglages GitHub et le jeton, avec ou sans mot de passe selon le choix de protection. Leur validation et leur restauration utilisent les mêmes règles que le formulaire. Après restauration, la station recharge ces réglages et invalide l’ancien état de vérification. La base courante utilise le **schéma 6**. Conserver les données et les sources sauvegardées avant toute mise à jour.
 
 ## Notes à chaque publication
 
@@ -49,6 +51,6 @@ Lors de la préparation d’une version, compléter la section **Nouveautés** d
 
 ## Périmètre et vérification
 
-L’inventaire, les notes, les modèles, les étiquettes, le lecteur, les caméras et l’imprimante restent indépendants. Aucun outil MCP, tâche cron, service système supplémentaire ou accès en écriture à GitHub n’est ajouté. Le MCP conserve douze outils.
+L’inventaire, les notes, les modèles, les étiquettes, le lecteur, les caméras et l’imprimante restent indépendants de la recherche. La détection seule n’ajoute aucun outil MCP, tâche cron, service système supplémentaire ou accès en écriture à GitHub. L’installation à la demande utilise le [service de mise à jour](40-mise-a-jour-depuis-application.md) distinct. Le MCP conserve treize outils, sans commande d’installation.
 
 Les vérifications logicielles et les limites matérielles de la version courante sont détaillées dans le [guide de vérification](08-verification-prototype.md).

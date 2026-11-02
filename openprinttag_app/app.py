@@ -50,6 +50,7 @@ from .mcp_server import MCPConfiguration, MCPTransport
 from .library_transfer import LibraryTransfer
 from .backups import BackupManager, BackupError, MaintenanceGate, recover_restore, MAX_ARCHIVE
 from .updates import ReleaseMonitor
+from .update_install import UpdateInstaller, InstallError
 from .assistant import LabelAssistant, AssistantError, MAX_IMAGE
 from .photos import MAX_UPLOAD
 from .chatgpt import ChatGPTError
@@ -321,6 +322,11 @@ class ConnectSettings(Model):
     clear_refresh_token: StrictBool = False
 
 
+class UpdateInstallation(Model):
+    revision: StrictInt = Field(ge=0)
+    tag: str = Field(pattern=r'^v\d+\.\d+\.\d+(?:-rc\.\d+)?$', max_length=100)
+
+
 class ConnectResume(Model):
     version: StrictInt = Field(ge=1)
 
@@ -383,7 +389,8 @@ def blank(record):
 
 def create_app(settings: Settings | None = None, camera: CameraScanner | None = None, reader=None,
                printer_fetch=None, printer_capture=None, label_runner=None, power_backend=None, updates_fetch=None,
-               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None, connect_fetch=None):
+               prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None, connect_fetch=None,
+               update_installer=None):
     settings = settings or Settings.from_env()
     https = HTTPSConfiguration.load(settings.https_config)
     if https.url:
@@ -407,9 +414,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                                     **({"fetch": printer_fetch} if printer_fetch else {}))
     label_printer = LabelPrinter(settings.data_dir, store, runner=label_runner)
     maintenance = MaintenanceGate()
+    updater = update_installer or UpdateInstaller(enabled=settings.mode == 'hardware')
     connect_configuration = ConnectConfiguration(settings.data_dir, printer_configuration.record()["connect"]["printer_uuid"])
     connect_monitor = ConnectMonitor(connect_configuration, store, maintenance=maintenance,
-                                     allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive and not installation_busy(),
+                                     allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive and not installation_busy() and not updater.pending(),
                                      **({"fetch": connect_fetch} if connect_fetch else {}))
     connect_exporter = WarehouseExporter(connect_monitor)
     library_transfer = LibraryTransfer(store)
@@ -427,7 +435,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
 
     station_power = StationPower(power_backend or LogindPower(enabled=settings.mode == "hardware"), busy=hardware_busy)
     updates = ReleaseMonitor(settings.data_dir, **({"fetch": updates_fetch} if updates_fetch else {}),
-                             allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive)
+                             allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive and not updater.pending() and not installation_busy())
+
+    def update_status():
+        return {**updates.snapshot(), 'installation': updater.snapshot()}
 
     def reload_configuration():
         nonlocal network, mcp_configuration, printer_configuration, connect_configuration, connect_exporter
@@ -454,7 +465,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         assistant.reload()
 
     backups = BackupManager(settings, store, maintenance,
-                            busy=lambda: hardware_busy() or station_power.state()["pending"],
+                            busy=lambda: hardware_busy() or station_power.state()["pending"] or updater.pending(),
                             reload_configuration=reload_configuration)
 
     @asynccontextmanager
@@ -492,6 +503,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     app.state.backups, app.state.maintenance = backups, maintenance
     app.state.library_transfer = library_transfer
     app.state.updates = updates
+    app.state.update_installer = updater
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
 
     @app.middleware("http")
@@ -540,7 +552,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                      and not request.url.path.startswith("/api/system/power")
                      and (request.method in {"POST", "PUT", "PATCH", "DELETE"} or request.url.path == "/api/reader/tag"))
         from .installation import installation_busy
-        if (operation or (request.url.path.startswith("/api/system/power") and request.method == "POST")) and installation_busy():
+        if (operation or (request.url.path.startswith("/api/system/power") and request.method == "POST")) and (installation_busy() or updater.pending()):
             return JSONResponse({"detail": "L’installation d’OPT Station est en cours. Réessayez dans un instant."},
                                 status_code=503, headers={"Cache-Control": "no-store"})
         if operation:
@@ -602,6 +614,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     @app.exception_handler(PowerError)
     async def power_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
+    @app.exception_handler(InstallError)
+    async def install_handler(request, exc):
+        return JSONResponse({'detail': str(exc)}, status_code=exc.status_code)
 
     @app.exception_handler(BackupError)
     async def backup_handler(request, exc):
@@ -723,7 +739,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 "network": network.snapshot(),
                 "power": station_power.state(),
                 "mcp": {"enabled": mcp_configuration.enabled, "revision": mcp_configuration.revision},
-                "updates": updates.snapshot() if local_station(request) or network.mode != "disabled" else None,
+                "updates": update_status() if local_station(request) or network.mode != "disabled" else None,
                 "assistant": assistant.public() if station_access(request) else None,
                 "library_revision": store.library_revision(),
                 "inventory_revision": store.inventory_revision() if local_station(request) or network.mode != "disabled" else None,
@@ -759,20 +775,27 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     @app.get("/api/configuration/updates")
     def update_settings(request: Request):
         require_station(request)
-        return updates.settings()
+        return {**updates.settings(), 'status': update_status()}
 
     @app.put("/api/configuration/updates")
     def save_update_settings(request: Request, body: UpdateSettings):
         require_station(request)
         try:
-            return updates.save(body.model_dump())
+            return {**updates.save(body.model_dump()), 'status': update_status()}
         except OSError:
             raise HTTPException(503, "L’enregistrement des réglages GitHub n’est pas confirmé. Rechargez-les avant de réessayer.") from None
 
     @app.post("/api/updates/check", status_code=202)
     def check_updates(request: Request):
         require_station(request)
-        return updates.request_check()
+        updates.request_check()
+        return update_status()
+
+    @app.post('/api/updates/install', status_code=202)
+    def install_update(request: Request, body: UpdateInstallation):
+        require_station(request)
+        return updater.start(updates, body.tag, body.revision,
+            busy=lambda: hardware_busy() or maintenance.exclusive or station_power.state()['pending'] or station_power.operations > 1)
 
     def mcp_snapshot(request):
         endpoint = (network.url if network.configured else str(request.base_url).rstrip("/")) + "/mcp"

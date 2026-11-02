@@ -35,6 +35,8 @@ Le partage distant commence en mode **inventaire** sur une station neuve. L’ac
 
 ## Terminer dans Configuration
 
+Depuis **v0.26.0**, l’installateur ajoute aussi le service permettant de lancer les prochaines mises à jour en un clic depuis OPT Station. Voir le [guide dédié](40-mise-a-jour-depuis-application.md). Les releases précédentes ne contiennent pas ce service.
+
 Sur le Pi, le navigateur utilise `https://localhost/`, avec le certificat local installé et les droits de la station. Si aucun bureau n’était ouvert pendant l’installation, ouvrir la session graphique ou redémarrer le Pi pour lancer le plein écran.
 
 Depuis un autre ordinateur du même réseau, ouvrir l’adresse affichée, par exemple `https://opt-station.local/` en remplaçant ce nom par celui du Pi. Pour l’approbation initiale du certificat, ouvrir `http://opt-station.local/https` et suivre le [guide pas à pas](31-https-local.md). Le certificat apparaît dans le trousseau sous le nom **Caddy Local Authority - AAAA ECC Root**, où AAAA est l’année de création de l’autorité; son nom n’est pas « OPT Station ». Cette approbation reste à faire une fois sur chaque appareil client.

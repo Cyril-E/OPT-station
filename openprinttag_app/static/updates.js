@@ -4,9 +4,53 @@
   const msg = I18n.msg, $ = id => document.getElementById(id);
   const text = (id, value) => I18n.text($(id), I18n.message(value));
   let status = null, configuration = null, access = false, busy = false, pendingPower = false, dirty = false, tab = 'read';
+  let installation = null, reconnectTimer = null, reconnecting = false, intent = null;
+  try { intent = JSON.parse(sessionStorage.getItem('opt-station-update') || 'null'); } catch (_) {}
+  function remember(value) {
+    intent = value;
+    try { if (value) sessionStorage.setItem('opt-station-update', JSON.stringify(value)); else sessionStorage.removeItem('opt-station-update'); } catch (_) {}
+  }
+  function reconnect() {
+    if (reconnectTimer || reconnecting || !(installation?.pending || intent)) return;
+    reconnectTimer = setTimeout(async () => {
+      reconnectTimer = null; reconnecting = true;
+      try {
+        const next = await request('/api/status');
+        status = next.updates; access = next.station_access; render();
+      } catch (_) {
+        $('update-install-progress').hidden = false;
+        text('update-install-message', msg('Installation en cours. Cette page se reconnectera automatiquement à la station…'));
+      } finally { reconnecting = false; reconnect(); }
+    }, 2500);
+  }
   const date = value => value ? new Date(value).toLocaleString(I18n.locale()) : msg("Jamais");
   function render() {
     const available = Boolean(status?.enabled && status?.update_available && status?.latest?.url);
+    installation = status?.installation || installation;
+    const pending = Boolean(installation?.pending);
+    if (intent && !intent.id && installation?.id && installation.tag === intent.tag) remember({...intent, id:installation.id});
+    if (pending && installation.id) remember({id:installation.id, tag:installation.tag});
+    const installAllowed = access && installation?.supported && available && !busy && !pendingPower && !pending && !dirty
+      && installation.phase !== 'recovery_required' && !status.stale && !status.error_code && !status.checking && status.repository?.toLowerCase() === 'cyril-e/opt-station';
+    for (const id of ['updates-install','updates-banner-install','updates-notes-install']) {
+      $(id).hidden = !available; $(id).disabled = !installAllowed;
+    }
+    text('updates-install-info', !access ? msg('L’installation nécessite l’accès local ou complet.')
+      : !installation?.supported ? msg('Le service de mise à jour doit être installé une fois sur le Pi. Voir le guide de mise à jour.')
+      : status?.repository?.toLowerCase() !== 'cyril-e/opt-station' ? msg('L’installation en un clic utilise uniquement les versions publiques du dépôt officiel OPT Station.')
+      : installation.message);
+    $('update-install-progress').hidden = !(installation?.phase && installation.phase !== 'idle') && !intent;
+    if (installation) {
+      text('update-install-message', installation.message || '');
+      $('update-install-meter').value = installation.percent || 0;
+      text('update-install-percent', msg('{0} %', installation.percent || 0));
+      if (intent && installation.id === intent.id && !pending && ['complete','failed','recovery_required'].includes(installation.phase)) {
+        const reload = installation.phase === 'complete' && status?.installed_version === intent.tag.replace(/^v/, '').replace('-rc.', 'rc');
+        remember(null);
+        if (reload) window.location.reload();
+      }
+    }
+    reconnect();
     $("updates-banner").hidden = $("updates-sidebar").hidden = !available;
     $("updates-release-link").hidden = !status?.latest?.url;
     $("updates-notes-open").hidden = !status?.latest?.url;
@@ -33,10 +77,10 @@
     text("updates-state", label); text("updates-status-message", message);
     text("updates-dates", status?.enabled ? msg("Dernier contrôle réussi : {0} · prochaine vérification : {1}", date(status.checked_at), date(status.next_check_at)) : "");
     const cooling = Boolean(status?.retry_allowed_at && Date.parse(status.retry_allowed_at) > Date.now());
-    $("updates-fields").disabled = !access || busy || pendingPower;
-    $("updates-save").disabled = !access || busy || pendingPower || !configuration;
+    $("updates-fields").disabled = !access || busy || pendingPower || pending;
+    $("updates-save").disabled = !access || busy || pendingPower || pending || !configuration;
     $("updates-reload").disabled = !access || busy;
-    $("updates-check").disabled = !access || busy || pendingPower || dirty || !status?.enabled || status.checking || cooling;
+    $("updates-check").disabled = !access || busy || pendingPower || pending || dirty || !status?.enabled || status.checking || cooling;
     text("updates-access", access ? configuration?.token_saved ? msg("Un jeton GitHub est enregistré sur le Pi. Il n’est pas affiché ici.") : msg("Aucun jeton GitHub enregistré. Le dépôt public peut être consulté sans jeton.") : msg("Les réglages GitHub nécessitent l’accès local ou complet."));
   }
   async function request(url, body, method = 'POST') {
@@ -79,6 +123,22 @@
     finally { busy = false; render(); }
   });
   $("updates-info").addEventListener('click', () => $("updates-info-dialog").showModal());
+  async function install() {
+    if ($('updates-install').disabled) return;
+    busy = true; render();
+    remember({id:null, tag:status.latest.tag});
+    try {
+      installation = await request('/api/updates/install', {revision:status.revision, tag:status.latest.tag});
+      status = {...status, installation};
+      if ($('updates-notes-dialog').open) $('updates-notes-dialog').close();
+    } catch (error) {
+      // A lost acknowledgement may still correspond to a queued job: poll,
+      // never automatically send the installation request a second time.
+      text('updates-result', error.message);
+      if (error.name !== 'TimeoutError' && error.name !== 'TypeError' && error.name !== 'AbortError') remember(null);
+    } finally { busy = false; render(); }
+  }
+  ['updates-install','updates-banner-install','updates-notes-install'].forEach(id => $(id).addEventListener('click', install));
   function showNotes() {
     if (!status?.latest?.url || $("updates-notes-dialog").open) return;
     $("updates-notes-dialog").showModal();

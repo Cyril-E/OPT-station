@@ -1,5 +1,17 @@
 # Versions publiques
 
+## v0.26.0 — 2 novembre 2026
+
+- Bouton **Mettre à jour** dans le bandeau, les notes de version et Paramètres : lancement explicite en un clic, progression persistante et reconnexion automatique de la page après activation.
+- Service système indépendant de l’application, inclus dans l’installation en une commande. Une station existante doit l’activer une seule fois ; les mises à jour suivantes ne demandent ni terminal ni mot de passe administrateur.
+- Téléchargement depuis le dépôt public officiel, vérification de l’empreinte GitHub et du fichier SHA-256, archive contrôlée et refus d’une version antérieure ou déjà installée. Les scripts exécutés avec les droits système restent dans des dossiers appartenant au système.
+- Réutilisation de l’installateur transactionnel : préparation avant arrêt, sauvegarde de la station, conservation des données et certificats, vérification des services et restauration sur erreur. Une interruption ou une restauration non confirmée impose une reprise manuelle, sans seconde installation automatique.
+- Accès local ou complet requis. Les opérations NFC, caméra, impression d’étiquette, sauvegarde et alimentation sont coordonnées avec l’installation ; aucun outil MCP d’installation n’est ajouté. Interface dans les quatre langues.
+
+Le service système est installé et reconnu par l’interface sur Raspberry Pi, avec conservation de l’inventaire, des accès privés et de l’autorité HTTPS. Le lancement, la progression et la reconnexion ont été contrôlés dans le navigateur sur des données isolées. Le premier essai réel d’installation depuis une release GitHub reste à effectuer ; l’installation complète sur carte SD vierge reste également à qualifier. Voir le [guide de mise à jour depuis l’application](docs/40-mise-a-jour-depuis-application.md).
+
+Vérifications : **974 tests réussis sur Mac**, avec deux exclusions liées à l’environnement, **976 sur Raspberry Pi**, ainsi que les sept moteurs JavaScript. Les nouveaux fichiers de service ont été validés par systemd sur le Pi. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. L’archive complète `opt-station-v0.26.0.tar.gz` et son SHA-256 accompagnent cette préversion.
+
 ## v0.25.1 — 1er novembre 2026
 
 - Icône de présence dans l’entrepôt Prusa Connect à côté du numéro de bobine, avec date de vérification et état à revérifier en cas de lecture indisponible ou ancienne. Visible aussi en accès Inventaire, dans les quatre langues et les deux thèmes.
