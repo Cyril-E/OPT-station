@@ -11,6 +11,7 @@ ROOT = Path('/')
 FILES = ('/usr/local/lib/opt-station-updater/update-worker.py',
          '/usr/local/lib/opt-station-updater/bootstrap.py',
          '/usr/local/lib/opt-station-updater/install-station.py',
+         '/usr/local/lib/opt-station-updater/install-files.py',
          '/etc/opt-station/updater.json', '/var/lib/opt-station-updater/info.json',
          '/etc/systemd/system/opt-station-update.service', '/etc/systemd/system/opt-station-update.path',
          '/etc/systemd/system/multi-user.target.wants/opt-station-update.service',
@@ -27,7 +28,7 @@ def configure(source, account, transaction, runner=subprocess.run, reset_recover
     incoming.mkdir(mode=0o700, exist_ok=True)
     if incoming.is_symlink(): raise ValueError('Dossier de demandes non reconnu.')
     os.chown(incoming, account.pw_uid, account.pw_gid); incoming.chmod(0o700)
-    for name in ('update-worker.py', 'bootstrap.py', 'install-station.py'):
+    for name in ('update-worker.py', 'bootstrap.py', 'install-station.py', 'install-files.py'):
         transaction.write(ROOT / 'usr/local/lib/opt-station-updater' / name,
                           (source / 'deploy' / name).read_text(), mode=0o644)
     transaction.write(ROOT / 'etc/opt-station/updater.json', json.dumps({'user': account.pw_name}) + '\n')
@@ -78,8 +79,8 @@ def main():
     spec = importlib.util.spec_from_file_location('updater_installation', args.source / 'deploy/install-station.py')
     installer = importlib.util.module_from_spec(spec); spec.loader.exec_module(installer)
     with installer.installation_lock():
-        transaction = installer.Transaction(Path(account.pw_dir) / 'openprinttag-backups' /
-            ('before-updater-' + __import__('datetime').datetime.now().strftime('%Y%m%dT%H%M%S-%f')) / 'files')
+        transaction = installer.Transaction(ROOT / 'var/lib/opt-station-install-backups' /
+            ('before-updater-' + __import__('datetime').datetime.now().strftime('%Y%m%dT%H%M%S-%f')) / 'files', account)
         for path in FILES: transaction.capture(ROOT / path.lstrip('/'))
         try: configure(args.source, account, transaction)
         except BaseException:

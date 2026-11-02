@@ -248,13 +248,20 @@ class Host:
         if args[0] == "tar":
             name = args[args.index("-czpf") + 1] if "-czpf" in args else args[args.index("-xzpf") + 1]
             target = Path(args[args.index("-C") + 1])
+            assert kwargs["user"] == self.account.pw_uid
+            assert kwargs["group"] == self.account.pw_gid
+            assert "extra_groups" in kwargs, "Child must permanently drop supplementary root groups"
             if "-czpf" in args:
                 if self.failure == "snapshot":
                     raise OSError("disk full during backup")
                 assert not self.active, "SQLite must be copied only after service stop"
-                with tarfile.open(name, "w:gz") as archive: archive.add(target, arcname=".")
+                with tarfile.open(name=None if name == "-" else name, mode="w:gz",
+                                  fileobj=kwargs.get("stdout")) as archive:
+                    archive.add(target, arcname=".")
             else:
-                with tarfile.open(name) as archive: archive.extractall(target, filter="data")
+                with tarfile.open(name=None if name == "-" else name,
+                                  fileobj=kwargs.get("stdin")) as archive:
+                    archive.extractall(target, filter="data")
         elif args[0] == "systemctl":
             if self.failure == 'updater' and 'opt-station-update.path' in args and '--now' in args:
                 raise subprocess.CalledProcessError(1, args)
@@ -313,6 +320,29 @@ def test_fresh_headless_install_creates_services_data_receipt_and_https(tmp_path
     assert instance.receipt.stat().st_mode & 0o777 == 0o600
     assert not any("reboot" in call for call in host.calls)
     assert not (host.home / ".config/autostart/openprinttag.desktop").exists()
+
+
+def test_data_replaced_after_snapshot_never_changes_outside_ownership(tmp_path, monkeypatch):
+    host = Host(tmp_path, monkeypatch, existing=True)
+    outside = host.system("/etc"); outside.mkdir(parents=True, exist_ok=True)
+    sentinel = outside / "keep.txt"; sentinel.write_text("protected\n")
+    ownership_changes = []
+    monkeypatch.setattr(installer.os, "chown", lambda path, *args:
+                        ownership_changes.append(Path(path).resolve()))
+
+    def swap(phase):
+        if phase == "activating":
+            host.data.rename(host.data.with_name("original-data"))
+            host.data.symlink_to(outside, target_is_directory=True)
+
+    monkeypatch.setattr(installer.Installer, "report", lambda self, phase: swap(phase))
+    try:
+        host.install()
+    except (ValueError, OSError):
+        pass  # Refusing the substituted path is a safe installation failure.
+    assert outside not in ownership_changes
+    assert sentinel.read_text() == "protected\n"
+    assert not (outside / "migration-attempt.json").exists()
 
 
 def test_rerun_preserves_database_settings_ca_and_camera_profile(tmp_path, monkeypatch):

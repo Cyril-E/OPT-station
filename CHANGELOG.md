@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.26.1 — 2 novembre 2026
+
+- Correction de la frontière entre le compte de station et les opérations système de l’installateur : capture, écriture, validation des unités et restauration des fichiers utilisateur utilisent les seuls droits de ce compte. Les sous-processus d’archivage abandonnent également les droits administrateur.
+- Transactions partagées entre l’installation, HTTPS et l’activation du service de mise à jour. Les copies de restauration système sont conservées sous `/var/lib/opt-station-install-backups`, avec contrôle des dossiers parents et protection contre la substitution de liens. Les anciennes sauvegardes sous le dossier utilisateur restent conservées et ne sont pas reprises automatiquement.
+- Application de la limite de taille aux octets réellement reçus pour toutes les requêtes JSON de modification, avant leur analyse. La correction couvre les requêtes sans taille annoncée, les chemins MCP et le passage par HTTPS, en conservant les budgets des photos, imports, analyses IA et restaurations.
+
+Vérifications : **986 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, **988 sur Raspberry Pi**, avec huit exclusions nécessitant les droits administrateur, puis **8 tests administrateur réussis séparément sur le Pi**, ainsi que les sept moteurs JavaScript. Les essais de droits réels utilisent uniquement des fichiers temporaires et vérifient les cibles protégées, les propriétaires et la restauration légitime. Une revue indépendante n’a trouvé aucun contournement restant. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée.
+
+L’archive complète `opt-station-v0.26.1.tar.gz` et son SHA-256 accompagnent cette préversion. L’inventaire, les accès privés, les certificats et les tags physiques ne sont pas modifiés par les essais de qualification. L’installation de cette version depuis l’application sera vérifiée après publication. Voir les guides [d’installation](docs/33-installation-une-commande.md) et [de mise à jour](docs/40-mise-a-jour-depuis-application.md).
+
 ## v0.26.0 — 2 novembre 2026
 
 - Bouton **Mettre à jour** dans le bandeau, les notes de version et Paramètres : lancement explicite en un clic, progression persistante et reconnexion automatique de la page après activation.

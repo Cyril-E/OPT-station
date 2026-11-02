@@ -35,7 +35,7 @@ SYSTEM_FILES = (
     "/usr/local/share/ca-certificates/opt-station.crt", "/etc/lightdm/lightdm.conf.d/50-opt-station.conf",
     "/etc/systemd/system/default.target", "/etc/lightdm/lightdm.conf",
     "/usr/local/lib/opt-station-updater/update-worker.py", "/usr/local/lib/opt-station-updater/bootstrap.py",
-    "/usr/local/lib/opt-station-updater/install-station.py", "/etc/opt-station/updater.json",
+    "/usr/local/lib/opt-station-updater/install-station.py", "/usr/local/lib/opt-station-updater/install-files.py", "/etc/opt-station/updater.json",
     "/var/lib/opt-station-updater/info.json", "/etc/systemd/system/opt-station-update.service",
     "/etc/systemd/system/opt-station-update.path",
     "/etc/systemd/system/multi-user.target.wants/opt-station-update.service",
@@ -112,8 +112,8 @@ def managed_source(source):
     if not source.is_relative_to(root) or os.geteuid() != 0:
         return False
     # The root process must never import scripts writable by the web account.
-    for path in [source, *source.parents, *(source / 'deploy' / name for name in
-                  ('bootstrap.py', 'install-station.py', 'install-https.py', 'install-updater.py', 'update-worker.py'))]:
+    for path in [source, *source.parents, source / 'deploy', *(source / 'deploy' / name for name in
+                  ('bootstrap.py', 'install-station.py', 'install-files.py', 'install-https.py', 'install-updater.py', 'update-worker.py'))]:
         info = path.lstat()
         if path.is_symlink() or info.st_uid != 0 or info.st_mode & 0o022:
             return False
@@ -136,100 +136,9 @@ def installation_lock():
         os.close(descriptor)
 
 
-class Transaction:
-    """Record only selected paths; preserve links and ownership, including absence."""
-    def __init__(self, folder):
-        self.folder = folder
-        folder.mkdir(parents=True, mode=0o700)
-        self.saved = []
-        self.created_dirs, self.directory_modes = [], []
-
-    def capture(self, path):
-        path = Path(path)
-        if any(item[0] == path for item in self.saved):
-            return
-        old = path.lstat() if path.exists() or path.is_symlink() else None
-        copy, link = None, None
-        if old:
-            if stat.S_ISLNK(old.st_mode):
-                link = os.readlink(path)
-            elif stat.S_ISREG(old.st_mode):
-                copy = self.folder / str(len(self.saved))
-                shutil.copy2(path, copy)
-            else:
-                raise ValueError(f"Ce chemin doit être un fichier ou un lien : {path}")
-        self.saved.append((path, old, copy, link))
-        (self.folder / "manifest.json").write_text(json.dumps([
-            {"path": str(p), "existed": info is not None, "copy": str(saved.name) if saved else None,
-             "link": target, "uid": info.st_uid if info else None, "gid": info.st_gid if info else None,
-             "mode": stat.S_IMODE(info.st_mode) if info else None}
-            for p, info, saved, target in self.saved], indent=2) + "\n")
-
-    def write(self, path, text, uid=0, gid=0, mode=0o600):
-        self.capture(path)
-        if path.is_symlink():
-            raise ValueError(f"Un fichier de configuration est un lien symbolique : {path}")
-        parents, parent = [], path.parent
-        while not parent.exists():
-            parents.append(parent)
-            parent = parent.parent
-        for parent in reversed(parents):
-            parent.mkdir(mode=0o755 if uid == 0 else 0o700)
-            parent.chmod(0o755 if uid == 0 else 0o700)  # independent of the installer's private umask
-            os.chown(parent, uid, gid)
-            self.created_dirs.append(parent)
-        # A previously interrupted install may have left an empty root-owned
-        # public configuration directory. Record its old mode before repairing it.
-        parent = path.parent
-        if (uid == 0 and mode & 0o044 and parent not in self.created_dirs
-                and parent.stat().st_uid == 0 and not any(parent.iterdir())):
-            previous = stat.S_IMODE(parent.stat().st_mode)
-            if previous != 0o755:
-                self.directory_modes.append((parent, previous))
-                parent.chmod(0o755)
-        (self.folder / "directories.json").write_text(json.dumps({
-            "created": list(map(str, self.created_dirs)),
-            "permissions_before": [{"path": str(p), "mode": old} for p, old in self.directory_modes],
-        }, indent=2) + "\n")
-        descriptor, temporary = tempfile.mkstemp(prefix=".opt-install-", dir=path.parent)
-        try:
-            with os.fdopen(descriptor, "w") as output:
-                os.fchmod(output.fileno(), mode)
-                os.fchown(output.fileno(), uid, gid)
-                output.write(text)
-                output.flush()
-                os.fsync(output.fileno())
-            os.replace(temporary, path)
-        finally:
-            Path(temporary).unlink(missing_ok=True)
-
-    def link(self, path, target):
-        self.capture(path)
-        temporary = path.with_name(path.name + ".install-next")
-        if temporary.exists() or temporary.is_symlink():
-            raise ValueError(f"Un ancien lien temporaire doit être examiné : {temporary}")
-        temporary.symlink_to(target)
-        os.replace(temporary, path)
-
-    def restore(self):
-        for path, old, copy, link in reversed(self.saved):
-            if path.is_symlink() or path.is_file():
-                path.unlink()
-            if not old:
-                continue
-            if link is not None:
-                path.symlink_to(link)
-                os.lchown(path, old.st_uid, old.st_gid)
-            else:
-                shutil.copy2(copy, path)
-                os.chown(path, old.st_uid, old.st_gid)
-        for path, mode in reversed(self.directory_modes):
-            path.chmod(mode)
-        for path in reversed(self.created_dirs):
-            try:
-                path.rmdir()
-            except OSError:
-                pass  # Keep a directory if another component now owns files inside it.
+file_operations = load("opt_install_files", Path(__file__).with_name("install-files.py"))
+Transaction = file_operations.Transaction
+account_access = file_operations.account_access
 
 
 class Installer:
@@ -365,17 +274,24 @@ class Installer:
 
     def snapshot(self):
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S-%f")
-        self.backup = self.home / "openprinttag-backups" / ("before-install-" + stamp)
-        self.transaction = Transaction(self.backup / "files")
+        self.backup = system_path("/var/lib/opt-station-install-backups") / ("before-install-" + stamp)
+        self.transaction = Transaction(self.backup / "files", self.account)
         paths = [self.stable, self.receipt, self.units / "openprinttag.service",
                  self.units / "openprinttag.service.d/https.conf", self.units / "openprinttag-display.service",
                  self.units / "openprinttag-display.service.d/https.conf", self.home / ".local/lib/openprinttag-screen/launch.py",
                  self.home / ".config/autostart/openprinttag.desktop", *map(system_path, SYSTEM_FILES)]
         for path in paths:
             self.transaction.capture(path)
-        self.data_existed = self.data.exists()
+        with account_access(self.account):
+            if self.data.is_symlink():
+                raise ValueError("Le dossier de données a été remplacé par un lien symbolique.")
+            self.data_existed = self.data.exists()
         if self.data_existed:
-            run("tar", "--acls", "--xattrs", "-czpf", self.backup / "data-before.tar.gz", "-C", self.data, ".")
+            # Only the archive descriptor crosses into the unprivileged child.
+            with (self.backup / "data-before.tar.gz").open("xb") as archive:
+                os.fchmod(archive.fileno(), 0o600)
+                run("tar", "--acls", "--xattrs", "-czpf", "-", "-C", self.data, ".",
+                    stdout=archive, **file_operations.child_identity(self.account))
         self.data_backup_ready = True
         (self.backup / "installation-before.json").write_text(json.dumps({
             "source": str(self.old_source) if self.old_source else None, "data_dir": str(self.data),
@@ -403,13 +319,16 @@ class Installer:
     def validate_service(self):
         # Verify with the prepared source path: the stable link does not exist on
         # a first install. This uses systemd's actual parser, without starting a unit.
-        with tempfile.TemporaryDirectory(prefix=".opt-unit-check-", dir=self.source) as temporary:
-            folder = Path(temporary)
-            os.chown(folder, self.account.pw_uid, self.account.pw_gid)
+        with account_access(self.account):
+            temporary = tempfile.TemporaryDirectory(prefix=".opt-unit-check-", dir=self.home)
+        try:
+            folder = Path(temporary.name)
             unit = folder / "openprinttag.service"
-            unit.write_text(service(self.source, self.data, self.mode, self.camera))
-            unit.chmod(0o600)
-            os.chown(unit, self.account.pw_uid, self.account.pw_gid)
+            with account_access(self.account):
+                # Exclusive creation refuses a substituted link at the leaf.
+                with unit.open("x") as output:
+                    os.fchmod(output.fileno(), 0o600)
+                    output.write(service(self.source, self.data, self.mode, self.camera))
             uid = self.account.pw_uid
             result = run("runuser", "-u", self.account.pw_name, "--", "env", f"XDG_RUNTIME_DIR=/run/user/{uid}",
                          f"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{uid}/bus", "systemd-analyze", "--user", "verify",
@@ -417,6 +336,9 @@ class Installer:
             if result.returncode:
                 raise ValueError("Fichier de démarrage refusé par systemd; l’application n’a pas été arrêtée.\n"
                                  + result.stderr.strip())
+        finally:
+            with account_access(self.account):
+                temporary.cleanup()
 
     def rollback(self):
         self.userctl("stop", "openprinttag-display.service", "openprinttag.service", check=False)
@@ -427,13 +349,17 @@ class Installer:
             run("systemctl", "disable", "opt-station-https.service", check=False)
         if self.transaction:
             self.transaction.restore()
-            if self.data_backup_ready and self.data_mutated and self.data.exists():
-                # Retain, rather than delete, the attempted version's data.
-                self.failed_data = self.data.with_name(self.data.name + ".failed-" + self.backup.name)
-                self.data.rename(self.failed_data)
+            with account_access(self.account):
+                if self.data_backup_ready and self.data_mutated and self.data.exists():
+                    # Retain, rather than delete, the attempted version's data.
+                    self.failed_data = self.data.with_name(self.data.name + ".failed-" + self.backup.name)
+                    self.data.rename(self.failed_data)
+                if self.data_backup_ready and self.data_mutated and self.data_existed:
+                    self.data.mkdir(mode=0o700)
             if self.data_backup_ready and self.data_mutated and self.data_existed:
-                self.data.mkdir(mode=0o700)
-                run("tar", "--acls", "--xattrs", "-xzpf", self.backup / "data-before.tar.gz", "-C", self.data)
+                with (self.backup / "data-before.tar.gz").open("rb") as archive:
+                    run("tar", "--acls", "--xattrs", "--no-same-owner", "-xzpf", "-", "-C", self.data,
+                        stdin=archive, **file_operations.child_identity(self.account))
             run("systemctl", "daemon-reload", check=False)
             run("update-ca-certificates", check=False, capture_output=True)
             action = 'start' if system_path('/etc/systemd/system/opt-station-update.path').exists() else 'stop'
@@ -495,12 +421,13 @@ class Installer:
             run("systemctl", "start", f"user@{self.account.pw_uid}.service")
             self.snapshot()
             self.report('activating')
+            with account_access(self.account):
+                if self.data.is_symlink():
+                    raise ValueError("Le dossier de données a été remplacé par un lien symbolique.")
+                self.data.mkdir(parents=True, exist_ok=True, mode=0o700)
             self.data_mutated = True
-            self.data.mkdir(parents=True, exist_ok=True, mode=0o700)
-            os.chown(self.data, self.account.pw_uid, self.account.pw_gid)
             tx, uid, gid = self.transaction, self.account.pw_uid, self.account.pw_gid
             tx.link(self.stable, self.source)
-            os.lchown(self.stable, uid, gid)
             tx.write(self.units / "openprinttag.service", service(self.stable, self.data, self.mode, self.camera), uid, gid)
             if self.kiosk:
                 tx.write(self.units / "openprinttag-display.service", (self.source / "deploy/openprinttag-display.service").read_text(), uid, gid)
@@ -515,10 +442,11 @@ class Installer:
                 run("systemctl", "set-default", "graphical.target")
             elif self.args.no_kiosk:
                 autostart = self.home / ".config/autostart/openprinttag.desktop"
-                if autostart.exists():
-                    if "openprinttag-screen/launch.py" not in autostart.read_text():
-                        raise ValueError("Le lancement automatique existant doit être examiné.")
-                    autostart.unlink()
+                with account_access(self.account):
+                    if autostart.exists():
+                        if "openprinttag-screen/launch.py" not in autostart.read_text():
+                            raise ValueError("Le lancement automatique existant doit être examiné.")
+                        autostart.unlink()
                 autologin = system_path("/etc/lightdm/lightdm.conf.d/50-opt-station.conf")
                 if autologin.exists() and autologin.read_text().startswith(MARKER):
                     autologin.unlink()

@@ -99,6 +99,17 @@ def test_origins_match_external_scheme_and_host_and_mcp_boundary(https_config,tm
         assert client.get('/api/status',headers={'Host':'unlisted.invalid'}).status_code==400
 
 
+def test_chunked_json_limit_and_valid_control_through_https_proxy(https_config, tmp_path):
+    app = create_app(Settings(tmp_path / 'data', https_config=https_config[0]))
+    with proxied(app) as client:
+        chunks = (b' ' * 100_000 for _ in range(5))
+        response = client.put('/api/configuration/network', content=chunks,
+                              headers={'Content-Type': 'application/json', 'Origin': 'https://station.local'})
+        assert response.status_code == 413
+        assert client.put('/api/configuration/network', json={'mode': 'disabled'},
+                          headers={'Origin': 'https://station.local'}).status_code == 200
+
+
 def test_public_certificate_and_fingerprint_never_expose_paths_or_keys(https_config,tmp_path):
     path,ca=https_config
     app=create_app(Settings(tmp_path/'data',https_config=path))

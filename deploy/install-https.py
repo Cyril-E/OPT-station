@@ -14,12 +14,10 @@ import os
 from pathlib import Path
 import pwd
 import re
-import shutil
 import socket
 import ssl
 import subprocess
 import sys
-import tempfile
 import time
 from urllib.request import urlopen
 
@@ -122,78 +120,22 @@ def firefox_policy(raw, certificate):
     return json.dumps(record, ensure_ascii=False, indent=2) + "\n"
 
 
-class Files:
-    """Private, restorable copies of only the configuration files being changed."""
-    def __init__(self, backup):
-        self.backup, self.saved = backup, []
-        self.created_dirs, self.directory_modes = [], []
-        backup.mkdir(parents=True, mode=0o700)
+# Load only the sibling bundled with these trusted installer sources.
+import importlib.util
+_spec = importlib.util.spec_from_file_location("opt_https_files", Path(__file__).with_name("install-files.py"))
+_file_operations = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_file_operations)
+
+
+class Files(_file_operations.Transaction):
+    """HTTPS uses the same privilege boundary and rollback as the installer."""
+    def __init__(self, backup, account=None):
+        super().__init__(backup, account)
+        self.backup = self.folder
 
     def write(self, path, content, mode=0o644, owner=None):
-        path = Path(path)
-        if path.is_symlink():
-            raise ValueError(f"Lien inattendu à examiner : {path}")
-        if path not in [item[0] for item in self.saved]:
-            old = path.stat() if path.exists() else None
-            copy = self.backup / str(len(self.saved))
-            if old:
-                shutil.copy2(path, copy)
-            self.saved.append((path, old, copy))
-            (self.backup / "files.json").write_text(json.dumps([
-                {"path": str(p), "copy": c.name if st else None,
-                 "mode": st.st_mode & 0o777 if st else None, "uid": st.st_uid if st else None,
-                 "gid": st.st_gid if st else None} for p, st, c in self.saved], indent=2))
-        parents = []
-        parent = path.parent
-        while not parent.exists():
-            parents.append(parent)
-            parent = parent.parent
-        for parent in reversed(parents):
-            parent.mkdir(mode=0o700 if owner else 0o755)
-            parent.chmod(0o700 if owner else 0o755)
-            self.created_dirs.append(parent)
-            if owner:
-                os.chown(parent, *owner)
-        parent = path.parent
-        if (not owner and mode & 0o044 and parent not in self.created_dirs
-                and parent.stat().st_uid == 0 and not any(parent.iterdir())):
-            previous = parent.stat().st_mode & 0o777
-            if previous != 0o755:
-                self.directory_modes.append((parent, previous))
-                parent.chmod(0o755)
-        (self.backup / "directories.json").write_text(json.dumps({
-            "created": list(map(str, self.created_dirs)),
-            "permissions_before": [{"path": str(p), "mode": old} for p, old in self.directory_modes],
-        }, indent=2))
-        temporary = None
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
-                temporary = Path(output.name)
-                output.write(content)
-                output.flush()
-                os.fsync(output.fileno())
-            temporary.chmod(mode)
-            if owner:
-                os.chown(temporary, *owner)
-            os.replace(temporary, path)
-        finally:
-            if temporary:
-                temporary.unlink(missing_ok=True)
-
-    def restore(self):
-        for path, old, copy in reversed(self.saved):
-            if old:
-                shutil.copy2(copy, path)
-                os.chown(path, old.st_uid, old.st_gid)
-            else:
-                path.unlink(missing_ok=True)
-        for path, mode in reversed(self.directory_modes):
-            path.chmod(mode)
-        for path in reversed(self.created_dirs):
-            try:
-                path.rmdir()
-            except OSError:
-                pass
+        uid, gid = owner or (0, 0)
+        super().write(path, content, uid, gid, mode)
 
 
 def main():
@@ -263,7 +205,7 @@ def main():
     if mode not in {"hardware", "simulation"}:
         parser.error("Le mode de la station n’est pas reconnu.")
     backup = Path("/var/lib/opt-station-https-backups") / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S-%f")
-    files = Files(backup)
+    files = Files(backup, account)
     installed = subprocess.run(["dpkg-query", "-W", "-f=${db:Status-Status}", "caddy"], capture_output=True, text=True)
     had_caddy = installed.returncode == 0 and installed.stdout.strip() == "installed"
     applied = False

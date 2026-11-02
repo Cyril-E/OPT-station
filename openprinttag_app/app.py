@@ -540,14 +540,13 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                      else 6_100_000 if large_body else 256_000)
             if length > limit:
                 return JSONResponse({"detail": "Requête trop volumineuse."}, status_code=413)
-            if large_body:
-                chunks, size = [], 0
-                async for chunk in request.stream():
-                    size += len(chunk)
-                    if size > limit:
-                        return JSONResponse({"detail": "Requête trop volumineuse."}, status_code=413)
-                    chunks.append(chunk)
-                request._body = b"".join(chunks)
+            chunks, size = [], 0
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > limit:
+                    return JSONResponse({"detail": "Requête trop volumineuse."}, status_code=413)
+                chunks.append(chunk)
+            request._body = b"".join(chunks)
         operation = ((request.url.path.startswith("/api/") or mcp_request)
                      and not request.url.path.startswith("/api/system/power")
                      and (request.method in {"POST", "PUT", "PATCH", "DELETE"} or request.url.path == "/api/reader/tag"))

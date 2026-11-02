@@ -34,6 +34,8 @@ Les sources téléchargées et les scripts du service appartiennent au système.
 
 La préparation utilise l’installateur existant. Avant activation, les données sont sauvegardées et les fichiers de lancement sont enregistrés. L’inventaire, les notes, les photos, les modèles, les accès privés, les sauvegardes RFID, les réglages réseau et l’autorité HTTPS sont conservés. Le certificat approuvé sur les autres appareils ne doit pas être réinstallé. Aucun tag RFID n’est réécrit.
 
+Depuis **v0.26.1**, les nouvelles copies de restauration de l’installateur restent sous `/var/lib/opt-station-install-backups`, réservé à l’administrateur. Les accès aux fichiers du compte et l’archivage des données utilisent les seuls droits de ce compte. Les anciennes copies sous le dossier utilisateur sont conservées et ne sont pas reprises automatiquement pour restaurer des fichiers système. Voir les [conditions de restauration](33-installation-une-commande.md#réinstallation-et-échec).
+
 La demande et l’état d’installation sont persistants. Les nouvelles opérations qui modifieraient la station sont suspendues pendant l’installation ; la consultation de l’inventaire et de l’avancement reste possible tant que l’application répond.
 
 ## Échec ou interruption

@@ -73,7 +73,9 @@ Relancer la même commande télécharge une copie neuve des sources. Le chemin d
 
 Les sources restent sous `$HOME/apps/`, avec un lien stable `$HOME/apps/openprinttag-station`. Les données sont indépendantes, par défaut dans `$HOME/openprinttag-data`. Un dossier de sources créé manuellement à la place de ce lien et les surcharges de service inconnues sont signalés plutôt que remplacés.
 
-Avant activation, une sauvegarde privée est placée sous `$HOME/openprinttag-backups/before-install-…`. Elle comprend l’archive des données, le chemin des anciennes sources, les fichiers de configuration sélectionnés et un manifeste avec leurs emplacements et permissions. Ces sauvegardes de l’installateur sont protégées par les droits système et peuvent demander `sudo` pour être consultées; elles ne remplacent pas les sauvegardes chiffrées de l’application.
+Avant activation, une sauvegarde privée est placée sous `/var/lib/opt-station-install-backups/before-install-…`. Elle comprend l’archive des données, le chemin des anciennes sources, les fichiers de configuration sélectionnés et un manifeste avec leurs emplacements et permissions. Ce dossier reste réservé à l’administrateur (`sudo`) : le compte de la station ne peut pas remplacer les copies utilisées pour restaurer les fichiers système. Les anciennes sauvegardes sous `$HOME/openprinttag-backups` sont conservées et ne sont pas réutilisées automatiquement. Ces sauvegardes de l’installateur ne remplacent pas les sauvegardes de l’application.
+
+Les opérations sur le dossier utilisateur, y compris l’archivage et la restauration des données, s’effectuent avec les seuls droits de ce compte. Les fichiers de données doivent donc lui être accessibles ; un dossier privé appartenant à un autre compte nécessite une correction manuelle de ses droits avant l’installation. Les données restaurées appartiennent au compte de la station, sans récupérer des propriétaires système depuis l’archive. Les certificats et la configuration système gardent leur restauration administrateur distincte.
 
 En cas d’échec d’activation, le programme tente de rétablir les anciens fichiers, les données et les services. Les données de la tentative sont conservées dans un dossier voisin suffixé `.failed-before-install-…`. Les paquets système téléchargés restent installés. L’autorité privée HTTPS n’est ni supprimée ni recréée lors du retour arrière.
 
@@ -82,6 +84,14 @@ Si l’alimentation est coupée ou si le retour arrière est lui-même interromp
 ## Qualification
 
 Les essais automatisés couvrent le téléchargement, les contrôles d’intégrité, l’extraction, une première installation simulée, la réinstallation avec fichiers et SQLite réels, les conflits de service, les permissions sous une configuration restrictive et le retour arrière après échec. Les commandes de paquets et de services sont simulées dans ces scénarios; un test Linux utilise également le véritable analyseur systemd. Résultats : **677 tests réussis sur Raspberry Pi**, **676 sur Mac**, avec ce seul test Linux ignoré sur Mac.
+
+Une qualification supplémentaire des droits de l’installateur peut être lancée depuis les sources sur Linux :
+
+```sh
+sudo python3 tests/test_installer_privileges.py
+```
+
+Elle crée uniquement des fichiers de test temporaires sous `/var/tmp`, avec un compte utilisateur et des cibles réservées à l’administrateur. Elle contrôle les substitutions de liens pendant la copie, l’écriture et la restauration, la validation des unités, la protection des sauvegardes et l’abandon des droits dans les sous-processus d’archivage. Elle ne touche pas aux services, à l’inventaire ou aux fichiers système réels. Ces tests sont ignorés sur Mac et lorsqu’ils sont lancés sans les droits administrateur.
 
 Une **réinstallation réelle sur une station Raspberry Pi OS Trixie arm64 existante** est validée : environnement Python, activation des services, HTTPS local et distant, Firefox en kiosque, ouverture automatique du bureau, caméra et lecteur NFC détectés. Les données de l’inventaire, les paramètres privés et l’autorité HTTPS sont conservés. Le retour arrière après un refus du fichier de démarrage a également été vérifié, avec conservation des données et rétablissement de la version précédente.
 
