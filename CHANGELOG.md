@@ -8,6 +8,8 @@
 
 Vérifications : **986 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, et les sept moteurs JavaScript. Les tests dédiés vérifient également la conservation de la reconnexion, l’absence de rechargement en boucle et la visibilité des alertes d’échec et de reprise.
 
+Après publication, installation réelle de v0.26.2 depuis le bouton d’OPT Station vérifiée sur Raspberry Pi : progression, reconnexion automatique, services HTTPS et kiosque actifs, certificat conservé et script servi identique à celui de la release. Le bandeau a disparu après reconnexion et reste absent après rechargement complet dans Chrome. Les compteurs d’inventaire affichés sont conservés.
+
 L’archive complète `opt-station-v0.26.2.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6**, aucune dépendance n’est ajoutée et les données de la station ne sont pas modifiées par ce correctif d’affichage.
 
 ## v0.26.1 — 2 novembre 2026

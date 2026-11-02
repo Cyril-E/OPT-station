@@ -70,16 +70,18 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 ## Ajouts en v0.26.0
 
-- **Mise à jour depuis l’application en un clic** : bouton dans le bandeau, les notes de version et Paramètres, accessible sur le Pi ou à distance avec l’accès complet. Service système inclus dans la nouvelle installation en une commande, téléchargement vérifié, sauvegarde, conservation des données et certificats, progression persistante et reconnexion. Retour arrière vérifié sur des scénarios contrôlés ; interruption signalée sans nouvelle tentative automatique. Installation initiale du service et reconnaissance dans l’interface validées sur le Pi. Le premier essai réel d’installation d’une release depuis l’application reste à effectuer. Voir le [guide](40-mise-a-jour-depuis-application.md).
+- **Mise à jour depuis l’application en un clic** : bouton dans le bandeau, les notes de version et Paramètres, accessible sur le Pi ou à distance avec l’accès complet. Service système inclus dans la nouvelle installation en une commande, téléchargement vérifié, sauvegarde, conservation des données et certificats, progression persistante et reconnexion. Retour arrière vérifié sur des scénarios contrôlés ; interruption signalée sans nouvelle tentative automatique. Installation initiale du service et reconnaissance dans l’interface validées sur le Pi. Les installations réelles v0.26.0 → v0.26.1 et v0.26.1 → v0.26.2 sont vérifiées sur la station. Voir le [guide](40-mise-a-jour-depuis-application.md).
 
 ## Correctifs en v0.26.1
 
-- **Installation et restauration** : opérations sur les fichiers utilisateur avec les seuls droits du compte, sous-processus d’archivage sans droits administrateur, sauvegardes système dans un dossier protégé hors du compte et protection des copies contre la substitution de liens. Les essais isolés de droits réels et les restaurations légitimes sont validés sur Linux ; l’installation de cette version depuis l’application sera contrôlée après sa publication.
+- **Installation et restauration** : opérations sur les fichiers utilisateur avec les seuls droits du compte, sous-processus d’archivage sans droits administrateur, sauvegardes système dans un dossier protégé hors du compte et protection des copies contre la substitution de liens. Les essais isolés de droits réels, les restaurations légitimes et l’installation réelle de cette version depuis l’application sont validés sur Linux.
 - **Requêtes web** : limite cumulée avant analyse JSON, indépendante de la taille annoncée, avec conservation des limites particulières des photos, imports, analyses IA et restaurations. Les chemins MCP et le passage par HTTPS sont contrôlés.
 
 ## Correctif en v0.26.2
 
 - **Bandeau de progression** : masqué après une installation réussie, y compris après rechargement, actualisation du statut et changement de langue. Le résultat reste consultable dans Paramètres ; les erreurs et demandes de reprise restent visibles. La reconnexion et le rechargement automatique sont conservés et contrôlés dans les essais d’interface.
+
+- **Validation réelle** : mise à jour déclenchée par le bouton depuis v0.26.1, version v0.26.2 et fin de traitement vérifiées sur le Pi. HTTPS, certificat et kiosque conservés ; script servi comparé à la release. Disparition du bandeau observée dans Chrome après reconnexion puis après rechargement complet.
 
 ## Pistes reportées après les retours de validation
 
