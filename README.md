@@ -24,7 +24,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-La [préversion v0.26.4](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.4) affiche le niveau de chaque bobine dans l’inventaire et la fiche de la bobine chargée dans l’onglet Imprimante. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
+La [préversion v0.26.5](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.5) indique dans l’onglet **Imprimante** si la bobine chargée devrait suffire pour finir la pièce. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -33,6 +33,11 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.26.5 — La bobine suffira-t-elle pour la pièce ?](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.5)
+
+- Sous la bobine reconnue, **Filament pour cette impression** affiche le besoin total de la pièce, la quantité encore nécessaire et le restant estimé sur la bobine à la fin.
+- Si un changement de bobine est à prévoir, la station indique combien de grammes il pourrait manquer. La prévision concerne les travaux avec une seule bobine identifiable. [Guide Prusa Connect](docs/39-prusa-connect-et-entrepot.md)
 
 ### [v0.26.4 — Niveau de filament et bobine chargée](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.4)
 

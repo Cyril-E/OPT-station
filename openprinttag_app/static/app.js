@@ -745,7 +745,12 @@
       const open = node("button", "button secondary small", msg("Voir la fiche")); open.type = "button";
       I18n.attribute(open, "aria-label", msg("Détail de {0}", spoolTitle(item)));
       open.addEventListener("click", () => showDetail(item));
-      row.append(identity, weights, remaining, open); holder.append(row);
+      row.append(identity, weights, remaining, open);
+      if (item.in_stock && !item.completed_at) {
+        const forecast = window.OPT_PRINTER.filamentForecast(spool, connection);
+        if (forecast) row.append(forecast);
+      }
+      holder.append(row);
     }
     $("printer-loaded-spool").hidden = !holder.children.length;
     setText("printer-loaded-title", holder.children.length > 1 ? msg("Bobines reconnues sur l’imprimante") : msg("Bobine reconnue sur l’imprimante"));
@@ -758,8 +763,11 @@
   document.addEventListener("opt-station-connect-state", event => {
     if (!canControl()) return;
     const next = event.detail, previous = state.printerConnect;
-    if (next?.checked_at && previous?.checked_at && Date.parse(next.checked_at) < Date.parse(previous.checked_at)) return;
-    state.printerConnect = next; renderLoadedSpools();
+    if (!(next?.checked_at && previous?.checked_at && Date.parse(next.checked_at) < Date.parse(previous.checked_at))) {
+      state.printerConnect = next;
+    }
+    // A new local print can already be visible while Connect still has the previous sample.
+    renderLoadedSpools();
   });
 
   function renderInventory() {

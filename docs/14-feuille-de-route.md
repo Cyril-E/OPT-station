@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.26.4](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.4)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.26.5](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.5)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -91,6 +91,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - La colonne **Restant** de l’inventaire donne le poids, le pourcentage et le niveau de la bobine. Une jauge hachurée signale les quantités inconnues.
 - Sous le suivi PrusaLink, la bobine identifiée par NFC via Prusa Connect affiche ses informations d’inventaire, ses poids et sa jauge restante. Le changement de bobine et la perte de connexion ont été vérifiés sur une station de démonstration. Voir le [guide Prusa Connect](39-prusa-connect-et-entrepot.md).
+
+## Ajout en v0.26.5
+
+- Pour un travail avec une seule bobine reconnue, le suivi indique le besoin total de la pièce et la quantité estimée en fin d’impression. Un déficit apparaît en grammes si le filament risque de manquer. Le calcul nécessite des données récentes et cohérentes sur la bobine et le travail en cours. [Guide Prusa Connect](39-prusa-connect-et-entrepot.md)
 
 ## Pistes reportées après les retours de validation
 

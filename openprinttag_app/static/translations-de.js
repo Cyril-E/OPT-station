@@ -1,6 +1,16 @@
 "use strict";
 // German UI messages. User data and canonical RFID values stay unchanged.
 window.OPT_DE = Object.freeze({
+  "Filament pour cette impression": "Filament für diesen Druck",
+  "Bobine suffisante": "Filament reicht aus",
+  "Bobine insuffisante": "Filament reicht nicht aus",
+  "Estimation indisponible": "Schätzung nicht verfügbar",
+  "Nécessaire pour la pièce": "Filamentbedarf für das Bauteil",
+  "Reste à imprimer": "Noch benötigtes Filament",
+  "Disponible sur la bobine (NFC)": "Auf der Spule verfügbar (NFC)",
+  "Restant estimé sur la bobine à la fin": "Geschätzte Restmenge auf der Spule nach dem Druck",
+  "Il manquerait {0} pour terminer.": "Bis zum Druckende fehlen voraussichtlich {0}.",
+  "Estimation d’après l’avancement de l’impression et le compteur NFC de la bobine.": "Schätzung anhand des Druckfortschritts und des NFC-Verbrauchszählers der Spule.",
   "Bobine reconnue sur l’imprimante": "Am Drucker erkannte Spule",
   "Bobines reconnues sur l’imprimante": "Am Drucker erkannte Spulen",
   "Dernière reconnaissance connue · connexion à vérifier.": "Zuletzt erkannte Spule · Verbindung prüfen.",

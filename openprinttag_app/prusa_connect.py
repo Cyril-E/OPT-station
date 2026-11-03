@@ -24,6 +24,9 @@ from . import __version__
 
 GRAPHQL_URL = "https://connect-api.prusa3d.com/graphql"
 TOKEN_URL = "https://account.prusa3d.com/o/token/"
+PRINTER_URL = "https://connect.prusa3d.com/app/printers/"
+JOB_MAX_AGE_SECONDS = 120
+ACTIVE_JOB_STATES = ("PRINTING", "PAUSED")
 # Public identifier shipped by connect.prusa3d.com/environment.js; not a secret.
 WEB_CLIENT_ID = "MRHTlZhZqkNrrQ6FUPtjyusAz8nc59ErHXP8XkS4"
 MAX_BODY = 2 * 1024 * 1024
@@ -32,7 +35,7 @@ ME_QUERY = """query OptStationTeams { authorization { me { organizations { id na
 PRINTERS_QUERY = """query OptStationPrinters($organizationId: UUID!, $first: Int!, $after: String) {
   printer { printers(organizationId: $organizationId, first: $first, after: $after, sortBy: NAME) {
     __typename ... on PrinterConnection { pageInfo { hasNextPage endCursor } edges { node {
-      id name state fff { tools { id class type telemetry { active }
+      id name state fff { hasMmuEnabled tools { id class type telemetry { active }
         materialPackageInstance { __typename ... on FFFToolMaterialPackageInstance {
           uuid actualNettoFullWeight isFromNfc dynamicData { consumedWeight }
           package { nominalNettoFullWeight material { name abbreviation brand { name } } }
@@ -216,12 +219,15 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 def connect_request(url, headers, body):
-    # Two fixed HTTPS origins, verified TLS, no ambient proxy or redirects.
-    if url not in {GRAPHQL_URL, TOKEN_URL}:
+    # Only the web client's printer detail GET and the two fixed POST endpoints.
+    printer_id = url.removeprefix(PRINTER_URL)
+    printer_get = body is None and identity(printer_id) == printer_id and url == PRINTER_URL + printer_id
+    if not printer_get and (url not in {GRAPHQL_URL, TOKEN_URL} or body is None):
         raise ConnectError("destination", "Destination Prusa Connect refusée.")
     try:
         with build_opener(ProxyHandler({}), NoRedirect()).open(
-                Request(url, headers={"User-Agent": "OPT-Station/" + __version__, **headers}, data=body, method="POST"), timeout=8) as response:
+                Request(url, headers={"User-Agent": "OPT-Station/" + __version__, **headers}, data=body,
+                        method="GET" if printer_get else "POST"), timeout=8) as response:
             raw = response.read(MAX_BODY + 1)
             if len(raw) > MAX_BODY:
                 raise ConnectError("response", "Réponse Connect trop volumineuse.")
@@ -263,6 +269,32 @@ class ConnectClient:
         if not query.lstrip().startswith("query "):
             raise ConnectError("readonly", "Seules les lectures Connect sont autorisées.")
         return self._execute(query, variables)
+
+    def job_filament(self, printer, organization, samples):
+        """Optional job estimates for the single NFC spool seen in this poll."""
+        if not printer or printer.get("state") not in ACTIVE_JOB_STATES or len(samples) != 1:
+            return None
+        fff = printer.get("fff") or {}
+        sample = samples[0]
+        tools = fff.get("tools", [])
+        if (fff.get("hasMmuEnabled") is not False or len(tools) != 1
+                or tools[0].get("type") != "PRINT_HEAD" or not sample["instance_uuid"]):
+            return None
+        printer_id = identity(printer.get("id"))
+        if not printer_id:
+            return None
+        try:
+            # The preceding authenticated GraphQL requests handle token renewal.
+            # A failed optional read must not disrupt the normal spool reader.
+            token = self.configuration.read()["access_token"]
+            status, raw = self.fetch(PRINTER_URL + printer_id, {"Authorization": "Bearer " + token,
+                                     "Accept": "application/json"}, None)
+            if status != 200:
+                return None
+            detail = json.loads(raw)
+            return job_filament_estimate(detail, organization, sample, self.clock())
+        except (ConnectError, ValueError, TypeError, AttributeError, OverflowError):
+            return None
 
     def _execute(self, query, variables=None, *, write=False):
         if write and query not in {CREATE_WAREHOUSE_MUTATION, RENAME_WAREHOUSE_MUTATION, CREATE_MATERIAL_MUTATION}:
@@ -430,6 +462,42 @@ def loaded_samples(printer):
     return result
 
 
+def job_filament_estimate(detail, organization, sample, now):
+    """Whitelist the printer detail fields used for this job; all weights are grams."""
+    job = detail.get("job_info")
+    last_online = detail.get("last_online")
+    if (identity(detail.get("uuid")) != sample["printer_uuid"] or identity(detail.get("organization_id")) != organization
+            or detail.get("connect_state") not in ACTIVE_JOB_STATES or not positive(last_online)
+            or not -5 <= now - last_online <= JOB_MAX_AGE_SECONDS or not isinstance(job, dict)
+            or job.get("state") not in ACTIVE_JOB_STATES or not identity(job.get("lifetime_id"))):
+        return None
+    job_id = job.get("origin_id")
+    filename = job.get("display_name") or job.get("path")
+    total, remaining = job.get("model_weight"), job.get("weight_remaining")
+    if (type(job_id) is not int or job_id < 0 or not isinstance(filename, str) or not filename.strip()
+            or not positive(total)):
+        return None
+    if detail.get("inaccurate_estimates") is True or not positive(remaining, zero=True) or remaining > total:
+        remaining = None
+    return {"printer_uuid": sample["printer_uuid"], "instance_uuid": sample["instance_uuid"], "tool_id": sample["tool_id"],
+            "job_id": job_id, "filename": filename.rsplit("/", 1)[-1][:512], "checked_at": utc(last_online),
+            "model_weight_g": total, "remaining_estimate_g": remaining}
+
+
+def compare_job_to_spool(job, loaded):
+    """Use only a reconciled NFC counter. A file estimate never changes the inventory."""
+    spool_remaining = None
+    if loaded["status"] in ("ready", "updated", "unchanged", "rounded_counter"):
+        initial, consumed = loaded["initial_weight"], loaded["consumed_weight"]
+        if positive(initial) and positive(consumed, zero=True) and consumed <= initial:
+            spool_remaining = initial - consumed
+            if loaded["status"] == "rounded_counter" and positive(loaded["remaining_weight"], zero=True):
+                spool_remaining = min(spool_remaining, loaded["remaining_weight"])
+    remaining = job["remaining_estimate_g"]
+    return {**job, "spool_remaining_g": spool_remaining,
+            "margin_estimate_g": spool_remaining - remaining if None not in (spool_remaining, remaining) else None}
+
+
 def warehouse_samples(items):
     result = []
     for item in items:
@@ -490,7 +558,12 @@ class ConnectMonitor:
     def public(self):
         with self.lock:
             config = self.configuration.read()
-            return {**deepcopy(self._state), "enabled": config["enabled"],
+            job = self._state.get("job_filament")
+            if (not self._state["connected"] or not config["enabled"] or not job
+                    or job["printer_uuid"] != config["printer_uuid"]
+                    or self.clock() - datetime.fromisoformat(job["checked_at"]).timestamp() > JOB_MAX_AGE_SECONDS):
+                job = None
+            return {**deepcopy(self._state), "job_filament": deepcopy(job), "enabled": config["enabled"],
                     "inventory_sync_active": config["enabled"] and config["sync_consumption"],
                     "warehouse_sync_active": config["enabled"] and config["sync_warehouse"],
                     "poll_seconds": config["poll_seconds"], "read_only_cloud": False,
@@ -517,6 +590,7 @@ class ConnectMonitor:
                     raise ConnectError("contract", "Liste des imprimantes Connect invalide.")
                 selected = next((p for p in printers if identity(p["id"]) == config["printer_uuid"]), None)
                 samples = loaded_samples(selected) if selected else []
+                job_filament = self.client.job_filament(selected, organization, samples)
                 warehouse_error = None
                 try:
                     warehouse = self.client.collection(WAREHOUSE_QUERY, organization, warehouse=True)
@@ -548,6 +622,9 @@ class ConnectMonitor:
                 finally:
                     if entered:
                         self.maintenance.leave()
+                if job_filament:
+                    # A job estimate is available only with one loaded sample, first in all_samples.
+                    job_filament = compare_job_to_spool(job_filament, outcomes[0])
                 known = {x["instance_uuid"] for x in self.store.list_spools(include_removed=True)}
                 matched = sum(identity((x.get("materialPackageInstance") or {}).get("uuid")) in known for x in warehouse)
                 if warehouse_error is None:
@@ -559,7 +636,7 @@ class ConnectMonitor:
                 self._state = {"connected": True, "stale": False, "checked_at": checked,
                     "message": "Lecture Connect réussie. Les compteurs sont rapprochés par l’identité de chaque bobine.",
                     "teams": teams, "printers": [{"id": p["id"], "name": str(p.get("name") or "")[:150], "state": p.get("state")} for p in printers],
-                    "selected_printer_found": selected is not None, "spools": outcomes,
+                    "selected_printer_found": selected is not None, "spools": outcomes, "job_filament": job_filament,
                     "warehouse": ({"error": warehouse_error, "total": None, "matched": None, "unmatched": None} if warehouse_error else
                                   {"total": len(warehouse), "matched": matched, "unmatched": len(warehouse) - matched}),
                     "updated_count": sum(x.get("updated") is True for x in outcomes), "preview": not apply}

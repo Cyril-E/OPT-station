@@ -14,8 +14,8 @@
   const controllers = new Set();
   const value = (id) => $(id).value.trim();
   const set = (id, text) => { I18n.text($(id), text ?? "—"); };
-  const number = (v, unit = "") => typeof v === "number" && Number.isFinite(v)
-    ? `${new Intl.NumberFormat(I18n.locale(), {maximumFractionDigits: 1}).format(v)}${unit}` : "—";
+  const number = (v, unit = "", digits = 1) => typeof v === "number" && Number.isFinite(v)
+    ? `${new Intl.NumberFormat(I18n.locale(), {maximumFractionDigits: digits}).format(v)}${unit}` : "—";
   const clock = (stamp) => stamp ? new Date(stamp).toLocaleTimeString(I18n.locale(), {hour: "2-digit", minute: "2-digit", second: "2-digit"}) : "—";
   const duration = (seconds) => {
     if (typeof seconds !== "number") return "—";
@@ -166,7 +166,53 @@
     if ($("printer-camera-dialog").open) $("printer-camera-dialog").close();
     $("printer-camera-large").removeAttribute("src"); largeCamera = null;
   }
+  function filamentForecast(spool, connection) {
+    const job = latest?.job;
+    if (!access || !job || !["PRINTING", "PAUSED", "ATTENTION"].includes(latest.printer?.state) ||
+        ["FINISHED", "STOPPED", "ERROR", "CANCELLED"].includes(job.state)) return null;
+
+    const panel = element("section", "printer-filament-forecast");
+    const heading = element("div", "printer-filament-heading");
+    heading.append(element("h3", "", msg("Filament pour cette impression")));
+    panel.append(heading);
+    const estimate = connection.job_filament;
+    const ageMs = Date.now() - Date.parse(latest.observed_at);
+    const cloudAgeMs = Date.now() - Date.parse(estimate?.checked_at);
+    const compatible = latest.connected && !latest.stale && ageMs >= -5000 && ageMs <= 30000 &&
+      connection.connected && !connection.stale && cloudAgeMs >= -5000 && cloudAgeMs <= 120000 &&
+      Number.isInteger(job.id) && job.consistent && estimate?.job_id === job.id &&
+      typeof job.filename === "string" && job.filename.trim() && estimate.filename === job.filename &&
+      estimate.printer_uuid === spool.printer_uuid && estimate.tool_id === spool.tool_id &&
+      estimate.instance_uuid === spool.instance_uuid;
+    const margin = compatible ? estimate.margin_estimate_g : null;
+    const known = Number.isFinite(margin);
+    const verdict = element("span", "status-chip", msg("Estimation indisponible"));
+    if (known) {
+      verdict.classList.add(margin < 0 ? "locked" : "in-stock");
+      I18n.text(verdict, margin < 0 ? msg("Bobine insuffisante") : msg("Bobine suffisante"));
+    }
+    heading.append(verdict);
+    if (!compatible) return panel;
+
+    const grams = value => value > 0 && value < 0.01 ? `< ${number(0.01, " g", 2)}` : number(value, " g", 2);
+    const weights = element("dl", "printer-spool-weights");
+    for (const [label, value] of [[msg("Nécessaire pour la pièce"), estimate.model_weight_g],
+      [msg("Reste à imprimer"), estimate.remaining_estimate_g],
+      [msg("Disponible sur la bobine (NFC)"), estimate.spool_remaining_g],
+      [msg("Restant estimé sur la bobine à la fin"), known ? Math.max(0, margin) : null]]) {
+      const pair = element("div");
+      pair.append(element("dt", "", label), element("dd", "", Number.isFinite(value) ? grams(value) : msg("Inconnu")));
+      weights.append(pair);
+    }
+    panel.append(weights);
+    if (known && margin < 0) panel.append(element("strong", "printer-filament-shortage",
+      msg("Il manquerait {0} pour terminer.", grams(-margin))));
+    panel.append(element("p", "fine-print", msg("Estimation d’après l’avancement de l’impression et le compteur NFC de la bobine.")));
+    return panel;
+  }
+  window.OPT_PRINTER = {filamentForecast};
   function render(snapshot) {
+    latest = snapshot;
     if (snapshot.connect) document.dispatchEvent(new CustomEvent("opt-station-connect-state", {detail: snapshot.connect}));
     set("printer-name", snapshot.name);
     set("printer-connection", snapshot.connected ? msg("Connectée") : snapshot.stale ? msg("Connexion perdue") : snapshot.configured ? msg("Injoignable") : msg("À configurer"));
@@ -243,7 +289,7 @@
     try {
       const snapshot = await request(`/api/printer/status${force ? "?refresh=true" : ""}`);
       if (!access || tab !== "printer" || current !== epoch) return;
-      latest = snapshot; render(snapshot);
+      render(snapshot);
       frames.forEach((frame, id) => { void refreshFrame(id, frame); });
     } catch (error) {
       if (access && tab === "printer") {

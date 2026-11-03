@@ -1,6 +1,16 @@
 "use strict";
 // English UI messages. Canonical field names and user data are never translated.
 window.OPT_EN = Object.freeze({
+  "Filament pour cette impression": "Filament for this print",
+  "Bobine suffisante": "Enough filament",
+  "Bobine insuffisante": "Not enough filament",
+  "Estimation indisponible": "Estimate unavailable",
+  "Nécessaire pour la pièce": "Filament needed for the part",
+  "Reste à imprimer": "Filament still needed",
+  "Disponible sur la bobine (NFC)": "Available on the spool (NFC)",
+  "Restant estimé sur la bobine à la fin": "Estimated filament left on the spool after printing",
+  "Il manquerait {0} pour terminer.": "An estimated {0} more is needed to finish.",
+  "Estimation d’après l’avancement de l’impression et le compteur NFC de la bobine.": "Estimated from the print progress and the spool’s NFC usage counter.",
   "Bobine reconnue sur l’imprimante": "Spool identified on the printer",
   "Bobines reconnues sur l’imprimante": "Spools identified on the printer",
   "Dernière reconnaissance connue · connexion à vérifier.": "Last known identification · check the connection.",

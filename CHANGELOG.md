@@ -1,5 +1,10 @@
 # Versions publiques
 
+## v0.26.5 — 4 novembre 2026
+
+- L’onglet **Imprimante** indique si la bobine chargée devrait suffire. Il affiche le filament nécessaire pour la pièce entière, le besoin restant selon Prusa Connect et la quantité estimée sur la bobine en fin d’impression. Si la bobine risque de se vider, le déficit est indiqué en grammes.
+- La prévision compare le besoin restant au filament disponible sur la bobine reconnue par NFC. Elle s’applique pendant une impression ou une pause lorsque PrusaLink et Prusa Connect identifient le même travail. En cas de données manquantes, anciennes ou ambiguës, la station suspend la comparaison. [Guide Prusa Connect](docs/39-prusa-connect-et-entrepot.md)
+
 ## v0.26.4 — 3 novembre 2026
 
 - L’inventaire affiche le filament restant en grammes et en pourcentage. La jauge utilise le poids net initial réel en priorité, puis le poids nominal avec la mention « estimé ». Elle signale un niveau bas à 25 % ou moins, critique à 10 % ou moins, et une quantité inconnue par des hachures.

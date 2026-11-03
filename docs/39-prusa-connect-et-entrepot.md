@@ -38,6 +38,14 @@ Dans l’onglet **Imprimante**, une fiche apparaît directement sous le message 
 
 Le bloc suit la reconnaissance transmise par Connect pour l’imprimante configurée et sa date de lecture. Les bobines simplement présentes dans l’entrepôt, les identités inconnues et les doublons ne sélectionnent aucune fiche courante. Un retrait reconnu masque le bloc ; un changement d’UUID affiche la nouvelle bobine. En cas de perte de connexion, la dernière reconnaissance conservée porte un avertissement. Aucune lecture supplémentaire du tag, écriture RFID ou commande d’imprimante n’est ajoutée par cet affichage.
 
+### La bobine suffira-t-elle pour cette impression ?
+
+Pendant une impression ou une pause, la fiche de la bobine reconnue indique le **filament nécessaire pour la pièce entière**, le **filament encore nécessaire** et le **restant estimé sur la bobine à la fin**. Prusa Connect fournit le poids prévu par le fichier et estime la quantité encore nécessaire d’après l’avancement du travail.
+
+OPT Station calcule la quantité disponible à partir du poids net initial de la bobine chargée et de son compteur cumulé de consommation. Si le poids réel du filament neuf est inconnu, le calcul utilise le poids nominal. Par exemple, avec 300 g disponibles et 220 g encore nécessaires, il devrait rester 80 g. Avec seulement 200 g disponibles, la station indique qu’il manquerait 20 g pour terminer.
+
+L’indication vaut pour une impression avec une seule bobine identifiée. La station compare les lectures récentes de PrusaLink et de Prusa Connect pour vérifier qu’elles concernent le même travail. Si les données manquent, sont anciennes ou si plusieurs matériaux peuvent participer au travail, la station ne peut pas déterminer si la bobine suffira. La prévision se consulte dans l’onglet **Imprimante** et ne modifie aucune quantité de l’inventaire.
+
 ### Corrections et relecture NFC
 
 Une consommation Connect inférieure au compteur local ne le diminue pas. La télémétrie chargée observée fournit des grammes entiers : un écart inférieur à 1 g avec un compteur RFID plus précis est indiqué comme un arrondi, sans modifier la fiche. Les autres baisses sont signalées comme un compteur plus ancien. Une correction explicite de consommation ou de quantité restante, dans l’interface ou par MCP, suspend les actualisations de cette fiche. Dans **Imprimante → Bobine en cours et consommation**, **Reprendre le compteur Connect** permet de les reprendre explicitement, après vérification de la fiche. Les autres bobines continuent leur suivi.
@@ -88,7 +96,7 @@ Les accès et options sont enregistrés atomiquement dans **`$HOME/openprinttag-
 
 La restauration d’une configuration désactive la connexion Connect. Vérifier les accès, l’organisation, l’imprimante et les correspondances de stock avant de la réactiver. Les données d’inventaire conservent la provenance et les éventuelles suspensions manuelles.
 
-L’installation habituelle inclut ce collecteur et son formulaire ; aucun paquet supplémentaire, compte préconfiguré ou secret n’est distribué. La connexion et les deux options d’actualisation sont désactivées par défaut. Les requêtes utilisent uniquement les origines HTTPS fixes Prusa, avec validation des certificats et sans suivi des redirections. Le collecteur automatique effectue des lectures GraphQL. Seul l’envoi explicite depuis une fiche autorise l’enregistrement de sa référence matériau, la création d’une bobine et l’attribution de son nom dans l’entrepôt. Une réponse incertaine impose une relecture, sans répétition aveugle de ces opérations. L’autre échange est le renouvellement optionnel de la session.
+L’installation habituelle inclut ce collecteur, ses dépendances et son formulaire. Chaque station utilise les identifiants renseignés par son utilisateur. La connexion et les deux options d’actualisation sont désactivées par défaut. Les requêtes utilisent uniquement les origines HTTPS fixes de Prusa, avec validation des certificats et sans suivi des redirections. Le collecteur lit les bobines via GraphQL. Pour estimer le filament nécessaire à l’impression en cours, il consulte aussi la fiche de l’imprimante sélectionnée sur `connect.prusa3d.com` par une requête GET. Seul l’envoi explicite depuis une fiche autorise l’enregistrement de sa référence matériau, la création d’une bobine et l’attribution de son nom dans l’entrepôt. Une réponse incertaine impose une relecture, sans répétition aveugle de ces opérations. Le renouvellement de la session est facultatif.
 
 ## Sources et qualification
 
