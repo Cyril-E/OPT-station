@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.26.2](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.2)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.26.3](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.3)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -82,6 +82,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 - **Bandeau de progression** : masqué après une installation réussie, y compris après rechargement, actualisation du statut et changement de langue. Le résultat reste consultable dans Paramètres ; les erreurs et demandes de reprise restent visibles. La reconnexion et le rechargement automatique sont conservés et contrôlés dans les essais d’interface.
 
 - **Validation réelle** : mise à jour déclenchée par le bouton depuis v0.26.1, version v0.26.2 et fin de traitement vérifiées sur le Pi. HTTPS, certificat et kiosque conservés ; script servi comparé à la release. Disparition du bandeau observée dans Chrome après reconnexion puis après rechargement complet.
+
+## Correctif en v0.26.3
+
+- **Envoi Connect** : ajout de la marque et de la matière au formulaire de correction déjà présent dans la fenêtre d’envoi. Enregistrement local et nouvel aperçu, sans écriture RFID ni envoi automatique. Parcours contrôlé dans Chrome sur des données isolées, avec conservation des quantités ; voir le [guide Connect](39-prusa-connect-et-entrepot.md). Le contrôle sur le Pi sera effectué après publication.
 
 ## Pistes reportées après les retours de validation
 

@@ -1792,7 +1792,7 @@ window.OPT_EN = Object.freeze({
   "Vérification de la bobine dans l’entrepôt…": "Checking the spool in the warehouse…",
   "Vérifier la présence": "Check presence",
   "Ces notes sont consultables via MCP et ne modifient pas le tag RFID.": "These notes can be read through MCP and do not change the RFID tag.",
-  "Corriger les poids et la consommation": "Correct weights and consumption",
+  "Compléter les informations pour Connect": "Complete the information for Connect",
   "Poids net initial nominal (g)": "Nominal initial net weight (g)",
   "Poids net initial réel, si connu (g)": "Actual initial net weight, if known (g)",
   "Filament consommé (g)": "Filament consumed (g)",

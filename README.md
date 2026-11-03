@@ -24,7 +24,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-Dernière préversion : **[v0.26.2](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.2)**, avec disparition du bandeau de progression après une mise à jour réussie, y compris après rechargement. Les correctifs de sécurité de v0.26.1 sont conservés. La mise à jour depuis l’application conserve la sauvegarde préalable et la reconnexion automatique. L’interface est disponible en français, anglais, espagnol et allemand. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS, le démarrage en plein écran et le service de mise à jour. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
+Dernière préversion : **[v0.26.3](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.3)**, avec correction directe de la marque et de la matière dans la fenêtre d’envoi vers Prusa Connect. Les correctifs de sécurité de v0.26.1 et de progression de v0.26.2 sont conservés. La mise à jour depuis l’application conserve la sauvegarde préalable et la reconnexion automatique. L’interface est disponible en français, anglais, espagnol et allemand. L’installation en une commande sur Raspberry Pi OS 64 bits Trixie comprend les dépendances, les services, HTTPS, le démarrage en plein écran et le service de mise à jour. La publication fournit les sources complètes et leur empreinte SHA-256. Le [dépôt du projet](https://github.com/Cyril-E/OPT-station) est public. Les téléchargements ne nécessitent pas de compte ni de jeton GitHub.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -33,6 +33,11 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.26.3 — Compléter une bobine avant l’envoi Connect](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.3)
+
+- Marque et type de matériau modifiables directement dans la fenêtre d’envoi, avec les poids et la consommation. Les informations manquantes se complètent au même endroit.
+- L’enregistrement actualise la fiche locale puis relance la vérification. L’identité, la consommation connue et les champs laissés inconnus sont conservés ; le tag RFID reste inchangé et l’envoi nécessite toujours une confirmation distincte.
 
 ### [v0.26.2 — Fin du bandeau après mise à jour](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.2)
 

@@ -196,10 +196,13 @@
       if (access && current === exportEpoch) { text("connect-export-result", error.message); $("connect-export-correction").open = true; }
     }
   }
-  window.OPT_CONNECT_EXPORT = {open: async (item) => {
+  window.OPT_CONNECT_EXPORT = {open: async (item, materials) => {
     if (!access || exportBusy) return;
     const current = ++exportEpoch;
     exportItem = item; exportPreview = null; exportValuesDirty = false; exportBusy = true;
+    $("connect-export-brand").value = item.main.brand_name ?? "";
+    options("connect-export-material", materials.map((entry) => ({id: entry.value, name: entry.label})),
+      item.main.material_type, msg("Choisir…"));
     $("connect-export-nominal").value = item.main.nominal_netto_full_weight ?? "";
     $("connect-export-actual").value = item.main.actual_netto_full_weight ?? "";
     $("connect-export-consumed").value = item.aux.consumed_weight ?? "";
@@ -220,7 +223,9 @@
     exportBusy = true; exportControls();
     try {
       const result = await request(`/api/inventory/${encodeURIComponent(exportItem.id)}/connect/values`, {method: "POST", body: {
-        version: exportItem.version, nominal_initial_weight: Number($("connect-export-nominal").value),
+        version: exportItem.version, brand_name: $("connect-export-brand").value.trim(),
+        material_type: $("connect-export-material").value,
+        nominal_initial_weight: Number($("connect-export-nominal").value),
         actual_initial_weight: $("connect-export-actual").value === "" ? null : Number($("connect-export-actual").value),
         consumed_weight: Number($("connect-export-consumed").value)}}, true);
       if (!access || current !== exportEpoch) return;

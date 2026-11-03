@@ -319,10 +319,68 @@ def test_export_values_can_fill_missing_nominal_without_changing_consumption_not
         assert remote.post(route + 'values', json={**body, 'version': changed['version']}).status_code == 403
 
 
+@pytest.mark.parametrize('kind', ['qr', 'rfid'])
+@pytest.mark.parametrize('missing_material', [False, True])
+def test_export_correction_can_complete_brand_and_material_then_send_without_duplicate_or_tag_write(tmp_path, monkeypatch, kind, missing_material):
+    app = create_app(Settings(tmp_path / 'data', network_enabled=True))
+    with TestClient(app, client=('127.0.0.1', 1)) as client:
+        app.state.connect_monitor.close()
+        item = add(app.state.store, kind, consumed=850)
+        item = app.state.store.patch_spool(item['id'], item['version'], main={
+            'material_type': None if missing_material else 'PETG', 'actual_netto_full_weight': None})['item']
+        item = app.state.store.save_spool_notes(item['id'], 'Tare to be weighed', 0)
+        with app.state.store.connect() as db:
+            before_snapshot = json.loads(db.execute('SELECT snapshot FROM spools WHERE id=?', (item['id'],)).fetchone()[0])
+        cloud = ExportCloud(item); app.state.connect_monitor.client.fetch = cloud
+        configure(app.state.connect_configuration)
+        for operation in ('read', 'write'):
+            monkeypatch.setattr(app.state.reader, operation, Mock(side_effect=AssertionError('No RFID access')))
+        route = '/api/inventory/' + item['id'] + '/connect/'
+        original_preview = {'version': item['version'], 'notes_revision': item['notes_revision']}
+        assert client.post(route + 'preview', json=original_preview).status_code == 422
+        body = {'version': item['version'], 'brand_name': ' Fixture brand ', 'material_type': 'PETG',
+                'nominal_initial_weight': 1000, 'actual_initial_weight': None, 'consumed_weight': 850}
+        response = client.post(route + 'values', json=body)
+        assert response.status_code == 200 and response.json()['rfid_written'] is False
+        changed = response.json()['item']
+        assert changed['main'] == {**item['main'], 'brand_name': 'Fixture brand', 'material_type': 'PETG'}
+        assert changed['aux'] == item['aux'] and changed['remaining_weight'] == 150
+        for key in ('id', 'uid', 'instance_uuid', 'spool_number', 'notes', 'notes_revision', 'added_at', 'last_seen_at', 'usage_state'):
+            assert changed[key] == item[key]
+        assert client.post(route + 'values', json=body).status_code == 409
+        assert client.post(route + 'preview', json=original_preview).status_code == 409
+        if kind == 'rfid':
+            with app.state.store.connect() as db:
+                after_snapshot = json.loads(db.execute('SELECT snapshot FROM spools WHERE id=?', (item['id'],)).fetchone()[0])
+            assert after_snapshot['local_edits']['tag_main'] == before_snapshot['local_edits']['tag_main']
+            assert after_snapshot['local_edits']['tag_aux'] == before_snapshot['local_edits']['tag_aux']
+        assert cloud.created == 0 and cloud.registered == 0
+        current = {**original_preview, 'version': changed['version']}
+        preview_response = client.post(route + 'preview', json=current)
+        assert preview_response.status_code == 200
+        assert preview_response.json()['remaining_weight'] == 150
+        send_body = {**current, 'fingerprint': preview_response.json()['fingerprint']}
+        sent = client.post(route + 'export', json=send_body)
+        assert sent.status_code == 200 and sent.json()['verified']
+        assert client.post(route + 'export', json=send_body).status_code == 200
+        assert cloud.created == 1 and len(cloud.warehouse) == 1
+        remote = cloud.warehouse[0]['materialPackageInstance']
+        assert remote['uuid'] == changed['instance_uuid']
+        assert remote['package']['material']['brand']['name'] == 'Fixture brand'
+        assert remote['package']['material']['type'] == 'PETG'
+        assert remote['dynamicData']['consumedWeight'] == 850
+        assert 'actualNettoFullWeight' not in remote
+        assert app.state.store.operations() == []
+    with TestClient(app, client=('192.0.2.8', 1)) as remote:
+        assert remote.post(route + 'values', json={**body, 'version': changed['version']}).status_code == 403
+
+
 @pytest.mark.parametrize('patch', [
     {'nominal_initial_weight': 0}, {'nominal_initial_weight': True}, {'nominal_initial_weight': None},
     {'actual_initial_weight': -1}, {'consumed_weight': None}, {'consumed_weight': True},
     {'consumed_weight': -1}, {'consumed_weight': 2000},
+    {'brand_name': ''}, {'brand_name': '  '}, {'brand_name': True}, {'brand_name': 'é'*16},
+    {'material_type': ''}, {'material_type': '  '}, {'material_type': True}, {'material_type': 'unknown'},
 ])
 def test_export_value_validation_never_turns_unknown_or_invalid_values_into_zero(tmp_path, patch):
     app = create_app(Settings(tmp_path))

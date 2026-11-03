@@ -865,7 +865,7 @@
     if (canControl() && item.in_stock && !item.completed_at) {
       if (item.main?.material_class === "FFF") {
         const send = node("button", "button secondary", msg("Envoyer vers Prusa Connect")); send.type = "button"; send.id = "detail-connect-export";
-        send.addEventListener("click", () => window.OPT_CONNECT_EXPORT.open(item)); actions.append(send);
+        send.addEventListener("click", () => window.OPT_CONNECT_EXPORT.open(item, fieldDef("main", "material_type").options)); actions.append(send);
       }
       const prepare = node("button", "button primary", item.label_state === "rfid" ? msg("Recréer le tag RFID") : msg("Créer le tag RFID")); prepare.type = "button";
       prepare.addEventListener("click", () => task(prepare, () => prepareInventoryTag(item))); actions.append(prepare);

@@ -357,9 +357,11 @@
     <div id="connect-export-summary"></div>
     <p data-i18n class="fine-print">Les notes enregistrées de cette fiche sont également envoyées. Les photos restent dans OPT Station. Cet envoi ne modifie ni l’inventaire local ni le tag RFID.</p>
     <details id="connect-export-correction" class="data-details">
-      <summary data-i18n>Corriger les poids et la consommation</summary>
+      <summary data-i18n>Compléter les informations pour Connect</summary>
       <form id="connect-export-values-form">
         <fieldset id="connect-export-values-fields" class="form-grid printer-settings-fields">
+          <label data-i18n class="field">Marque<input id="connect-export-brand" type="text" maxlength="31" required></label>
+          <label data-i18n class="field">Type de matériau<select id="connect-export-material" required></select></label>
           <label data-i18n class="field">Poids net initial nominal (g)<input id="connect-export-nominal" type="number" min="0.001" step="any" required></label>
           <label data-i18n class="field">Poids net initial réel, si connu (g)<input id="connect-export-actual" type="number" min="0.001" step="any"></label>
           <label data-i18n class="field">Filament consommé (g)<input id="connect-export-consumed" type="number" min="0" step="any" required></label>

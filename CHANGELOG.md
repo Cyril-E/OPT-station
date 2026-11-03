@@ -1,5 +1,15 @@
 # Versions publiques
 
+## v0.26.3 — 3 novembre 2026
+
+- Envoi vers Prusa Connect : les champs **Marque** et **Type de matériau** sont disponibles directement dans le formulaire de correction, avec les poids et la consommation. Une information manquante peut être complétée sans quitter la fenêtre.
+- L’enregistrement conserve l’identité de la bobine et les quantités déjà renseignées, actualise la fiche locale puis relance l’aperçu. Aucune valeur inconnue n’est supposée et aucun tag RFID n’est écrit. L’envoi vers l’entrepôt reste une confirmation distincte.
+- Formulaire disponible dans les quatre langues. Régressions vérifiées sur fiches QR et RFID : contrôle des versions, conservation des données, refus des valeurs invalides, accès complet et absence de doublon dans un entrepôt simulé.
+
+Vérifications : **998 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, et les huit moteurs JavaScript. Le parcours dans Chrome reproduit une bobine de 1 000 g nominaux avec 850 g consommés et une marque manquante : après correction dans la fenêtre, les 150 g restants sont conservés et le bouton d’envoi devient disponible. Ce contrôle utilise une station et un entrepôt isolés, sans envoi cloud ni écriture RFID réels.
+
+L’archive complète `opt-station-v0.26.3.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. L’installation sur le Pi et le contrôle de son formulaire seront vérifiés après publication.
+
 ## v0.26.2 — 2 novembre 2026
 
 - Correction du bandeau de progression restant à 100 % après une mise à jour réussie : il disparaît après réception du résultat final et ne revient plus après rechargement, actualisation du statut ou changement de langue.

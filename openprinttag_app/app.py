@@ -342,6 +342,8 @@ class ConnectExportRequest(ConnectExportPreview):
 
 class ConnectExportValues(Model):
     version: StrictInt = Field(ge=1)
+    brand_name: str | None = Field(default=None, strict=True, min_length=1, max_length=31)
+    material_type: str | None = Field(default=None, strict=True, min_length=1, max_length=64)
     nominal_initial_weight: float = Field(strict=True, gt=0, allow_inf_nan=False)
     actual_initial_weight: float | None = Field(default=None, strict=True, gt=0, allow_inf_nan=False)
     consumed_weight: float = Field(strict=True, ge=0, allow_inf_nan=False)
@@ -888,6 +890,13 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if item["version"] != body.version:
             raise ConflictError("Cette fiche a changé. Rechargez-la avant l’envoi vers Connect.")
         main = {"nominal_netto_full_weight": body.nominal_initial_weight}
+        for name in ("brand_name", "material_type"):
+            value = getattr(body, name)
+            if value is not None:
+                value = value.strip()
+                if not value:
+                    raise ConnectError("export_data", "Renseignez la marque et la matière avant l’envoi vers Connect.", 422)
+                main[name] = value
         if body.actual_initial_weight is not None:
             main["actual_netto_full_weight"] = body.actual_initial_weight
         aux = {"consumed_weight": body.consumed_weight}

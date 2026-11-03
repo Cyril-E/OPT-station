@@ -1792,7 +1792,7 @@ window.OPT_DE = Object.freeze({
   "Vérification de la bobine dans l’entrepôt…": "Spule im Lager wird geprüft…",
   "Vérifier la présence": "Vorhandensein prüfen",
   "Ces notes sont consultables via MCP et ne modifient pas le tag RFID.": "Diese Notizen können über MCP gelesen werden und ändern den RFID-Tag nicht.",
-  "Corriger les poids et la consommation": "Gewichte und Verbrauch korrigieren",
+  "Compléter les informations pour Connect": "Angaben für Connect vervollständigen",
   "Poids net initial nominal (g)": "Nominelles anfängliches Nettogewicht (g)",
   "Poids net initial réel, si connu (g)": "Tatsächliches anfängliches Nettogewicht, falls bekannt (g)",
   "Filament consommé (g)": "Verbrauchtes Filament (g)",
