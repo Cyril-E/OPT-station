@@ -1,6 +1,14 @@
 "use strict";
 // Spanish UI messages. User data and canonical RFID values stay unchanged.
 window.OPT_ES = Object.freeze({
+  "Bobine reconnue sur l’imprimante": "Bobina identificada en la impresora",
+  "Bobines reconnues sur l’imprimante": "Bobinas identificadas en la impresora",
+  "Dernière reconnaissance connue · connexion à vérifier.": "Última identificación conocida · comprueba la conexión.",
+  "Outil {0}": "Herramienta {0}",
+  "Voir la fiche": "Ver ficha",
+  "Reconnaissance Connect : {0}. Informations de l’inventaire.": "Identificación en Connect: {0}. Información del inventario.",
+  "Quantité restante de {0}": "Cantidad restante de {0}",
+  "{0} restants sur {1} au départ": "{0} restantes de {1} iniciales",
   "Choisissez librement une sauvegarde avec ou sans mot de passe.": "Elija una copia de seguridad con o sin contraseña.",
   "Protéger la sauvegarde par mot de passe": "Proteger esta copia con contraseña",
   "Protéger les sauvegardes planifiées par mot de passe": "Proteger las copias programadas con contraseña",

@@ -1,6 +1,14 @@
 "use strict";
 // English UI messages. Canonical field names and user data are never translated.
 window.OPT_EN = Object.freeze({
+  "Bobine reconnue sur l’imprimante": "Spool identified on the printer",
+  "Bobines reconnues sur l’imprimante": "Spools identified on the printer",
+  "Dernière reconnaissance connue · connexion à vérifier.": "Last known identification · check the connection.",
+  "Outil {0}": "Tool {0}",
+  "Voir la fiche": "View details",
+  "Reconnaissance Connect : {0}. Informations de l’inventaire.": "Connect identification: {0}. Details from the inventory.",
+  "Quantité restante de {0}": "Remaining quantity for {0}",
+  "{0} restants sur {1} au départ": "{0} remaining out of an initial {1}",
   "Choisissez librement une sauvegarde avec ou sans mot de passe.": "Choose a backup with or without a password.",
   "Protéger la sauvegarde par mot de passe": "Protect this backup with a password",
   "Protéger les sauvegardes planifiées par mot de passe": "Protect scheduled backups with a password",

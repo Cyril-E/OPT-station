@@ -167,6 +167,7 @@
     $("printer-camera-large").removeAttribute("src"); largeCamera = null;
   }
   function render(snapshot) {
+    if (snapshot.connect) document.dispatchEvent(new CustomEvent("opt-station-connect-state", {detail: snapshot.connect}));
     set("printer-name", snapshot.name);
     set("printer-connection", snapshot.connected ? msg("Connectée") : snapshot.stale ? msg("Connexion perdue") : snapshot.configured ? msg("Injoignable") : msg("À configurer"));
     $("printer-connection").classList.toggle("in-stock", snapshot.connected);

@@ -71,6 +71,7 @@
   }
   function render(value) {
     state = value;
+    document.dispatchEvent(new CustomEvent("opt-station-connect-state", {detail: value}));
     text("connect-state", value.connected ? msg("Connectée") : value.enabled ? msg("À vérifier") : msg("Désactivée"));
     text("printer-consumption-message", value.message);
     text("connect-updated", value.checked_at ? msg("Dernière lecture cloud : {0}", new Date(value.checked_at).toLocaleString(I18n.locale())) : "");

@@ -21,7 +21,7 @@
     labelPreview: null, labelRequestId: null, labelsSettings: null, labelsDirty: false, labelsLoading: false,
     inventoryNotes: null, inventoryNotesDirty: false, inventoryNotesBusy: false,
     spoolNotesDrafts: new Map(),
-    remainingDrafts: new Map(),
+    remainingDrafts: new Map(), printerConnect: null,
   };
   const coreMain = new Set([
     "material_class", "material_type", "brand_name", "material_name", "gtin",
@@ -231,6 +231,8 @@
 
   function renderStatus() {
     const status = state.status;
+    if (!canControl()) state.printerConnect = null;
+    renderLoadedSpools();
     if (state.previousStationAccess === true && !canControl()) {
       if ($("camera-dialog").open) $("camera-dialog").close();
       state.currentTag = null;
@@ -684,6 +686,82 @@
     }
   }
 
+  function remainingIndicator(item) {
+    const content = node("div", "inventory-remaining-content");
+    const values = node("div", "inventory-remaining-values"), quantity = node("span", "", grams(item.remaining_weight));
+    if (item.remaining_estimated && item.remaining_weight != null) quantity.append(node("small", "muted", msg(" · estimé")));
+    values.append(quantity);
+    const initial = item.main?.actual_netto_full_weight ?? item.main?.nominal_netto_full_weight;
+    const known = Number.isFinite(item.remaining_weight) && item.remaining_weight >= 0 &&
+      Number.isFinite(initial) && initial > 0 && item.remaining_weight <= initial;
+    let gauge;
+    if (known) {
+      const percentage = 100 * item.remaining_weight / initial;
+      const label = msg("{0} %", numberFormat.format(percentage));
+      values.append(node("span", "inventory-remaining-percent", label));
+      gauge = node("meter", "inventory-level-meter" + (percentage <= 10 ? " critical" : percentage <= 25 ? " low" : ""));
+      gauge.min = 0; gauge.max = 100; gauge.low = 10; gauge.high = 25; gauge.optimum = 100; gauge.value = percentage;
+      gauge.textContent = label;
+      I18n.attribute(gauge, "aria-label", msg("Quantité restante de {0}", item.spool_number));
+      const detail = msg("{0} restants sur {1} au départ", grams(item.remaining_weight), grams(initial));
+      I18n.attribute(gauge, "aria-valuetext", detail); I18n.attribute(gauge, "title", detail);
+    } else {
+      gauge = node("span", "inventory-level-unknown");
+      gauge.setAttribute("aria-hidden", "true");
+    }
+    content.append(values, gauge);
+    return content;
+  }
+
+  function renderLoadedSpools() {
+    const connection = state.printerConnect, holder = $("printer-loaded-list");
+    clear(holder);
+    $("printer-loaded-spool").hidden = true;
+    if (!canControl() || !connection?.enabled) return;
+    const loaded = (connection.spools || []).filter(spool => spool.source === "loaded" &&
+      spool.instance_uuid && spool.status !== "duplicate" && spool.status !== "missing_identity");
+    for (const spool of loaded) {
+      if (loaded.filter(other => other.instance_uuid === spool.instance_uuid).length !== 1) continue;
+      const matches = state.inventory.filter(item => item.instance_uuid === spool.instance_uuid && (item.in_stock || item.completed_at));
+      if (matches.length !== 1) continue;
+      const item = matches[0], main = item.main || {};
+      const row = node("article", "printer-spool-summary");
+      const identity = node("div", "printer-spool-identity"), description = node("div");
+      const heading = node("div", "spool-heading");
+      heading.append(node("span", "spool-number", item.spool_number), node("strong", "", spoolName(item)));
+      description.append(heading, node("p", "muted", main.brand_name || msg("Marque non renseignée")));
+      const details = [main.material_type, main.filament_diameter != null ? `${numberFormat.format(main.filament_diameter)} mm` : null,
+        main.primary_color, spool.tool_id ? msg("Outil {0}", spool.tool_id) : null].filter(value => value != null && value !== "");
+      description.append(node("p", "fine-print", details.join(" · ")));
+      if (item.completed_at || !item.in_stock) description.append(node("span", "status-chip", usageState(item)));
+      identity.append(swatch(main.primary_color), description);
+      const weights = node("dl", "printer-spool-weights");
+      for (const [label, value] of [[msg("Poids net initial"), grams(initialWeight(item))],
+        [msg("Consommé"), grams(item.aux?.consumed_weight)], [msg("Poids du contenant vide"), grams(main.empty_container_weight)]]) {
+        const pair = node("div"); pair.append(node("dt", "", label), node("dd", "", value)); weights.append(pair);
+      }
+      const remaining = node("div", "printer-spool-remaining");
+      remaining.append(node("span", "small-label", msg("Restant connu")), remainingIndicator(item));
+      const open = node("button", "button secondary small", msg("Voir la fiche")); open.type = "button";
+      I18n.attribute(open, "aria-label", msg("Détail de {0}", spoolTitle(item)));
+      open.addEventListener("click", () => showDetail(item));
+      row.append(identity, weights, remaining, open); holder.append(row);
+    }
+    $("printer-loaded-spool").hidden = !holder.children.length;
+    setText("printer-loaded-title", holder.children.length > 1 ? msg("Bobines reconnues sur l’imprimante") : msg("Bobine reconnue sur l’imprimante"));
+    const checked = Date.parse(connection.checked_at);
+    $("printer-loaded-stale").hidden = !(connection.stale || !connection.connected || !Number.isFinite(checked) ||
+      Date.now() - checked > Math.max(60, 2 * (connection.poll_seconds || 30)) * 1000);
+    setText("printer-loaded-updated", msg("Reconnaissance Connect : {0}. Informations de l’inventaire.", formatDate(connection.checked_at)));
+  }
+
+  document.addEventListener("opt-station-connect-state", event => {
+    if (!canControl()) return;
+    const next = event.detail, previous = state.printerConnect;
+    if (next?.checked_at && previous?.checked_at && Date.parse(next.checked_at) < Date.parse(previous.checked_at)) return;
+    state.printerConnect = next; renderLoadedSpools();
+  });
+
   function renderInventory() {
     const items = state.inventory.filter((item) => item.in_stock !== false);
     const completed = state.inventory.filter((item) => item.completed_at);
@@ -744,8 +822,7 @@
         description.append(node("span", `status-chip ${item.usage_state === "stock" ? "qr-stock" : "in-stock"}`, usageState(item)), node("small", "", identification(item)));
         identityButton.append(swatch(item.main?.primary_color), description); identityButton.addEventListener("click", () => showDetail(item)); identityCell.append(identityButton);
         const materialCell = node("td", "", item.main?.material_type == null ? "—" : displayValue("main", "material_type", item.main.material_type));
-        const weightCell = node("td", "", grams(item.remaining_weight));
-        if (item.remaining_estimated && item.remaining_weight != null) weightCell.append(node("small", "muted", msg(" · estimé")));
+        const weightCell = node("td", "inventory-remaining"); weightCell.append(remainingIndicator(item));
         const dateCell = node("td", "table-date", formatDate(archived ? item.completed_at : item.last_seen_at));
         const arrivalCell = node("td", "table-date", stockDate(item)); arrivalCell.append(node("small", "", stockAge(item)));
         const actionCell = node("td");
@@ -789,6 +866,7 @@
   async function refreshStock() {
     const response = await api(`/api/inventory?include_removed=true&sort=${encodeURIComponent($("inventory-sort").value)}`);
     state.inventory = response.items || [];
+    renderLoadedSpools();
     if (state.currentTag) {
       const entry = state.inventory.find((item) => item.uid === state.currentTag.uid && item.instance_uuid === state.currentTag.instance_uuid);
       state.currentTag.inventory = state.currentTag.association_pending ? null : entry || null;
@@ -1616,7 +1694,7 @@
   document.addEventListener("opt-station-language", () => {
     numberFormat = new Intl.NumberFormat(I18n.locale(), {maximumFractionDigits: 2});
     if (!state.status) return;
-    renderStatus(); renderReader(); renderEditorNote(); renderInventory(); renderFavorites();
+    renderStatus(); renderReader(); renderEditorNote(); renderInventory(); renderFavorites(); renderLoadedSpools();
     if ($("detail-dialog").open && state.detailItem) showDetail(state.detailItem);
   });
 

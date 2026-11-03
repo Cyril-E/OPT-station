@@ -1,5 +1,12 @@
 # Versions publiques
 
+## v0.26.4 — 3 novembre 2026
+
+- L’inventaire affiche le filament restant en grammes et en pourcentage. La jauge utilise le poids net initial réel en priorité, puis le poids nominal avec la mention « estimé ». Elle signale un niveau bas à 25 % ou moins, critique à 10 % ou moins, et une quantité inconnue par des hachures.
+- L’onglet **Imprimante** affiche sous le message PrusaLink la bobine dont l’UUID NFC correspond à une fiche d’inventaire. La carte réunit le numéro, la marque, la matière, la couleur, le diamètre, les poids, la consommation et la jauge. **Voir la fiche** ouvre le détail. Un avertissement daté signale une perte de connexion à Prusa Connect.
+
+Les essais sur station de démonstration ont couvert les niveaux plein, partiel, vide et inconnu, le recalcul après ajustement, le changement de bobine chargée, plusieurs outils et la perte de connexion. Le contrôle a aussi vérifié que les fiches d’entrepôt seules et les identités inconnues ou ambiguës ne sélectionnent aucune bobine. Les deux thèmes ont été contrôlés dans le navigateur.
+
 ## v0.26.3 — 3 novembre 2026
 
 - Envoi vers Prusa Connect : les champs **Marque** et **Type de matériau** sont disponibles directement dans le formulaire de correction, avec les poids et la consommation. Une information manquante peut être complétée sans quitter la fenêtre.

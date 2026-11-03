@@ -1,6 +1,14 @@
 "use strict";
 // German UI messages. User data and canonical RFID values stay unchanged.
 window.OPT_DE = Object.freeze({
+  "Bobine reconnue sur l’imprimante": "Am Drucker erkannte Spule",
+  "Bobines reconnues sur l’imprimante": "Am Drucker erkannte Spulen",
+  "Dernière reconnaissance connue · connexion à vérifier.": "Zuletzt erkannte Spule · Verbindung prüfen.",
+  "Outil {0}": "Werkzeug {0}",
+  "Voir la fiche": "Details anzeigen",
+  "Reconnaissance Connect : {0}. Informations de l’inventaire.": "Connect-Erkennung: {0}. Informationen aus dem Bestand.",
+  "Quantité restante de {0}": "Restmenge für {0}",
+  "{0} restants sur {1} au départ": "{0} verbleibend von anfänglich {1}",
   "Choisissez librement une sauvegarde avec ou sans mot de passe.": "Wählen Sie eine Sicherung mit oder ohne Passwort.",
   "Protéger la sauvegarde par mot de passe": "Diese Sicherung mit einem Passwort schützen",
   "Protéger les sauvegardes planifiées par mot de passe": "Geplante Sicherungen mit einem Passwort schützen",

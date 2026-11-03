@@ -32,6 +32,12 @@ Les lectures sont partagées par le Pi, avec un intervalle configurable de **30 
 
 Sur le profil CORE One 8 consulté, le tag reconnu visuellement sans filament chargé laissait encore l’outil sans bobine dans la réponse Connect. Vérifier le chargement depuis le menu de l’imprimante pour qualifier les données de bobine chargée ; la reconnaissance du tag seule ne garantit pas leur émission cloud.
 
+### Bobine reconnue dans le suivi de l’imprimante
+
+Dans l’onglet **Imprimante**, une fiche apparaît directement sous le message de suivi PrusaLink lorsqu’un outil actif remonte un UUID NFC connu dans l’inventaire. Elle affiche le numéro de bobine, le nom, la marque, la matière, la couleur, le diamètre, le poids net initial, la consommation, la tare et la jauge restante. **Voir la fiche** ouvre le détail complet. Les quantités sont celles de l’inventaire ; l’actualisation optionnelle de consommation garde ses règles et ses contrôles habituels.
+
+Le bloc suit la reconnaissance transmise par Connect pour l’imprimante configurée et sa date de lecture. Les bobines simplement présentes dans l’entrepôt, les identités inconnues et les doublons ne sélectionnent aucune fiche courante. Un retrait reconnu masque le bloc ; un changement d’UUID affiche la nouvelle bobine. En cas de perte de connexion, la dernière reconnaissance conservée porte un avertissement. Aucune lecture supplémentaire du tag, écriture RFID ou commande d’imprimante n’est ajoutée par cet affichage.
+
 ### Corrections et relecture NFC
 
 Une consommation Connect inférieure au compteur local ne le diminue pas. La télémétrie chargée observée fournit des grammes entiers : un écart inférieur à 1 g avec un compteur RFID plus précis est indiqué comme un arrondi, sans modifier la fiche. Les autres baisses sont signalées comme un compteur plus ancien. Une correction explicite de consommation ou de quantité restante, dans l’interface ou par MCP, suspend les actualisations de cette fiche. Dans **Imprimante → Bobine en cours et consommation**, **Reprendre le compteur Connect** permet de les reprendre explicitement, après vérification de la fiche. Les autres bobines continuent leur suivi.
