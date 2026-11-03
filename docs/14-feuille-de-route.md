@@ -85,7 +85,7 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 ## Correctif en v0.26.3
 
-- **Envoi Connect** : ajout de la marque et de la matière au formulaire de correction déjà présent dans la fenêtre d’envoi. Enregistrement local et nouvel aperçu, sans écriture RFID ni envoi automatique. Parcours contrôlé dans Chrome sur des données isolées, avec conservation des quantités ; voir le [guide Connect](39-prusa-connect-et-entrepot.md). Le contrôle sur le Pi sera effectué après publication.
+- **Envoi Connect** : ajout de la marque et de la matière au formulaire de correction déjà présent dans la fenêtre d’envoi. Enregistrement local et nouvel aperçu, sans écriture RFID ni envoi automatique. Parcours contrôlé dans Chrome sur des données isolées, avec conservation des quantités ; voir le [guide Connect](39-prusa-connect-et-entrepot.md). La mise à jour v0.26.2 → v0.26.3 depuis l’application, les scripts servis et la présence des nouveaux champs en HTTPS sont vérifiés sur le Pi. Le kiosque et le certificat sont conservés. Aucun nouvel envoi cloud ou essai d’écriture RFID n’est réalisé pour cette qualification.
 
 ## Pistes reportées après les retours de validation
 

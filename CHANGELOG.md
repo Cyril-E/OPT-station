@@ -8,7 +8,7 @@
 
 Vérifications : **998 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, et les huit moteurs JavaScript. Le parcours dans Chrome reproduit une bobine de 1 000 g nominaux avec 850 g consommés et une marque manquante : après correction dans la fenêtre, les 150 g restants sont conservés et le bouton d’envoi devient disponible. Ce contrôle utilise une station et un entrepôt isolés, sans envoi cloud ni écriture RFID réels.
 
-L’archive complète `opt-station-v0.26.3.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. L’installation sur le Pi et le contrôle de son formulaire seront vérifiés après publication.
+L’archive complète `opt-station-v0.26.3.tar.gz` et son SHA-256 accompagnent cette préversion. Le schéma SQLite reste à **6** et aucune dépendance n’est ajoutée. Après publication, l’installation depuis le bouton d’OPT Station est vérifiée sur le Pi : version 0.26.3, fichiers servis identiques à la release, nouveaux champs présents dans le formulaire HTTPS, certificat conservé et services HTTPS et kiosque actifs. Chrome affiche la nouvelle version sans bandeau de progression résiduel. Le contrôle de déploiement ne lance ni écriture RFID ni envoi de bobine vers Connect.
 
 ## v0.26.2 — 2 novembre 2026
 
