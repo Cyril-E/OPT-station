@@ -78,3 +78,11 @@ Les vérifications logicielles et les limites matérielles de la version courant
 Les essais matériels couvrent les captures RTSP, leur affichage et leur agrandissement, ainsi que la connexion PrusaLink par clé API sur une **CORE One, firmware 8.0.0+17068**. Le suivi a été validé au repos puis pendant des impressions réelles. Aucune commande de chauffe, pause ou lancement de travail n’est envoyée par ce suivi.
 
 La réponse PrusaLink v1 observée au repos fournit états, températures, axes, vitesse, débit et ventilateurs, sans mesure de poids ou de consommation. Cette observation ne suffit pas à conclure sur les réponses pendant une impression. Le collecteur Connect fournit un suivi distinct : le rapprochement d’une bobine chargée au repos et l’actualisation automatique de sa consommation pendant une impression réelle sont vérifiés. Les valeurs reçues de Connect sont en grammes entiers.
+
+## Avancement visible dans tous les onglets
+
+Depuis **v0.26.6**, pendant un travail, un petit indicateur sous **OPT Station** affiche la barre et le pourcentage PrusaLink, y compris lorsque l’inventaire ou les paramètres sont ouverts. Il nécessite l’accès complet et fonctionne indépendamment de Prusa Connect.
+
+Une pause ou une demande d’intervention garde l’avancement visible avec son état. Si la station ou l’imprimante devient injoignable, ou si la dernière mesure date de plus de 30 secondes, le repère indique **Dernier avancement connu** et **Connexion à vérifier**. Un pourcentage absent ou incohérent n’est pas remplacé par zéro. L’indicateur disparaît lorsque la fin ou l’arrêt du travail est confirmé, ou lorsque l’accès complet est fermé.
+
+L’indicateur utilise le suivi PrusaLink existant toutes les cinq secondes sur une page visible. Les caméras ne sont pas chargées hors de l’onglet Imprimante. Les transitions et pertes de connexion sont vérifiées sur des données de démonstration.

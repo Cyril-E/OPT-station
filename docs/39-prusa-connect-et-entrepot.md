@@ -79,7 +79,20 @@ Connect peut accepter une fiche contenant seulement une copie des données maté
 
 Une seconde demande recherche d’abord le même UUID et confirme sa présence sans créer de doublon ni écraser ses quantités ou ses notes distantes. Plusieurs fiches portant le même UUID, ou le même numéro visible avec une autre identité, bloquent toute nouvelle création. Si la réponse d’une création est perdue, le journal permet une relecture et une reprise après redémarrage. Si aucune fiche ne peut être identifiée avec certitude, la station ne relance pas une création aveugle. Une modification locale ou un changement de destination après l’aperçu impose un nouveau contrôle.
 
-Cet envoi est explicite et individuel. La lecture automatique ne crée pas de fiches et ne les réécrit pas dans le cloud. Les outils MCP ne donnent pas accès à cet envoi. La validation réelle vérifie également les bobines dans la page **Matériaux → Dans l’entrepôt** de Connect, avec l’organisation choisie : une présence dans les fiches brutes de l’API ne suffit pas à confirmer leur affichage.
+Cet envoi depuis une fiche est explicite et individuel. La lecture automatique ne crée pas de fiches et ne les réécrit pas dans le cloud. Les outils MCP ne donnent pas accès à cet envoi. La validation réelle vérifie également les bobines dans la page **Matériaux → Dans l’entrepôt** de Connect, avec l’organisation choisie : une présence dans les fiches brutes de l’API ne suffit pas à confirmer leur affichage.
+
+### Envoyer les bobines manquantes en groupe
+
+Depuis **v0.26.6**, avec l’accès complet, cliquer sur **Envoyer les bobines manquantes vers Prusa Connect** en haut de l’inventaire.
+
+1. La station relit l’entrepôt et compare les identités de toutes les bobines actives, en stock ou en production. Les filtres de la page ne réduisent pas ce lot ; les bobines terminées ou retirées sont exclues.
+2. L’aperçu indique les bobines absentes, celles déjà présentes et celles qui nécessitent une correction. **Vérifier la fiche** ouvre le formulaire individuel avec les valeurs actuelles ; une quantité inconnue reste à renseigner.
+3. Le bouton d’envoi indique le nombre de bobines prêtes. Après confirmation, chaque bobine passe par une nouvelle vérification d’identité puis un envoi et une relecture. Une bobine ajoutée entre-temps est ignorée, sans écraser ni réparer sa fiche distante.
+4. Le bilan distingue les bobines envoyées, déjà présentes et restant à traiter, avec leur numéro et la raison d’un blocage. Pour refaire un aperçu après correction, utiliser **Vérifier à nouveau**.
+
+Garder la page ouverte pendant l’envoi. **Arrêter après cette bobine** termine le contrôle de l’opération en cours et arrête les suivantes. Une interruption de connexion arrête la file ; aucune nouvelle création n’est relancée automatiquement. À la reprise, relire l’entrepôt : le journal d’envoi empêche une seconde création lorsque le résultat précédent est incertain. Une présence déjà constatée n’atteste pas que toutes les données sont synchronisées ni que le matériau est visible dans le catalogue ; une éventuelle réparation reste accessible dans l’envoi individuel.
+
+Le lot conserve les données locales et les tags RFID. Les corrections manuelles depuis le formulaire individuel restent des actions distinctes. Une fiche modifiée depuis l’aperçu exige un nouveau contrôle. Le contrôle des doublons et les parcours d’interruption sont testés avec un entrepôt simulé ; le nouvel envoi groupé sur le cloud réel reste à valider après déploiement.
 
 ### Limites d’une synchronisation complète
 

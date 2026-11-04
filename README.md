@@ -24,7 +24,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-La [préversion v0.26.5](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.5) indique dans l’onglet **Imprimante** si la bobine chargée devrait suffire pour finir la pièce. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
+La [préversion v0.26.6](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.6) ajoute l’envoi groupé des bobines manquantes vers Prusa Connect et un indicateur d’avancement de l’impression visible dans tous les onglets. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -33,6 +33,11 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.26.6 — Envoi groupé et avancement de l’impression](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.6)
+
+- **Inventaire** : un bouton vérifie toutes les bobines actives et propose d’envoyer celles qui manquent dans l’entrepôt Prusa Connect. Les fiches déjà présentes sont conservées ; le bilan indique les bobines envoyées et celles à corriger. [Guide Connect](docs/39-prusa-connect-et-entrepot.md)
+- **Sous OPT Station** : une barre et un pourcentage donnent l’avancement PrusaLink depuis tous les onglets, avec l’accès complet. Pause, intervention et perte de connexion sont signalées. [Guide du suivi](docs/17-suivi-imprimante-et-cameras.md)
 
 ### [v0.26.5 — La bobine suffira-t-elle pour la pièce ?](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.5)
 

@@ -708,7 +708,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "connect-bulk.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -872,6 +872,16 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         result = store.resume_connect_consumption(identifier, body.version)
         connect_monitor.settings_changed()
         return {"item": result, "rfid_written": False}
+
+    @app.post("/api/inventory/connect/preview")
+    def preview_missing_connect_exports(request: Request):
+        require_printer_access(request)
+        return connect_exporter.preview_missing()
+
+    @app.post("/api/inventory/{identifier}/connect/export-missing")
+    def export_missing_to_connect(identifier: str, request: Request, body: ConnectExportRequest):
+        require_printer_access(request)
+        return connect_exporter.export(identifier, body.version, body.notes_revision, body.fingerprint, missing_only=True)
 
     @app.post("/api/inventory/{identifier}/connect/preview")
     def preview_connect_export(identifier: str, request: Request, body: ConnectExportPreview):

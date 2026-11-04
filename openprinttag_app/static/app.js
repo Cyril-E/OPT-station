@@ -887,6 +887,13 @@
     }
   }
   document.addEventListener("opt-station-inventory-updated", () => { if (canBrowse()) task(null, refreshStock); });
+  document.addEventListener("opt-station-connect-correct", event => {
+    if (!canControl() || !event.detail?.id) return;
+    task(null, async () => {
+      const item = await api(`/api/inventory/${encodeURIComponent(event.detail.id)}`);
+      if (canControl()) await window.OPT_CONNECT_EXPORT.open(item, fieldDef("main", "material_type").options);
+    });
+  });
   function completionButton(item, className = "button secondary") {
     const button = node("button", className, msg("Marquer comme terminée")); button.type = "button";
     I18n.attribute(button, "aria-label", msg("Marquer {0} comme terminée", spoolName(item)));

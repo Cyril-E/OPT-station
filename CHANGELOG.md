@@ -1,5 +1,14 @@
 # Versions publiques
 
+## v0.26.6 — 4 novembre 2026
+
+- **Envoi groupé vers Prusa Connect** : l’inventaire propose toutes les bobines actives absentes de l’entrepôt, après vérification de leurs identités. L’envoi reste explicite et chaque bobine est contrôlée à nouveau avant création. Les fiches déjà présentes sont conservées, y compris si elles sont ajoutées entre l’aperçu et l’envoi.
+- Le bilan distingue les bobines envoyées, déjà présentes et restant à traiter, avec leurs numéros. Les fiches incomplètes donnent accès au formulaire de correction. Une interruption arrête les envois suivants et impose une nouvelle vérification ; les protections contre une création en double restent actives. Aucun tag RFID n’est écrit.
+- **Avancement sous le nom de l’application** : barre et pourcentage PrusaLink visibles dans tous les onglets avec l’accès complet. Pause, intervention et perte de connexion sont signalées. Le dernier avancement connu est distingué d’une mesure récente ; l’indicateur disparaît après la fin ou l’arrêt du travail.
+- Interface et messages disponibles en français, anglais, espagnol et allemand. [Guide Connect](docs/39-prusa-connect-et-entrepot.md) · [Suivi de l’imprimante](docs/17-suivi-imprimante-et-cameras.md).
+
+Vérifications : **1 047 tests réussis sur Mac**, dix exclusions liées à l’environnement, et les tests d’interface JavaScript. Les essais de démonstration couvrent les doublons, les envois concurrents, la reprise après interruption, la conservation des fiches, le parcours de correction et les états de l’indicateur. Le nouvel envoi groupé avec le cloud réel reste une validation distincte du déploiement. Aucune dépendance ni migration de données n’est ajoutée.
+
 ## v0.26.5 — 4 novembre 2026
 
 - L’onglet **Imprimante** indique si la bobine chargée devrait suffire. Il affiche le filament nécessaire pour la pièce entière, le besoin restant selon Prusa Connect et la quantité estimée sur la bobine en fin d’impression. Si la bobine risque de se vider, le déficit est indiqué en grammes.

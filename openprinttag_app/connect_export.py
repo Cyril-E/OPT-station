@@ -1,4 +1,4 @@
-"""Explicit single-spool warehouse creation, with persistent retry reconciliation."""
+"""Explicit warehouse creation, with shared previews and durable retry reconciliation."""
 from copy import deepcopy
 import hashlib
 import json
@@ -144,38 +144,113 @@ class WarehouseExporter:
                         raise ConnectError("export_uncertain", "Un envoi de cette bobine est déjà enregistré. Relisez l’entrepôt avant de réessayer.", 409)
             db.execute("INSERT INTO state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, json.dumps(value, ensure_ascii=False, allow_nan=False)))
 
-    def _prepare(self, identifier, version, notes_revision):
+    def _configuration(self):
         if not self.monitor.allowed():
             raise ConnectError("export_busy", "La station est momentanément indisponible pour cet envoi.", 409)
         config = self.configuration.read()
         if not config["enabled"]:
             raise ConnectError("export_disabled", "Activez Prusa Connect dans les paramètres avant cet envoi.", 409)
-        item = self.store.get_spool(identifier)
-        if item["version"] != version or item["notes_revision"] != notes_revision:
-            raise ConnectError("export_changed", "Cette fiche a changé. Rechargez-la avant l’envoi vers Connect.", 409)
+        return config
+
+    def _check_pending(self, item):
         with self.store.connect() as db:
             pending = db.execute("SELECT inventory_id,detail FROM operations WHERE status IN ('pending','uncertain','tag_verified')").fetchall()
             if any(row["inventory_id"] == item["id"] or (self.store.operation_reuse(row["detail"]) or {}).get("inventory_id") == item["id"] for row in pending):
                 raise ConnectError("export_busy", "Terminez l’opération RFID de cette bobine avant son envoi vers Connect.", 409)
+
+    def _team(self, config):
         teams = self.client.teams()
         organization = config["organization_id"] or (teams[0]["id"] if len(teams) == 1 else "")
         team = next((t for t in teams if t["id"] == organization), None)
         if team is None:
             raise ConnectError("export_organization", "Choisissez l’organisation Connect dans les paramètres.", 409)
-        title, payload = export_data(item, organization)
+        return team
+
+    def _warehouse(self, organization):
         warehouse = self.client.collection(WAREHOUSE_QUERY, organization, warehouse=True)
-        existing = matching_item(warehouse, item["instance_uuid"])
-        key = self._key(organization, item["instance_uuid"])
-        journal = self._journal(key)
+        # Absence is only meaningful after a complete, identifiable list. Never
+        # treat an unreadable warehouse record as permission to create a spool.
+        seen = set()
+        for row in warehouse:
+            instance = row.get("materialPackageInstance") if isinstance(row, dict) else None
+            identifier = identity(row.get("id")) if isinstance(row, dict) else None
+            if (not identifier or identifier in seen or not isinstance(instance, dict)
+                    or not identity(instance.get("uuid"))):
+                raise ConnectError("contract", "Liste Connect incomplète ou invalide. Aucune quantité n’est modifiée.")
+            seen.add(identifier)
+        return warehouse
+
+    @staticmethod
+    def _check_absence(item, warehouse, existing, journal):
         material_only = journal and journal["phase"] in {"material_registering", "material_ready"} and not journal.get("creation_attempted")
         if existing is None and journal and journal["phase"] != "rejected" and not material_only:
             raise ConnectError("export_uncertain", "Un envoi précédent n’est pas réconcilié avec l’entrepôt. Aucune seconde création n’est lancée.", 409)
         if existing is None and any(str(x.get("name") or "").split(" · ")[0] == item["spool_number"] for x in warehouse):
             raise ConnectError("export_duplicate", "Ce numéro existe dans Connect avec une autre identité. Vérifiez cette fiche avant l’envoi.", 409)
-        fingerprint = digest({"config_revision": config["revision"], "id": item["id"], "version": version,
-                              "notes_revision": notes_revision, "title": title, "payload": payload})
-        material = self.client.warehouse_material(organization, payload["materialPackageInstance"]["package"]["material"]["uuid"])
+
+    @staticmethod
+    def _fingerprint(config, item, title, payload):
+        return digest({"config_revision": config["revision"], "id": item["id"], "version": item["version"],
+                       "notes_revision": item["notes_revision"], "title": title, "payload": payload})
+
+    def _prepare(self, identifier, version, notes_revision, *, missing_only=False):
+        config = self._configuration()
+        item = self.store.get_spool(identifier)
+        if item["version"] != version or item["notes_revision"] != notes_revision:
+            raise ConnectError("export_changed", "Cette fiche a changé. Rechargez-la avant l’envoi vers Connect.", 409)
+        self._check_pending(item)
+        team = self._team(config)
+        title, payload = export_data(item, team["id"])
+        warehouse = self._warehouse(team["id"])
+        existing = matching_item(warehouse, item["instance_uuid"])
+        key = self._key(team["id"], item["instance_uuid"])
+        journal = self._journal(key)
+        self._check_absence(item, warehouse, existing, journal)
+        fingerprint = self._fingerprint(config, item, title, payload)
+        material = None if missing_only and existing else self.client.warehouse_material(team["id"], payload["materialPackageInstance"]["package"]["material"]["uuid"])
         return item, team, title, payload, existing, key, journal, fingerprint, material
+
+    def preview_missing(self):
+        """Read the whole active stock against one fresh warehouse snapshot.
+
+        Validation is per spool, but a cloud failure aborts the preview: cached
+        inventory icons never establish absence. No mutation or tag read occurs.
+        """
+        with self.monitor.lock, self.configuration.lock:
+            config = self._configuration()
+            team = self._team(config)
+            warehouse = self._warehouse(team["id"])
+            items = []
+            for item in self.store.list_spools(sort="oldest"):
+                if item["completed_at"]:
+                    continue
+                row = {key: item[key] for key in ("id", "spool_number", "version", "notes_revision")}
+                row.update(name=item["main"].get("material_name") or item["main"].get("material_type") or item["spool_number"],
+                           disposition="blocked", presence="unknown")
+                try:
+                    if not identity(item.get("instance_uuid")):
+                        raise ConnectError("export_data", "L’identité de cette bobine est manquante.", 422)
+                    existing = matching_item(warehouse, item["instance_uuid"])
+                    row["presence"] = "present" if existing else "absent"
+                    if existing:
+                        # Even an incomplete local record or invisible cloud
+                        # material is present. A batch must not repair it.
+                        row.update(disposition="present", warehouse_id=existing["id"])
+                    else:
+                        self._check_pending(item)
+                        title, payload = export_data(item, team["id"])
+                        journal = self._journal(self._key(team["id"], item["instance_uuid"]))
+                        self._check_absence(item, warehouse, None, journal)
+                        row.update(disposition="create", name=title,
+                                   fingerprint=self._fingerprint(config, item, title, payload))
+                except ConnectError as exc:
+                    row.update(error=exc.code, message=str(exc))
+                items.append(row)
+            return {"organization": team["name"], "checked_at": utc(), "items": items,
+                    "counts": {"total": len(items), "missing": sum(x["presence"] == "absent" for x in items),
+                               "ready": sum(x["disposition"] == "create" for x in items),
+                               "present": sum(x["disposition"] == "present" for x in items),
+                               "blocked": sum(x["disposition"] == "blocked" for x in items)}}
 
     def preview(self, identifier, version, notes_revision):
         with self.monitor.lock, self.configuration.lock:
@@ -188,15 +263,20 @@ class WarehouseExporter:
                     "disposition": "repair" if existing and (not material or material["spoolCount"] == 0) else
                         "resume" if journal and journal["phase"] != "verified" else "present" if existing else "create"}
 
-    def export(self, identifier, version, notes_revision, fingerprint):
+    def export(self, identifier, version, notes_revision, fingerprint, *, missing_only=False):
         with self.monitor.lock, self.configuration.lock:
-            item, team, title, payload, existing, key, journal, expected, material = self._prepare(identifier, version, notes_revision)
+            item, team, title, payload, existing, key, journal, expected, material = self._prepare(identifier, version, notes_revision, missing_only=missing_only)
             if fingerprint != expected:
                 raise ConnectError("export_changed", "L’aperçu d’envoi a changé. Relisez-le avant de confirmer.", 409)
             # Recheck after the network reads; a local/MCP edit must invalidate this preview.
             current = self.store.get_spool(item["id"])
             if current["version"] != version or current["notes_revision"] != notes_revision:
                 raise ConnectError("export_changed", "Cette fiche a changé. Rechargez-la avant l’envoi vers Connect.", 409)
+            if missing_only and existing:
+                # Another tab or client may have sent it after the preview. No
+                # rename, repair, journal reconciliation or material write here.
+                return {"status": "already_present", "warehouse_id": existing["id"], "spool_number": item["spool_number"],
+                        "created": False, "inventory_changed": False, "rfid_written": False}
             already_present = existing is not None and (not journal or journal["phase"] == "verified")
             registered = False
             if material is None:

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/printer.js" defer></script>
   <script src="/static/connect.js" defer></script>
+  <script src="/static/connect-bulk.js" defer></script>
   <script src="/static/notifications.js" defer></script>
   <script src="/static/power.js" defer></script>
   <script src="/static/mcp.js" defer></script>
@@ -28,6 +29,11 @@
   <div class="app-shell">
     <aside class="sidebar">
       <a data-i18n-attrs="aria-label" class="brand" href="/" aria-label="OPT Station, accueil"><span class="brand-mark" aria-hidden="true">◎</span><span>OPT<span class="brand-light"> Station</span><small data-i18n>LE COMPAGNON DE VOS BOBINES</small></span></a>
+      <div id="header-printer-progress" class="header-printer-progress" role="status" aria-live="polite" hidden>
+        <div class="header-printer-line"><span id="header-printer-state"></span><strong id="header-printer-percent"></strong></div>
+        <progress id="header-printer-meter" max="100" data-i18n-attrs="aria-label" aria-label="Avancement de l’impression"></progress>
+        <small id="header-printer-note" hidden></small>
+      </div>
       <div data-i18n class="workspace-label">VOTRE ATELIER</div>
       <nav data-i18n-attrs="aria-label" class="tabs" role="tablist" aria-label="Fonctions principales" aria-orientation="vertical">
         <button data-i18n id="tab-inventory" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-inventory" data-tab="inventory"><span class="tab-icon" aria-hidden="true">▦</span>Inventaire<span class="tab-arrow" aria-hidden="true">↗</span></button>
@@ -102,6 +108,7 @@
 
       <section id="panel-inventory" class="tab-panel" role="tabpanel" aria-labelledby="tab-inventory">
         <div class="page-heading"><div><p data-i18n class="eyebrow">VOTRE STOCK, AU MÊME ENDROIT</p><h1 data-i18n>Inventaire des bobines</h1><p data-i18n>Bobines emballées sous QR et bobines équipées d’un tag RFID.</p></div><div class="card-actions"><button data-i18n id="new-packaged" class="button primary" type="button">+ Bobine emballée</button><button data-i18n id="refresh-inventory" class="button secondary" type="button">↻ Actualiser</button></div></div>
+        <div class="inventory-connect-action"><button data-i18n id="connect-bulk-open" class="button secondary" type="button" disabled>Envoyer les bobines manquantes vers Prusa Connect</button></div>
         <div class="inventory-stats"><article class="stat-card"><span data-i18n>BOBINES ACTIVES</span><strong id="stock-count">0</strong></article><article class="stat-card"><span data-i18n>MATIÈRE RESTANTE CONNUE</span><strong id="stock-weight">—</strong></article><article class="stat-card"><span data-i18n>BOBINES CONSOMMÉES</span><strong id="completed-count">0</strong></article><article class="stat-card"><span data-i18n>FAVORIS ET MODÈLES</span><strong id="favorite-count">0</strong></article></div>
         <article class="card inventory-card"><div class="card-heading"><div><h2 data-i18n id="inventory-title">Vos bobines</h2><div class="segmented inventory-view" role="group" aria-label="Vue de l’inventaire" data-i18n-attrs="aria-label"><button data-i18n id="inventory-all" type="button" class="selected" aria-pressed="true">Tout</button><button data-i18n id="inventory-stock" type="button" aria-pressed="false">Stock</button><button data-i18n id="inventory-production" type="button" aria-pressed="false">Production</button><button data-i18n id="inventory-archives" type="button" aria-pressed="false">Terminées</button></div></div><div class="inventory-filters"><label data-i18n class="field sort-field">Trier<select id="inventory-sort"><option data-i18n value="oldest">Plus anciennes en premier</option><option data-i18n value="newest">Plus récentes en premier</option><option data-i18n value="recent">Dernières lectures</option></select></label><label class="search-field"><span data-i18n class="sr-only">Rechercher une bobine</span><span aria-hidden="true">⌕</span><input data-i18n-attrs="placeholder" id="inventory-search" type="search" maxlength="200" placeholder="Numéro B0000, marque, matière, notes…"></label></div></div><div class="inventory-facets"><details><summary data-i18n>Marques</summary><div id="inventory-brands" class="inventory-filter-options"></div></details><details><summary data-i18n>Matières</summary><div id="inventory-materials" class="inventory-filter-options"></div></details><button data-i18n id="inventory-clear-filters" class="button secondary small" type="button">Effacer les filtres</button></div><div id="inventory-list" class="table-wrap"></div><p id="inventory-footnote" class="fine-print"></p></article>
         <article class="card inventory-notes-card"><div class="card-heading"><div><h2 data-i18n>Carnet commun de l’inventaire</h2><p data-i18n>Références de tares, poids de bobines vides et remarques utiles pour vos matériaux.</p></div></div><form id="inventory-notes-form"><label data-i18n class="field">Notes communes<textarea id="inventory-notes" rows="6" maxlength="16000" disabled></textarea></label><p data-i18n class="fine-print">Consultables par les clients MCP. Précisez si un poids est mesuré ou indicatif et s’il correspond à la tare ou au filament.</p><div class="card-actions"><button data-i18n id="inventory-notes-save" class="button primary" type="submit" disabled>Enregistrer les notes</button><button data-i18n id="inventory-notes-reload" class="button secondary" type="button">Recharger les notes</button></div><p id="inventory-notes-result" class="fine-print" role="status"></p></form></article>
@@ -355,6 +362,17 @@
     <p data-i18n>La consommation est un compteur total en grammes, sans ajout à chaque lecture. Une identité absente, une valeur incohérente, une archive ou un compteur plus ancien bloque la modification de la fiche. Une correction manuelle se reprend explicitement depuis l’onglet Imprimante.</p>
     <p data-i18n>La lecture automatique de l’entrepôt actualise les quantités des bobines reconnues. Depuis une fiche d’inventaire, « Envoyer vers Prusa Connect » permet un envoi explicite, avec aperçu et contrôle des doublons. Les fiches déjà présentes ne sont pas écrasées.</p>
     <div class="modal-footer"><button data-i18n class="button secondary" type="button" data-close-dialog="connect-info-dialog">Fermer</button></div>
+  </dialog>
+  <dialog id="connect-bulk-dialog" class="modal connect-bulk-modal" aria-labelledby="connect-bulk-title">
+    <div class="modal-header"><h2 data-i18n id="connect-bulk-title">Envoyer les bobines manquantes</h2></div>
+    <p data-i18n>La vérification concerne toutes les bobines actives, en stock ou en production, même si la liste est filtrée. Les bobines terminées sont exclues.</p>
+    <p data-i18n>Chaque identité est vérifiée dans l’entrepôt avant l’envoi. Les fiches déjà présentes sont conservées. Aucun tag RFID n’est écrit.</p>
+    <p id="connect-bulk-organization" class="fine-print"></p>
+    <p id="connect-bulk-summary" class="notice" role="status"></p>
+    <ul id="connect-bulk-items" class="connect-bulk-items"></ul>
+    <p id="connect-bulk-result" class="fine-print" role="status"></p>
+    <p data-i18n class="fine-print">Gardez cette page ouverte pendant l’envoi. Après une interruption, une nouvelle vérification permet de reprendre sans renvoyer les bobines déjà présentes.</p>
+    <div class="modal-footer"><button data-i18n id="connect-bulk-close" class="button secondary" type="button">Fermer</button><button data-i18n id="connect-bulk-check" class="button secondary" type="button">Vérifier à nouveau</button><button data-i18n id="connect-bulk-cancel" class="button secondary" type="button" hidden>Arrêter après cette bobine</button><button data-i18n id="connect-bulk-send" class="button primary" type="button" disabled>Envoyer les bobines manquantes</button></div>
   </dialog>
   <dialog id="connect-export-dialog" class="modal" aria-labelledby="connect-export-title">
     <div class="modal-header"><h2 data-i18n id="connect-export-title">Envoyer vers Prusa Connect</h2><button data-i18n-attrs="aria-label" class="icon-button" type="button" data-close-dialog="connect-export-dialog" aria-label="Fermer">×</button></div>

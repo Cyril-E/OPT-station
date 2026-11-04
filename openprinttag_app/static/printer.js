@@ -151,20 +151,46 @@
         set("printer-settings-result", msg("Lecture de la version, de l’état et du travail courant…"));
         const result = await request("/api/printer/status?refresh=true");
         if (!access || current !== epoch) return;
-        latest = result;
+        latest = result; renderHeaderProgress();
         set("printer-settings-result", result.connected ? msg("Connexion PrusaLink vérifiée. Le suivi est en lecture seule.") : result.message);
       }
       cameraKey = ""; thumbnailKey = "";
     } catch (error) { if (access) set("printer-settings-result", error.message); }
     finally { saving = false; sync(); }
   }
-  function clearViews() {
-    controllers.forEach((c) => c.abort());
+  function clearViews(abort = true) {
+    if (abort) controllers.forEach((c) => c.abort());
     frames.forEach((frame) => { if (frame.url) URL.revokeObjectURL(frame.url); }); frames.clear();
     $("printer-camera-grid").replaceChildren(); cameraKey = ""; thumbnailKey = "";
     $("printer-thumbnail").removeAttribute("src"); $("printer-thumbnail-wrap").hidden = true;
     if ($("printer-camera-dialog").open) $("printer-camera-dialog").close();
     $("printer-camera-large").removeAttribute("src"); largeCamera = null;
+  }
+  function renderHeaderProgress() {
+    const panel = $("header-printer-progress"), snapshot = latest;
+    const job = snapshot?.job || {}, state = snapshot?.printer?.state;
+    const active = ["PRINTING", "PAUSED"].includes(state) ||
+      state === "ATTENTION" && (job.id != null || job.filename);
+    panel.hidden = !access || snapshot?.configured === false || !active ||
+      ["FINISHED", "STOPPED", "ERROR", "CANCELLED"].includes(job.state);
+    if (panel.hidden) return;
+    const age = Date.now() - Date.parse(snapshot.observed_at);
+    const stale = !snapshot.connected || snapshot.stale || !(age >= -5000 && age <= 30000);
+    const progress = typeof job.progress === "number" && Number.isFinite(job.progress) &&
+      job.progress >= 0 && job.progress <= 100 && job.consistent !== false ? job.progress : null;
+    const label = stale ? msg("Dernier avancement connu") : stateNames[state];
+    // Avoid repeatedly announcing an unchanged status through the live region.
+    const text = (id, content) => { if ($(id).textContent !== String(content)) set(id, content); };
+    text("header-printer-state", label);
+    text("header-printer-percent", number(progress, " %"));
+    const meter = $("header-printer-meter");
+    meter.hidden = progress === null;
+    if (progress === null) meter.removeAttribute("value");
+    else if (meter.value !== progress) meter.value = progress;
+    panel.classList.toggle("stale", stale);
+    panel.classList.toggle("waiting", state !== "PRINTING");
+    $("header-printer-note").hidden = !stale && progress !== null;
+    text("header-printer-note", stale ? msg("Connexion à vérifier") : msg("Avancement indisponible"));
   }
   function filamentForecast(spool, connection) {
     const job = latest?.job;
@@ -213,6 +239,7 @@
   window.OPT_PRINTER = {filamentForecast};
   function render(snapshot) {
     latest = snapshot;
+    renderHeaderProgress();
     if (snapshot.connect) document.dispatchEvent(new CustomEvent("opt-station-connect-state", {detail: snapshot.connect}));
     set("printer-name", snapshot.name);
     set("printer-connection", snapshot.connected ? msg("Connectée") : snapshot.stale ? msg("Connexion perdue") : snapshot.configured ? msg("Injoignable") : msg("À configurer"));
@@ -237,7 +264,7 @@
     set("printer-consumption-message", snapshot.connect?.message);
     const key = JSON.stringify(snapshot.cameras || []);
     if (key !== cameraKey) {
-      clearViews(); cameraKey = key;
+      clearViews(false); cameraKey = key;
       (snapshot.cameras || []).forEach((camera) => {
         const card = element("article", "printer-camera-card");
         const button = element("button", "printer-camera-open"); button.type = "button";
@@ -284,19 +311,29 @@
     } finally { frame.pending = false; }
   }
   async function refresh(force = false) {
-    if (!access || tab !== "printer" || polling || document.visibilityState !== "visible") return;
+    renderHeaderProgress();
+    if (!access || polling || document.visibilityState !== "visible") return;
     polling = true; sync(); const current = epoch;
     try {
       const snapshot = await request(`/api/printer/status${force ? "?refresh=true" : ""}`);
-      if (!access || tab !== "printer" || current !== epoch) return;
-      render(snapshot);
-      frames.forEach((frame, id) => { void refreshFrame(id, frame); });
+      if (!access || current !== epoch) return;
+      if (tab === "printer") {
+        render(snapshot);
+        frames.forEach((frame, id) => { void refreshFrame(id, frame); });
+      } else {
+        latest = snapshot;
+        renderHeaderProgress();
+      }
     } catch (error) {
-      if (access && tab === "printer") {
-        if (latest) render({...latest, connected: false, stale: true, message: error.message});
-        set("printer-message", error.message); set("printer-connection", msg("Station injoignable"));
-        $("printer-connection").classList.remove("in-stock"); $("printer-message").className = "notice warning";
-        frames.forEach((frame) => { if (frame.url) I18n.text(frame.note, msg("Dernière image conservée · station injoignable")); });
+      if (access && current === epoch) {
+        if (latest) latest = {...latest, connected: false, stale: true, message: error.message};
+        renderHeaderProgress();
+        if (tab === "printer") {
+          if (latest) render(latest);
+          set("printer-message", error.message); set("printer-connection", msg("Station injoignable"));
+          $("printer-connection").classList.remove("in-stock"); $("printer-message").className = "notice warning";
+          frames.forEach((frame) => { if (frame.url) I18n.text(frame.note, msg("Dernière image conservée · station injoignable")); });
+        }
       }
     }
     finally { polling = false; sync(); }
@@ -311,10 +348,10 @@
     }
     const gained = next && !access; access = next; sync();
     if (access && (gained || !configuration) && tab === "configuration") void loadConfiguration();
-    if (gained && tab === "printer") void refresh();
+    if (gained) void refresh();
   });
   document.addEventListener("opt-station-tab", (event) => {
-    if (tab !== event.detail.tab) { epoch++; clearViews(); }
+    if (tab !== event.detail.tab) clearViews(false);
     tab = event.detail.tab;
     if (tab === "configuration" && access && !configuration && !dirty) void loadConfiguration();
     if (tab === "printer") { if (latest) render(latest); void refresh(); }
@@ -331,9 +368,18 @@
   $("printer-thumbnail").addEventListener("error", () => { $("printer-thumbnail-wrap").hidden = true; });
   $("printer-camera-dialog").addEventListener("close", () => { largeCamera = null; $("printer-camera-large").removeAttribute("src"); });
   document.addEventListener("opt-printer-refresh", () => void refresh(true));
+  document.addEventListener("opt-station-offline", () => {
+    if (latest) latest = {...latest, connected: false, stale: true};
+    renderHeaderProgress();
+  });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void refresh(); });
   const timer = setInterval(() => void refresh(), 5000);
-  document.addEventListener("opt-station-language", () => { sync(); if (latest) render(latest); });
+  document.addEventListener("opt-station-language", () => {
+    sync();
+    if (latest && tab === "printer") render(latest);
+    else renderHeaderProgress();
+  });
   window.addEventListener("pagehide", () => { clearInterval(timer); epoch++; clearViews(); });
   sync();
+  renderHeaderProgress();
 })();
