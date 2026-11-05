@@ -1541,6 +1541,7 @@ window.OPT_EN = Object.freeze({
   "Marques": "Brands",
   "Matières": "Materials",
   "Effacer les filtres": "Clear filters",
+  "Dernière bobine": "Last spool",
   "Impossible de charger les photos.": "Unable to load photos.",
   "Vérifiez la photo puis joignez-la à la fiche.": "Check the photo, then attach it to the record.",
   "Aucune photo jointe à cette fiche.": "No photos attached to this record.",

@@ -1541,6 +1541,7 @@ window.OPT_ES = Object.freeze({
   "Marques": "Marcas",
   "Matières": "Materiales",
   "Effacer les filtres": "Borrar filtros",
+  "Dernière bobine": "Última bobina",
   "Impossible de charger les photos.": "No se han podido cargar las fotos.",
   "Vérifiez la photo puis joignez-la à la fiche.": "Compruebe la foto antes de adjuntarla a la ficha.",
   "Aucune photo jointe à cette fiche.": "Esta ficha no tiene fotos adjuntas.",

@@ -24,7 +24,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-La [préversion v0.26.6](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.6) ajoute l’envoi groupé des bobines manquantes vers Prusa Connect et un indicateur d’avancement de l’impression visible dans tous les onglets. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
+La [préversion v0.26.7](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.7) ajoute un bouton pour atteindre la dernière bobine affichée dans l’inventaire. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -33,6 +33,10 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.26.7 — Accès à la dernière bobine](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.7)
+
+- Le bouton **Dernière bobine** descend au bas de la liste affichée en tenant compte du tri et des filtres.
 
 ### [v0.26.6 — Envoi groupé et avancement de l’impression](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.6)
 

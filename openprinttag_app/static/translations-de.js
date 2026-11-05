@@ -1541,6 +1541,7 @@ window.OPT_DE = Object.freeze({
   "Marques": "Marken",
   "Matières": "Materialien",
   "Effacer les filtres": "Filter zurücksetzen",
+  "Dernière bobine": "Letzte Spule",
   "Impossible de charger les photos.": "Fotos konnten nicht geladen werden.",
   "Vérifiez la photo puis joignez-la à la fiche.": "Prüfen Sie das Foto, bevor Sie es dem Eintrag anhängen.",
   "Aucune photo jointe à cette fiche.": "Diesem Eintrag sind keine Fotos angehängt.",

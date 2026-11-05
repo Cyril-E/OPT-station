@@ -1,5 +1,9 @@
 # Versions publiques
 
+## v0.26.7 — 5 novembre 2026
+
+- Le bouton **Dernière bobine**, à côté des filtres de l’inventaire, descend directement à la dernière bobine affichée selon le tri et les filtres actifs. Il se désactive quand la liste est vide.
+
 ## v0.26.6 — 4 novembre 2026
 
 - **Envoi groupé vers Prusa Connect** : l’inventaire propose toutes les bobines actives absentes de l’entrepôt, après vérification de leurs identités. L’envoi reste explicite et chaque bobine est contrôlée à nouveau avant création. Les fiches déjà présentes sont conservées, y compris si elles sont ajoutées entre l’aperçu et l’envoi.

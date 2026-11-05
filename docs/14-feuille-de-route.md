@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.26.6](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.6)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.26.7](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.7)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -101,6 +101,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 - **Envoi groupé vers Prusa Connect** : bouton dans Inventaire, aperçu de toutes les bobines actives, contrôle des identités dans l’entrepôt, envoi des absentes après confirmation, bilan par numéro et accès direct à la correction des fiches bloquées. Une bobine déjà présente est conservée. Les interruptions imposent une nouvelle vérification avant reprise.
 - **Avancement sous le logo** : indicateur PrusaLink avec barre et pourcentage dans tous les onglets en accès complet. Pause, intervention et connexion perdue sont signalées ; l’indicateur disparaît après la fin ou l’arrêt du travail.
 - **Qualification locale** : scénarios automatisés de doublons, envois concurrents, interruption, changement de fiche et retrait d’accès ; parcours d’interface sur une station de démonstration. L’essai groupé avec l’entrepôt réel reste à réaliser séparément du déploiement.
+
+## Ajout en v0.26.7
+
+- Le bouton **Dernière bobine**, près des filtres, descend à la dernière ligne de l’inventaire affiché. Le saut a été vérifié dans le navigateur avec une recherche, une inversion du tri et une liste vide.
 
 ## Pistes reportées après les retours de validation
 

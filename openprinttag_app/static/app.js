@@ -245,6 +245,7 @@
       state.inventoryNotes = null; state.inventoryNotesDirty = false; state.spoolNotesDrafts.clear(); state.remainingDrafts.clear();
       $("inventory-notes").value = ""; $("spool-notes").value = "";
       clear($("inventory-list")); clear($("favorites-list"));
+      $("inventory-last-spool").disabled = true;
       ["detail-dialog", "favorite-dialog", "delete-favorite-dialog", "packaged-dialog", "label-dialog", "model-source-dialog"].forEach((id) => { if ($(id).open) $(id).close(); });
     }
     const simulated = isSimulation();
@@ -793,6 +794,7 @@
     }
     $("inventory-sort").disabled = archived;
     $("inventory-sort").closest("label").hidden = archived;
+    $("inventory-last-spool").disabled = !visible.length;
     const container = $("inventory-list"); clear(container);
     if (!visible.length) {
       const empty = node("div", "table-empty");
@@ -1614,6 +1616,12 @@
   }));
   $("inventory-clear-filters").addEventListener("click", () => { state.inventoryBrands.clear(); state.inventoryMaterials.clear(); $("inventory-search").value = ""; renderInventory(); });
   $("inventory-search").addEventListener("input", renderInventory);
+  $("inventory-last-spool").addEventListener("click", () => {
+    const lastSpool = $("inventory-list").querySelector("tbody tr:last-child .spool-cell");
+    if (!lastSpool) return;
+    lastSpool.scrollIntoView({behavior: "instant", block: "center", inline: "nearest"});
+    lastSpool.focus({preventScroll: true});
+  });
   for (const [id, view] of [["inventory-all", "all"], ["inventory-stock", "stock"], ["inventory-production", "production"], ["inventory-archives", "completed"]]) {
     $(id).addEventListener("click", () => { state.inventoryView = view; renderInventory(); });
   }
