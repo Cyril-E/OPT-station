@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.27.0-rc.2](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.2)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.27.0-rc.3](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.3)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -111,6 +111,10 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 
 - Un contrôleur Matter sur le Pi permet d’associer des prises, relais et éclairages dans **Paramètres** et d’afficher leurs commandes dans **Imprimante**.
 - L’association d’une prise réelle et l’arrêt protégé de la prise **Imprimante** ont été validés sur Raspberry Pi. Les refus pendant une impression, une chauffe ou une perte de connexion à PrusaLink ont été vérifiés en simulation. [Guide Matter](41-appareils-matter.md)
+
+## Ajout en v0.27.0-rc.3
+
+- La commande GitHub installe et vérifie le serveur Matter avec les dépendances nécessaires. L’option `--no-matter` permet de passer cette étape. [Guide d’installation](33-installation-une-commande.md)
 
 ## Pistes reportées après les retours de validation
 

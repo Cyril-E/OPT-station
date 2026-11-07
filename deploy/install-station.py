@@ -45,6 +45,7 @@ PACKAGES = ("python3-venv", "python3-numpy", "python3-pil", "pcscd", "libccid", 
             "python3-pyscard", "ca-certificates", "ffmpeg")
 CAMERA_PACKAGES = ("python3-picamera2", "python3-libcamera")
 DESKTOP_PACKAGES = ("firefox", "desktop-file-utils", "libglib2.0-bin")
+MATTER_UNIT = "opt-station-matter.service"
 
 
 def system_path(value):
@@ -155,6 +156,9 @@ class Installer:
         self.mode, self.camera = "hardware", not args.no_camera
         self.runtime_port = None
         self.kiosk = not args.no_kiosk
+        # Updates from the application preserve the independently configured controller.
+        self.matter = not (getattr(args, "no_matter", False) or getattr(args, "managed_update", False))
+        self.matter_started = False
         self.active = self.display_active = self.enabled = self.gateway_active = self.gateway_enabled = False
         self.old_source = self.stable.resolve() if self.stable.is_symlink() else None
         self.old_linger = True
@@ -173,6 +177,29 @@ class Installer:
     def as_user(self, *arguments):
         return run("runuser", "-u", self.account.pw_name, "--", "env", "PYTHONNOUSERSITE=1", *arguments,
                    cwd=self.source)
+
+    def has_matter_service(self):
+        unit = self.units / MATTER_UNIT
+        with account_access(self.account):
+            if unit.exists() or unit.is_symlink():
+                return True
+        result = self.userctl("show", MATTER_UNIT, "--property=FragmentPath", "--value", check=False)
+        return result.returncode == 0 and bool(result.stdout.strip())
+
+    def activate_matter(self):
+        uid, gid = self.account.pw_uid, self.account.pw_gid
+        unit = self.units / MATTER_UNIT
+        self.transaction.write(unit, (self.source / "deploy" / MATTER_UNIT).read_text(), uid, gid)
+        adapters = [int(path.name[3:]) for path in system_path("/sys/class/bluetooth").glob("hci*")
+                    if re.fullmatch(r"hci[0-9]+", path.name)]
+        if adapters:
+            dropin = unit.with_name(unit.name + ".d") / "10-opt-station-bluetooth.conf"
+            if not dropin.exists():
+                self.transaction.write(dropin, f"[Service]\nEnvironment=BLUETOOTH_ADAPTER={min(adapters)}\n", uid, gid)
+        self.transaction.capture(self.units / "default.target.wants" / MATTER_UNIT)
+        self.userctl("daemon-reload")
+        self.matter_started = True
+        self.userctl("enable", "--now", MATTER_UNIT)
 
     def preflight(self):
         bootstrap = load("opt_bootstrap", self.source / "deploy/bootstrap.py")
@@ -341,6 +368,8 @@ class Installer:
                 temporary.cleanup()
 
     def rollback(self):
+        if self.matter_started:
+            self.userctl("disable", "--now", MATTER_UNIT, check=False)
         self.userctl("stop", "openprinttag-display.service", "openprinttag.service", check=False)
         run("systemctl", "stop", "opt-station-https.service", check=False)
         if not self.enabled:
@@ -384,11 +413,19 @@ class Installer:
         # Validate the hostname/address set before installing packages or stopping anything.
         https.addresses(socket.gethostname().split(".")[0], https.discover_addresses())
         packages = [*PACKAGES, *(CAMERA_PACKAGES if self.camera else ()), *(DESKTOP_PACKAGES if self.kiosk else ())]
+        prepare_matter = self.matter and not self.has_matter_service()
+        matter_installer = self.source / "deploy/install-matter.py"
+        if prepare_matter:
+            packages.append("bluez")
         print("Installation des dépendances système…", flush=True)
         self.report('dependencies')
         run("apt-get", "update")
         run("apt-get", "install", "--yes", "--no-install-recommends", *packages)
         run("systemctl", "enable", "--now", "pcscd.socket")
+        if prepare_matter:
+            print("Préparation du serveur Matter et de Node.js…", flush=True)
+            self.as_user("python3", "-I", matter_installer, "prepare")
+            run("systemctl", "enable", "--now", "bluetooth.service")
         print("Préparation de Python avec les dépendances verrouillées…", flush=True)
         self.report('python')
         self.as_user("python3", "-m", "venv", "--system-site-packages", self.source / ".venv")
@@ -399,6 +436,8 @@ class Installer:
         self.as_user(*arguments)
         imports = "import openprinttag_app.app, smartcard" + (", picamera2, libcamera, zxingcpp" if self.camera else "")
         self.as_user(python, "-c", imports)
+        if self.matter and not prepare_matter:
+            self.as_user(python, "-I", matter_installer, "verify")
         self.validate_service()
         linger = run("loginctl", "show-user", self.account.pw_name, "--property=Linger", "--value", check=False, capture_output=True)
         self.old_linger = linger.returncode == 0 and linger.stdout.strip() == "yes"
@@ -421,6 +460,10 @@ class Installer:
             run("systemctl", "start", f"user@{self.account.pw_uid}.service")
             self.snapshot()
             self.report('activating')
+            if prepare_matter:
+                if not self.has_matter_service():
+                    self.activate_matter()
+                self.as_user(python, "-I", matter_installer, "verify")
             with account_access(self.account):
                 if self.data.is_symlink():
                     raise ValueError("Le dossier de données a été remplacé par un lien symbolique.")
@@ -498,6 +541,7 @@ def main(argv=None):
     parser.add_argument("--archive-sha256", default="")
     parser.add_argument("--no-kiosk", action="store_true")
     parser.add_argument("--no-camera", action="store_true")
+    parser.add_argument("--no-matter", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--managed-update", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -511,7 +555,7 @@ def main(argv=None):
         print(json.dumps({"version": installer.new_version, "source": str(installer.source), "user": account.pw_name,
                           "data_dir_default": str(installer.data), "existing_installation": installer.old_source is not None,
                           "preserve_existing": True, "kiosk_default": installer.kiosk,
-                          "camera_default": installer.camera, "https": True, "ports": [80, 443, 8765],
+                          "camera_default": installer.camera, "matter": installer.matter, "https": True, "ports": [80, 443, 8765],
                           "requires": "Raspberry Pi OS 64-bit Trixie; Desktop unless --no-kiosk", "automatic_reboot": False}, indent=2))
         return
     if sys.platform != "linux" or os.geteuid() != 0:

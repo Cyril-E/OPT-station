@@ -25,7 +25,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-La [préversion v0.27.0-rc.2](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.2) ajoute les commandes Matter avec un contrôleur autonome sur le Raspberry Pi. L’installation en une commande pour Raspberry Pi OS 64 bits Trixie comprend HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de chaque version.
+L’installation en une commande de la **v0.27.0-rc.3** ajoute le contrôleur Matter autonome aux composants installés sur Raspberry Pi OS 64 bits Trixie. Elle comprend aussi HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de la version. [Préversion GitHub](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.3)
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -35,9 +35,13 @@ La version comprend les [notifications Chrome](docs/32-notifications-imprimante.
 
 ## Nouveautés
 
+### [v0.27.0-rc.3 — Installation du contrôleur Matter](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.3)
+
+- La commande d’installation ajoute et démarre le contrôleur Matter, avec Node.js et BlueZ. L’option `--no-matter` permet de passer cette étape. [Guide d’installation](docs/33-installation-une-commande.md)
+
 ### [v0.27.0-rc.2 — Commandes Matter](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.2)
 
-- Associer les appareils Matter dans **Paramètres** et les commander dans l’onglet **Imprimante**. Le contrôleur Matter s’installe séparément sur le Pi. [Guide Matter](docs/41-appareils-matter.md)
+- Associer les appareils Matter dans **Paramètres** et les commander dans l’onglet **Imprimante**. [Guide Matter](docs/41-appareils-matter.md)
 - L’arrêt protégé de la prise **Imprimante** a été validé sur le Pi avec une prise réelle. La coupure exige une nouvelle lecture PrusaLink confirmant le repos et le refroidissement de l’imprimante.
 
 ### [v0.26.7 — Accès à la dernière bobine](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.7)
@@ -162,7 +166,7 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://
 
 Le mot de passe administrateur est demandé dans le terminal quand il devient nécessaire. Après installation, ouvrir l’adresse affichée et renseigner les appareils et leurs clés dans **Configuration**. Sur chaque autre ordinateur, approuver une fois le certificat selon l’[aide HTTPS](docs/31-https-local.md). Les chemins reposent sur le compte qui installe la station; aucun compte ou adressage réseau particulier n’est requis.
 
-Consulter le **[guide d’installation en une commande](docs/33-installation-une-commande.md)** pour le parcours complet, les réinstallations et les options `--no-kiosk`, `--no-camera`, `--version` et `--dry-run`. Raspberry Pi OS Lite demande `--no-kiosk`. Le **[guide manuel](docs/12-installation-station-reelle.md)** décrit les étapes séparées.
+Le guide d’installation décrit le parcours complet, les réinstallations et les options `--no-kiosk`, `--no-camera`, `--no-matter`, `--version` et `--dry-run`. Raspberry Pi OS Lite demande `--no-kiosk`. [Installation en une commande](docs/33-installation-une-commande.md) · [Installation manuelle](docs/12-installation-station-reelle.md)
 
 Depuis un autre ordinateur, utiliser l’adresse annoncée au lancement de la station. Dans **Configuration → Accès distant**, choisir **Désactivé**, **Inventaire et modèles** ou **Accès complet sans code**. Le choix est persistant et commun aux clients du réseau. Voir le [guide d’accès](docs/18-acces-distant-persistant.md).
 

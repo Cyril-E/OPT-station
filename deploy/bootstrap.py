@@ -25,6 +25,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 REPOSITORY = "Cyril-E/OPT-station"
 API = f"https://api.github.com/repos/{REPOSITORY}/releases"
 MINIMUM = (0, 17, 0, 1, 0)
+MATTER_MINIMUM = (0, 27, 0, 0, 3)
 MAX_ARCHIVE = 64 * 1024 * 1024
 MAX_EXTRACTED = 256 * 1024 * 1024
 REQUIRED = ("pyproject.toml", "requirements.lock", "requirements-camera.lock", "deploy/bootstrap.py", "deploy/install-station.py",
@@ -32,6 +33,8 @@ REQUIRED = ("pyproject.toml", "requirements.lock", "requirements-camera.lock", "
             "deploy/openprinttag.desktop.in", "deploy/openprinttag-display.py", "deploy/opt-station-https.service",
             "openprinttag_app/__init__.py", "openprinttag_app/__main__.py", "openprinttag_app/app.py",
             "openprinttag_app/https.py", "openprinttag_app/installation.py")
+MATTER_FILES = ("deploy/install-matter.py", "deploy/opt-station-matter.service",
+                "deploy/matter/package.json", "deploy/matter/package-lock.json")
 PI_MODEL = Path("/proc/device-tree/model")
 
 
@@ -143,7 +146,8 @@ def extract_sources(archive, destination, tag):
                     or not (member.isfile() or member.isdir())):
                 raise ValueError("Archive non sûre ou chemin en double.")
             seen.add(path.as_posix())
-        for name in REQUIRED:
+        required = REQUIRED + (MATTER_FILES if version_key(tag) >= MATTER_MINIMUM else ())
+        for name in required:
             if not any(member.name == name and member.isfile() for member in members):
                 raise ValueError(f"Archive incomplète : {name}")
         for member in members:
@@ -166,6 +170,7 @@ def main(argv=None):
     parser.add_argument("--version", help="Version publiée précise (exemple : v0.17.0)")
     parser.add_argument("--no-kiosk", action="store_true", help="Installation sans écran, compatible Raspberry Pi OS Lite")
     parser.add_argument("--no-camera", action="store_true", help="Ne pas activer la caméra QR")
+    parser.add_argument("--no-matter", action="store_true", help="Passer l’installation du contrôleur Matter")
     parser.add_argument("--dry-run", action="store_true", help="Vérifier la release et afficher le plan sans installation")
     args = parser.parse_args(argv)
     if os.geteuid() == 0:
@@ -203,6 +208,8 @@ def main(argv=None):
         for flag in ("no_kiosk", "no_camera", "dry_run"):
             if getattr(args, flag):
                 arguments.append("--" + flag.replace("_", "-"))
+        if args.no_matter and version_key(tag) >= MATTER_MINIMUM:
+            arguments.append("--no-matter")
         if not args.dry_run:
             print("Installation système : sudo peut demander le mot de passe dans ce terminal.", flush=True)
             arguments.insert(0, "sudo")

@@ -26,9 +26,9 @@ Le programme :
 1. Vérifie le Pi, son système et la release. Les préversions publiées sont également prises en compte.
 2. Télécharge l’archive complète et son SHA-256, contrôle leur correspondance et refuse les liens ou chemins dangereux dans l’archive.
 3. Vérifie les ports et une installation existante. Il refuse d’interrompre une opération matérielle ou de remplacer un service personnalisé non reconnu.
-4. Installe les bibliothèques NFC, caméra et étiquettes, puis les dépendances Python verrouillées dans un environnement séparé, sous le compte ordinaire. Le fichier de démarrage est contrôlé par systemd avant l’arrêt de l’application existante.
+4. Installe les bibliothèques NFC, caméra et étiquettes, puis les dépendances Python verrouillées dans un environnement séparé, sous le compte ordinaire. À partir de **v0.27.0-rc.3**, il prépare aussi BlueZ, Node.js et le serveur Matter lorsque le contrôleur est à installer. Le fichier de démarrage de la station est contrôlé par systemd avant l’arrêt de l’application existante.
 5. Arrête l’ancienne application, sauvegarde ses données et ses fichiers de lancement, puis active les nouvelles sources.
-6. Installe les services de démarrage, Caddy, les certificats HTTPS et le lancement de Firefox en plein écran. Le bureau est configuré pour ouvrir automatiquement la session de ce compte au démarrage.
+6. Installe les services de démarrage, Caddy, les certificats HTTPS et le lancement de Firefox en plein écran. Il démarre et vérifie le contrôleur Matter sur une socket locale. Le bureau est configuré pour ouvrir automatiquement la session de ce compte au démarrage.
 7. Vérifie le service et HTTPS, puis affiche l’adresse à ouvrir. Il **ne redémarre pas le Pi automatiquement**.
 
 Le partage distant commence en mode **inventaire** sur une station neuve. L’accès complet reste un choix dans Configuration. L’installation n’ouvre aucun port sur le routeur et ne modifie pas SSH.
@@ -36,6 +36,8 @@ Le partage distant commence en mode **inventaire** sur une station neuve. L’ac
 ## Terminer dans Configuration
 
 Depuis **v0.26.0**, l’installateur ajoute aussi le service permettant de lancer les prochaines mises à jour en un clic depuis OPT Station. Voir le [guide dédié](40-mise-a-jour-depuis-application.md). Les releases précédentes ne contiennent pas ce service.
+
+Pour associer une prise, un relais ou un éclairage après l’installation, ouvrir **Paramètres → Appareils Matter**. [Guide Matter](41-appareils-matter.md)
 
 Sur le Pi, le navigateur utilise `https://localhost/`, avec le certificat local installé et les droits de la station. Si aucun bureau n’était ouvert pendant l’installation, ouvrir la session graphique ou redémarrer le Pi pour lancer le plein écran.
 
@@ -52,6 +54,8 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://
 ```
 
 Ajouter `--no-camera` pour ne pas activer la caméra QR. Sur une station existante, cela désactive son lancement par le service; les réglages enregistrés restent conservés. `--no-kiosk` retire le lancement d’OPT Station au bureau, mais conserve les autres réglages de session du système.
+
+Ajouter `--no-matter` pour passer l’installation et la vérification du contrôleur. Un service Matter existant et ses appairages sont conservés.
 
 Choisir une version précise :
 

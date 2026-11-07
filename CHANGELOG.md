@@ -1,5 +1,11 @@
 # Versions publiques
 
+## v0.27.0-rc.3 — 7 novembre 2026
+
+- La commande GitHub installe par défaut le contrôleur Matter, Node.js et BlueZ sur Raspberry Pi OS 64 bits Trixie. Elle démarre le contrôleur, vérifie sa réponse sur la socket locale et configure le Bluetooth si un adaptateur est détecté. [Guide d’installation](docs/33-installation-une-commande.md)
+- Une réinstallation réutilise le service Matter déjà configuré et conserve les appairages. L’option `--no-matter` permet de passer cette étape.
+- L’appairage et l’arrêt protégé de la prise **Imprimante** ont été validés sur le Pi en v0.27.0-rc.2. [Guide Matter](docs/41-appareils-matter.md)
+
 ## v0.27.0-rc.2 — 7 novembre 2026
 
 - Associer des prises, relais et éclairages depuis **Paramètres → Appareils Matter**. Le contrôleur Matter est installé séparément sur le Raspberry Pi et fonctionne de façon autonome. [Guide de mise en service](docs/41-appareils-matter.md)

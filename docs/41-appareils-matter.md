@@ -4,19 +4,11 @@ OPT Station utilise un contrôleur Matter installé sur le Raspberry Pi. Dans l�
 
 ## Préparer le Pi
 
-Installer [Node.js](https://nodejs.org/fr/download) 22.13 ou plus récent. Le service recherche aussi une installation dans `~/.local/opt-station-node/bin`. Sur le Pi, depuis le dossier OPT Station et sous le même compte que la station, installer le contrôleur et démarrer son service optionnel.
-
-```sh
-mkdir -p "$HOME/.local/opt-station-matter" "$HOME/.config/systemd/user"
-npm install --prefix "$HOME/.local/opt-station-matter" --save-exact matter-server@1.5.5
-install -m 0644 deploy/opt-station-matter.service "$HOME/.config/systemd/user/"
-systemctl --user daemon-reload
-systemctl --user enable --now opt-station-matter.service
-```
+Depuis **v0.27.0-rc.3**, la commande GitHub installe BlueZ, une version vérifiée de Node.js et Matter Server avec ses dépendances verrouillées, puis démarre le service dans le compte d’OPT Station. Pour ajouter le serveur à une station installée, relancer la commande GitHub avec le même compte. Un contrôleur déjà configuré et ses appairages sont conservés. [Installation en une commande](33-installation-une-commande.md)
 
 Le serveur répond par une socket Unix privée, dans le dossier d’exécution du compte. OPT Station la trouve automatiquement. Le Pi et les appareils doivent pouvoir communiquer en IPv6 et se découvrir sur le réseau local. Les appareils Thread ont besoin d’un routeur de bordure Thread joignable depuis le Pi. [Prérequis réseau du contrôleur](https://github.com/matter-js/matterjs-server/blob/v1.5.5/docs/os_requirements.md)
 
-Pour la première association d’un appareil Wi-Fi neuf, activer le Bluetooth du contrôleur. Avec BlueZ en service et l’adaptateur `hci0`, exécuter `systemctl --user edit opt-station-matter.service`, ajouter le bloc suivant puis redémarrer le service. Adapter le numéro si le Pi utilise un autre adaptateur. [Prérequis Bluetooth](https://github.com/matter-js/matterjs-server/blob/v1.5.5/docs/os_requirements.md#bluetooth-low-energy-requirements)
+L’installateur configure le Bluetooth du contrôleur quand un adaptateur est détecté. Pour régler un adaptateur ajouté ultérieurement, exécuter `systemctl --user edit opt-station-matter.service`, ajouter le bloc suivant puis redémarrer le service. Utiliser `0` pour `hci0` et adapter le numéro selon le Pi.
 
 ```ini
 [Service]

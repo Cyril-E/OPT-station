@@ -85,9 +85,10 @@ def test_checksums_are_exact_and_bound_to_filename(tmp_path):
         bootstrap.verify_checksum(path, record, path.name, "sha256:" + "0" * 64)
 
 
-def package(path, extra=None, omit=None, project="0.17.0"):
+def package(path, extra=None, omit=None, project="0.17.0", matter=False):
+    matter_files = bootstrap.MATTER_FILES if matter else ()
     with tarfile.open(path, "w:gz") as archive:
-        for name in (*bootstrap.REQUIRED, ".gitignore"):
+        for name in (*bootstrap.REQUIRED, *matter_files, ".gitignore"):
             if name == omit:
                 continue
             content = (f'[project]\nversion="{project}"\n' if name == "pyproject.toml" else
@@ -177,6 +178,8 @@ class Host:
         self.data = self.home / "openprinttag-data"
         self.unit = self.home / ".config/systemd/user/openprinttag.service"
         self.dropin = self.unit.parent / "openprinttag.service.d/https.conf"
+        self.matter_unit = self.unit.with_name(installer.MATTER_UNIT)
+        self.matter_enabled = self.matter_active = False
         self.ca = self.system("/etc/opt-station/root-ca.crt")
         self.metadata = self.system("/etc/opt-station/https.json")
         self.active = existing
@@ -243,6 +246,8 @@ class Host:
                 return subprocess.CompletedProcess(args, 1 if self.failure == "unit-validation" else 0,
                                                    "", "invalid unit" if self.failure == "unit-validation" else "")
             if "systemctl" not in args:
+                if self.failure == "matter" and args[-1] == "verify":
+                    raise subprocess.CalledProcessError(1, args)
                 return subprocess.CompletedProcess(args, 0, "", "")
             args = args[args.index("systemctl"):]  # use the same state for user units
         if args[0] == "tar":
@@ -266,6 +271,18 @@ class Host:
             if self.failure == 'updater' and 'opt-station-update.path' in args and '--now' in args:
                 raise subprocess.CalledProcessError(1, args)
             command = next((a for a in args[1:] if not a.startswith("--")), "")
+            if installer.MATTER_UNIT in args:
+                link = self.unit.parent / "default.target.wants" / installer.MATTER_UNIT
+                if command == "show":
+                    text = str(self.matter_unit) if self.matter_unit.exists() else ""
+                elif command == "enable":
+                    self.matter_enabled = self.matter_active = True
+                    link.parent.mkdir(exist_ok=True)
+                    link.symlink_to(self.matter_unit)
+                elif command == "disable":
+                    self.matter_enabled = self.matter_active = False
+                    link.unlink(missing_ok=True)
+                return subprocess.CompletedProcess(args, 0, text, "")
             gateway = "opt-station-https.service" in args
             active, enabled = (self.gateway_active, self.gateway_enabled) if gateway else (self.active, self.enabled)
             if "openprinttag-display.service" in args:
@@ -312,6 +329,8 @@ class Host:
 
 def test_fresh_headless_install_creates_services_data_receipt_and_https(tmp_path, monkeypatch):
     host = Host(tmp_path, monkeypatch)
+    adapter = host.system("/sys/class/bluetooth/hci0")
+    adapter.mkdir(parents=True)
     instance = host.install()
     assert host.stable.resolve() == host.source
     assert host.active and host.enabled and host.gateway_active
@@ -320,6 +339,44 @@ def test_fresh_headless_install_creates_services_data_receipt_and_https(tmp_path
     assert instance.receipt.stat().st_mode & 0o777 == 0o600
     assert not any("reboot" in call for call in host.calls)
     assert not (host.home / ".config/autostart/openprinttag.desktop").exists()
+    assert any(call[:2] == ["apt-get", "install"] and "bluez" in call for call in host.calls)
+    matter_calls = [call for call in host.calls if str(host.source / "deploy/install-matter.py") in call]
+    assert [call[-1] for call in matter_calls] == ["prepare", "verify"]
+    assert all(call[:3] == ["runuser", "-u", "maker"] for call in matter_calls)
+    assert host.matter_active and host.matter_enabled
+    assert host.matter_unit.read_text() == (ROOT / "deploy" / installer.MATTER_UNIT).read_text()
+    assert "BLUETOOTH_ADAPTER=0" in (host.matter_unit.parent / (installer.MATTER_UNIT + ".d")
+                                    / "10-opt-station-bluetooth.conf").read_text()
+
+
+@pytest.mark.parametrize("no_matter", [False, True])
+def test_reinstall_leaves_existing_matter_service_and_pairings_in_place(tmp_path, monkeypatch, no_matter):
+    host = Host(tmp_path, monkeypatch, existing=True)
+    host.args.no_matter = no_matter
+    host.matter_unit.write_text("existing controller configuration\n")
+    storage = host.home / ".local/share/opt-station-matter"
+    storage.mkdir(parents=True)
+    pairings = storage / "existing-fabric"
+    pairings.write_text("existing pairings\n")
+    host.install()
+    assert host.matter_unit.read_text() == "existing controller configuration\n"
+    assert pairings.read_text() == "existing pairings\n"
+    assert not any(installer.MATTER_UNIT in call for call in host.calls)
+    assert not any("bluez" in call for call in host.calls)
+    actions = [call[-1] for call in host.calls if str(host.source / "deploy/install-matter.py") in call]
+    assert actions == ([] if no_matter else ["verify"])
+
+
+def test_failed_matter_start_rolls_back_the_new_service_and_station(tmp_path, monkeypatch):
+    host = Host(tmp_path, monkeypatch, existing=True)
+    host.failure = "matter"
+    with pytest.raises(subprocess.CalledProcessError):
+        host.install()
+    assert not host.matter_active and not host.matter_enabled
+    assert not host.matter_unit.exists()
+    assert not (host.matter_unit.parent / "default.target.wants" / installer.MATTER_UNIT).exists()
+    assert host.stable.resolve() == host.old_source
+    assert host.active and host.gateway_active
 
 
 def test_data_replaced_after_snapshot_never_changes_outside_ownership(tmp_path, monkeypatch):
@@ -431,11 +488,14 @@ def test_system_lock_blocks_mutations_hardware_and_power_but_not_health(tmp_path
 
 
 @pytest.mark.parametrize("dry_run", [False, True])
-def test_bootstrap_verifies_release_before_invoking_installer(tmp_path, monkeypatch, dry_run):
-    archive = tmp_path / "archive.tar.gz"; package(archive)
+@pytest.mark.parametrize("tag, project", [("v0.17.0", "0.17.0"), ("v0.27.0-rc.3", "0.27.0rc3")])
+def test_bootstrap_verifies_release_before_invoking_installer(tmp_path, monkeypatch, dry_run, tag, project):
+    matter = tag == "v0.27.0-rc.3"
+    archive = tmp_path / "archive.tar.gz"
+    package(archive, project=project, matter=matter)
     payload = archive.read_bytes()
     digest = hashlib.sha256(payload).hexdigest()
-    row = release()
+    row = release(tag)
     row["assets"][0]["digest"] = "sha256:" + digest
     home = tmp_path / "home"; home.mkdir()
     monkeypatch.setattr(bootstrap.os, "geteuid", lambda: 1000)
@@ -444,17 +504,18 @@ def test_bootstrap_verifies_release_before_invoking_installer(tmp_path, monkeypa
     calls = []
     def fetch(url, limit, target=None):
         if url.startswith(bootstrap.API): return json.dumps([row]).encode()
-        if url.endswith(".sha256"): return (digest + "  opt-station-v0.17.0.tar.gz\n").encode()
+        if url.endswith(".sha256"): return f"{digest}  opt-station-{tag}.tar.gz\n".encode()
         assert target is not None
         target.write(payload)
     monkeypatch.setattr(bootstrap, "fetch", fetch)
     monkeypatch.setattr(bootstrap.subprocess, "run", lambda args, **kwargs: calls.append(args))
-    arguments = ["--no-kiosk", "--no-camera"] + (["--dry-run"] if dry_run else [])
+    arguments = ["--no-kiosk", "--no-camera", "--no-matter"] + (["--dry-run"] if dry_run else [])
     bootstrap.main(arguments)
     assert len(calls) == 1
     assert calls[0][0] == ("python3" if dry_run else "sudo")
     assert "--archive-sha256" in calls[0] and digest in calls[0]
     assert "--no-kiosk" in calls[0] and "--no-camera" in calls[0]
+    assert ("--no-matter" in calls[0]) is matter
     assert (home / "apps").exists() is not dry_run
 
 
