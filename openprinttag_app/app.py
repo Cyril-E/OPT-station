@@ -46,6 +46,7 @@ from .storage import ConflictError, Store, MAX_NOTES_LENGTH
 from .spool_qr import encode_spool
 from .labels import LabelPrinter
 from .power import LogindPower, PowerError, StationPower
+from .matter import MatterAction, MatterControl, MatterError, MatterPairing, MatterSettings, socket_path as matter_socket_path
 from .mcp_server import MCPConfiguration, MCPTransport
 from .library_transfer import LibraryTransfer
 from .backups import BackupManager, BackupError, MaintenanceGate, recover_restore, MAX_ARCHIVE
@@ -392,7 +393,7 @@ def blank(record):
 def create_app(settings: Settings | None = None, camera: CameraScanner | None = None, reader=None,
                printer_fetch=None, printer_capture=None, label_runner=None, power_backend=None, updates_fetch=None,
                prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None, connect_fetch=None,
-               update_installer=None):
+               update_installer=None, matter_socket=None):
     settings = settings or Settings.from_env()
     https = HTTPSConfiguration.load(settings.https_config)
     if https.url:
@@ -436,6 +437,9 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         return False
 
     station_power = StationPower(power_backend or LogindPower(enabled=settings.mode == "hardware"), busy=hardware_busy)
+    matter = MatterControl(settings.data_dir,
+                           matter_socket or (matter_socket_path() if settings.mode == "hardware" else None),
+                           printer_monitor)
     updates = ReleaseMonitor(settings.data_dir, **({"fetch": updates_fetch} if updates_fetch else {}),
                              allowed=lambda: not station_power.state()["pending"] and not maintenance.exclusive and not updater.pending() and not installation_busy())
 
@@ -592,6 +596,10 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     async def connect_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
 
+    @app.exception_handler(MatterError)
+    async def matter_handler(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
     @app.exception_handler(ReaderUnavailable)
     async def reader_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=503)
@@ -708,7 +716,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "connect-bulk.js", "notifications.js", "power.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "connect-bulk.js", "notifications.js", "power.js", "matter.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -766,6 +774,41 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         # Send the acknowledgement before logind stops this service.
         background_tasks.add_task(station_power.execute)
         return JSONResponse(result, status_code=202)
+
+    def require_matter_access(request):
+        require_station(request)
+        if not local_station(request) and request.url.scheme != "https":
+            raise HTTPException(403, "Ouvrez OPT Station en HTTPS pour utiliser Matter à distance.")
+
+    @app.get("/api/configuration/matter")
+    def matter_settings(request: Request):
+        require_matter_access(request)
+        return matter.settings()
+
+    @app.put("/api/configuration/matter")
+    def save_matter_settings(request: Request, body: MatterSettings):
+        require_matter_access(request)
+        return matter.save(body)
+
+    @app.get("/api/matter/discovery")
+    def discover_matter(request: Request):
+        require_matter_access(request)
+        return matter.discovery()
+
+    @app.post("/api/matter/pair")
+    def pair_matter(request: Request, body: MatterPairing):
+        require_matter_access(request)
+        return matter.pair(body)
+
+    @app.get("/api/matter/status")
+    def matter_status(request: Request):
+        require_matter_access(request)
+        return matter.status()
+
+    @app.post("/api/matter/command")
+    def command_matter(request: Request, body: MatterAction):
+        require_matter_access(request)
+        return matter.command(body)
 
     @app.get("/api/configuration")
     def configuration(refresh: bool = False):

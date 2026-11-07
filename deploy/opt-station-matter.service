@@ -1,0 +1,15 @@
+[Unit]
+Description=Contrôleur Matter local d’OPT Station
+
+[Service]
+Type=simple
+UMask=0077
+Environment="PATH=%h/.local/opt-station-node/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment=NOBLE_BINDINGS=dbus
+ExecStart=%h/.local/opt-station-matter/node_modules/.bin/matter-server --listen-address %t/opt-station-matter.sock --storage-path %h/.local/share/opt-station-matter --default-fabric-label "OPT Station" --log-level warning
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

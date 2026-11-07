@@ -38,7 +38,7 @@ MAGIC = b"OPTBAK1\n"
 PLAIN_MAGIC = b"OPTBAK0\n"
 MAX_ARCHIVE = 128 * 1024 * 1024
 MAX_PLAIN = 256 * 1024 * 1024
-CONFIG_FILES = ("network-settings.json", "printer-settings.json", "connect-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json", "ai-settings.json")
+CONFIG_FILES = ("network-settings.json", "printer-settings.json", "connect-settings.json", "mcp-settings.json", "label-printer-settings.json", "backup-settings.json", "updates-settings.json", "ai-settings.json", "matter-settings.json")
 TABLES = ("metadata", "spools", "favorites", "simulated_tags", "state", "tag_sources", "operations", "label_jobs", "inventory_notes", "photos")
 NFC_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,140}\.(?:bin|json)\Z")
 
@@ -617,6 +617,9 @@ class BackupManager:
                 if "ai-settings.json" in configurations:
                     from .assistant import validate_settings
                     validate_settings(configurations["ai-settings.json"])
+                if "matter-settings.json" in configurations:
+                    from .matter import MatterSettings
+                    MatterSettings.model_validate(configurations["matter-settings.json"])
                 summary["configuration_files"] = list(configurations)
         return summary
 
@@ -699,7 +702,7 @@ class BackupManager:
                             if name == "backup-settings.json":
                                 value["enabled"] = False
                                 value["station_id"] = self.configuration["station_id"]
-                            if name == "connect-settings.json":
+                            if name in {"connect-settings.json", "matter-settings.json"}:
                                 value["enabled"] = False
                             if isinstance(value, dict) and "revision" in value:
                                 current = read_json(path.read_bytes()) if path.exists() else {}

@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.26.7](https://github.com/Cyril-E/OPT-station/releases/tag/v0.26.7)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.27.0-rc.2](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.2)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -11,12 +11,13 @@ La dernière version publiée est **[v0.26.7](https://github.com/Cyril-E/OPT-sta
 - Modèles et favoris, création depuis RFID/QR/inventaire, modification, suppression et import/export.
 - Configuration du matériel, langues française/anglaise/espagnole/allemande, thèmes et niveaux d’accès réseau persistants.
 - PrusaLink en lecture seule et jusqu’à quatre caméras d’imprimante.
+- Commandes facultatives de prises, relais et éclairages via un contrôleur Matter installé sur le Pi. [Guide Matter](41-appareils-matter.md)
 - HTTPS local, aide pour approuver le certificat, démarrage en plein écran et commandes d’alimentation du Pi.
 - Notifications Chrome de fin d’impression et d’intervention avec un onglet ouvert en arrière-plan.
 - Treize outils MCP pour consulter le stock et le schéma, modifier les fiches de bobines existantes et gérer la bibliothèque, sans accès aux commandes matérielles.
 - Sauvegardes manuelles/planifiées avec protection par mot de passe facultative et indication des nouvelles versions GitHub avec leurs nouveautés, sans installation automatique de mise à jour.
 - Assistant IA par clé API ou compte ChatGPT : photo, recherche Web facultative et propositions avec sources à vérifier avant remplissage d’une fiche. Voir le [guide de l’assistant](34-assistant-ia-etiquettes.md) et la [connexion ChatGPT](36-connexion-chatgpt.md).
-- Sommaire de Configuration : accès direct aux douze rubriques, menu latéral sur grand écran et repliable sur les petits écrans, sans perte des saisies.
+- Le sommaire de Configuration donne un accès direct aux rubriques. Il s’affiche en menu latéral sur grand écran et se replie sur les petits écrans sans perte des saisies.
 
 ## Suivi des demandes GitHub
 
@@ -105,6 +106,11 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 ## Ajout en v0.26.7
 
 - Le bouton **Dernière bobine**, près des filtres, descend à la dernière ligne de l’inventaire affiché. Le saut a été vérifié dans le navigateur avec une recherche, une inversion du tri et une liste vide.
+
+## Ajouts en v0.27.0-rc.2
+
+- Un contrôleur Matter sur le Pi permet d’associer des prises, relais et éclairages dans **Paramètres** et d’afficher leurs commandes dans **Imprimante**.
+- L’association d’une prise réelle et l’arrêt protégé de la prise **Imprimante** ont été validés sur Raspberry Pi. Les refus pendant une impression, une chauffe ou une perte de connexion à PrusaLink ont été vérifiés en simulation. [Guide Matter](41-appareils-matter.md)
 
 ## Pistes reportées après les retours de validation
 

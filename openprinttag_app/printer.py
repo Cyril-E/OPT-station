@@ -1,4 +1,5 @@
 """PrusaLink en lecture seule, configuration privée et mesures sans effet sur le stock."""
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
 import ipaddress
@@ -16,6 +17,12 @@ from urllib.request import (HTTPBasicAuthHandler, HTTPDigestAuthHandler,
                             HTTPPasswordMgrWithDefaultRealm, HTTPRedirectHandler,
                             ProxyHandler, Request, build_opener)
 import uuid
+
+
+POWER_OFF_UNAVAILABLE = "PrusaLink doit confirmer l’état et les températures avant l’arrêt."
+POWER_OFF_BUSY = "L’imprimante doit être au repos, sans travail ni transfert en cours."
+POWER_OFF_HOT = "Attendez la fin de la chauffe et le retour de la buse et du plateau sous 40 °C."
+POWER_OFF_MAX_TEMPERATURE = 40
 
 
 class PrinterError(ValueError):
@@ -216,6 +223,25 @@ def thumbnail_path(value):
     return parsed.path
 
 
+def power_off_block_reason(status, job):
+    printer = status.get("printer") if isinstance(status, dict) else None
+    if not isinstance(printer, dict) or not isinstance(printer.get("state"), str):
+        return POWER_OFF_UNAVAILABLE
+    if (printer["state"] not in {"IDLE", "READY"} or job is not None
+            or status.get("job") is not None or status.get("transfer") is not None):
+        return POWER_OFF_BUSY
+    notice = printer.get("status_printer")
+    if isinstance(notice, dict) and notice.get("ok") is False:
+        return POWER_OFF_UNAVAILABLE
+    measurements = [numeric(printer.get(key), 0) for key in ("temp_nozzle", "temp_bed")]
+    targets = [numeric(printer.get(key), 0) for key in ("target_nozzle", "target_bed")]
+    if None in (*measurements, *targets):
+        return POWER_OFF_UNAVAILABLE
+    if any(target > 0 for target in targets) or max(measurements) >= POWER_OFF_MAX_TEMPERATURE:
+        return POWER_OFF_HOT
+    return None
+
+
 class PrusaLinkMonitor:
     def __init__(self, configuration, fetch=read_resource, clock=time.monotonic):
         self.configuration, self.fetch, self.clock = configuration, fetch, clock
@@ -252,6 +278,7 @@ class PrusaLinkMonitor:
                 self._last_attempt = self._identity_at = float("-inf")
                 self._last_good, self._error, self._identity = None, None, {}
             base = {"configured": p["enabled"], "name": p["name"], "read_only": True, "configuration_revision": record["revision"],
+                    "power_off_block_reason": POWER_OFF_UNAVAILABLE,
                     "connect": {"prepared": bool(record["connect"]["printer_uuid"]), "inventory_sync_active": False,
                                 "message": "Consommation Connect en préparation. Le stock reste basé sur la dernière lecture NFC."},
                     "cameras": [{"id": c["id"], "name": c["name"]} for c in record["cameras"] if c["enabled"]]}
@@ -293,6 +320,7 @@ class PrusaLinkMonitor:
                     notice = printer.get("status_printer")
                     normalized["message"] = text(notice.get("message"), 500) if isinstance(notice, dict) and notice.get("ok") is False else None
                     self._last_good = {"observed_at": datetime.now(timezone.utc).isoformat(), "identity": self._identity,
+                                       "power_off_block_reason": power_off_block_reason(status, job),
                                        "printer": normalized,
                                        "job": {"id": job_id, "status_id": status_id, "state": text(job.get("state"), 40) if job else None,
                                                "consistent": consistent, "filename": text(file.get("display_name")) or text(file.get("name")),
@@ -305,9 +333,28 @@ class PrusaLinkMonitor:
                     self._error = str(exc)
             value = deepcopy(self._last_good or {})
             value.pop("_thumbnail", None)
+            if self._error is not None:
+                value["power_off_block_reason"] = POWER_OFF_UNAVAILABLE
             return {**base, **value, "connected": self._error is None and self._last_good is not None,
                     "stale": self._error is not None and self._last_good is not None,
                     "message": self._error or "Suivi PrusaLink en lecture seule. Actualisation toutes les 5 secondes."}
+
+    @contextmanager
+    def confirm_power_off(self):
+        # Never authorize a cut from the display cache. Read status last to
+        # catch a job starting after the job query, and pin the printer settings.
+        with self.lock, self.configuration.lock:
+            printer = self.configuration.record()["printer"]
+            if not printer["enabled"]:
+                raise PrinterError(POWER_OFF_UNAVAILABLE)
+            try:
+                job = self._json(printer, "/api/v1/job")
+                status = self._json(printer, "/api/v1/status")
+            except PrinterError as exc:
+                raise PrinterError(POWER_OFF_UNAVAILABLE) from exc
+            if reason := power_off_block_reason(status, job):
+                raise PrinterError(reason, 503 if reason == POWER_OFF_UNAVAILABLE else 409)
+            yield
 
     def thumbnail(self):
         with self.lock:

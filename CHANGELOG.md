@@ -1,5 +1,13 @@
 # Versions publiques
 
+## v0.27.0-rc.2 — 7 novembre 2026
+
+- Associer des prises, relais et éclairages depuis **Paramètres → Appareils Matter**. Le contrôleur Matter est installé séparément sur le Raspberry Pi et fonctionne de façon autonome. [Guide de mise en service](docs/41-appareils-matter.md)
+- Commander les appareils sélectionnés dans **Imprimante → Appareils Matter**. Le Pi relit l’état de l’appareil après chaque commande.
+- Éteindre la prise **Imprimante** après confirmation. Le Pi relit PrusaLink juste avant la coupure et exige une imprimante au repos, sans travail ni transfert, avec la chauffe coupée et la buse et le plateau sous 40 °C. Une lecture indisponible bloque l’arrêt.
+
+**L’association d’une prise Matter et l’arrêt protégé de la prise Imprimante ont été validés sur Raspberry Pi avec une prise réelle.** Les essais en simulation ont couvert le blocage pendant une impression, une chauffe ou une perte de connexion à PrusaLink.
+
 ## v0.26.7 — 5 novembre 2026
 
 - Le bouton **Dernière bobine**, à côté des filtres de l’inventaire, descend directement à la dernière bobine affichée selon le tri et les filtres actifs. Il se désactive quand la liste est vide.

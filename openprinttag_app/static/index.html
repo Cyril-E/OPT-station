@@ -15,6 +15,7 @@
   <script src="/static/connect-bulk.js" defer></script>
   <script src="/static/notifications.js" defer></script>
   <script src="/static/power.js" defer></script>
+  <script src="/static/matter.js" defer></script>
   <script src="/static/mcp.js" defer></script>
   <script src="/static/maintenance.js" defer></script>
   <script src="/static/updates.js" defer></script>
@@ -116,8 +117,13 @@
       </section>
       <section id="panel-printer" class="tab-panel" role="tabpanel" aria-labelledby="tab-printer" hidden>
         <div class="page-heading"><div><p data-i18n class="eyebrow">LE TRAVAIL EN COURS</p><h1 data-i18n id="printer-name">Imprimante</h1><p data-i18n>Suivi local PrusaLink et caméras de votre atelier.</p></div><button data-i18n id="printer-refresh" class="button secondary" type="button">↻ Actualiser</button></div>
-        <div class="printer-state-line"><span data-i18n id="printer-connection" class="status-chip">À configurer</span><span data-i18n class="small-label">LECTURE SEULE</span><span id="printer-updated" class="fine-print"></span></div>
+        <div class="printer-state-line"><span data-i18n id="printer-connection" class="status-chip">À configurer</span><span data-i18n class="small-label">PrusaLink · lecture seule</span><span id="printer-updated" class="fine-print"></span></div>
         <p data-i18n id="printer-message" class="notice" role="status">Renseignez la connexion dans Paramètres → Imprimante.</p>
+        <article id="matter-panel" class="card" hidden>
+          <div class="card-heading"><h2 data-i18n>Appareils Matter</h2><button id="matter-refresh" data-i18n class="button secondary small" type="button">Actualiser</button></div>
+          <div id="matter-devices"></div>
+          <p id="matter-status" class="fine-print" role="status"></p><p id="matter-action-result" class="fine-print" role="status"></p>
+        </article>
         <article id="printer-loaded-spool" class="card printer-loaded-spool" hidden>
           <div class="card-heading"><h2 data-i18n id="printer-loaded-title">Bobine reconnue sur l’imprimante</h2><span class="status-chip">NFC · Prusa Connect</span></div>
           <p data-i18n id="printer-loaded-stale" class="notice warning" hidden>Dernière reconnaissance connue · connexion à vérifier.</p>
@@ -142,6 +148,7 @@
                   <li><a data-i18n href="#configuration-appearance">Apparence</a></li>
                   <li><a data-i18n href="#configuration-notifications">Notifications Chrome</a></li>
                   <li><a data-i18n href="#configuration-printer">Imprimante et caméras</a></li>
+                  <li><a data-i18n href="#configuration-matter">Appareils Matter</a></li>
                   <li><a data-i18n href="#configuration-connect">Prusa Connect · Consommations et entrepôt</a></li>
                   <li><a data-i18n href="#configuration-labels">Imprimante d’étiquettes QR</a></li>
                 </ul></div>
@@ -282,6 +289,37 @@
             </details>
           </fieldset><div class="printer-settings-actions"><button data-i18n id="connect-save" class="button primary" type="submit" disabled>Enregistrer Prusa Connect</button><button data-i18n id="connect-test" class="button secondary" type="button" disabled>Enregistrer et tester Connect</button><button data-i18n id="connect-reload" class="button secondary" type="button" disabled>Recharger les réglages Connect</button></div><p id="connect-result" class="fine-print" role="status"></p></form>
         </article>
+        <article id="configuration-matter" data-configuration-section aria-labelledby="configuration-matter-title" class="card">
+          <div class="card-heading"><div><h2 id="configuration-matter-title" data-i18n tabindex="-1">Appareils Matter</h2><p data-i18n>Choisissez les appareils du contrôleur du Pi à afficher dans l’onglet Imprimante.</p></div></div>
+          <p id="matter-access" class="notice" data-i18n>Activez l’accès complet dans Paramètres → Accès distant</p>
+          <div class="card-actions"><button id="matter-discover" data-i18n class="button secondary" type="button" disabled>Rechercher les appareils associés</button></div>
+          <form id="matter-settings-form">
+            <fieldset id="matter-settings-fields" class="printer-settings-fields" disabled>
+              <label data-i18n class="printer-check"><input id="matter-enabled" type="checkbox">Activer les commandes Matter</label>
+              <div id="matter-settings-devices"></div>
+              <button data-i18n class="button primary" type="submit">Enregistrer les réglages</button>
+            </fieldset>
+          </form>
+          <details id="matter-pairing" class="advanced" hidden>
+            <summary data-i18n>Associer un appareil Matter</summary>
+            <form id="matter-pair-form">
+              <fieldset id="matter-pair-fields" class="printer-settings-fields" disabled>
+                <p data-i18n class="fine-print">Activez le mode association sur l’appareil ou utilisez le code de partage de son application actuelle.</p>
+                <label data-i18n class="field">Code d’association Matter<input id="matter-code" type="password" maxlength="256" autocomplete="off" required></label>
+                <label data-i18n class="printer-check"><input id="matter-network-only" type="checkbox" checked>Appareil déjà sur le réseau</label>
+                <div id="matter-wifi" hidden>
+                  <p data-i18n class="fine-print">Pour un appareil Wi-Fi neuf, renseignez le réseau à transmettre par Bluetooth. Un réseau saisi ici est enregistré dans le contrôleur Matter.</p>
+                  <div class="form-grid">
+                    <label data-i18n class="field">Nom du réseau Wi-Fi<input id="matter-wifi-ssid" maxlength="32" autocomplete="off"></label>
+                    <label data-i18n class="field">Mot de passe Wi-Fi<input id="matter-wifi-password" type="password" maxlength="64" autocomplete="new-password"></label>
+                  </div>
+                </div>
+                <button data-i18n class="button secondary" type="submit">Associer un appareil Matter</button>
+              </fieldset>
+            </form>
+          </details>
+          <p id="matter-setup-result" class="fine-print" role="status"></p>
+        </article>
         <article id="configuration-labels" data-configuration-section aria-labelledby="configuration-labels-title" class="card label-settings-card"><div class="card-heading"><div><h2 id="configuration-labels-title" data-i18n tabindex="-1">Imprimante d’étiquettes QR</h2><p data-i18n>Impression USB directement depuis le Pi.</p></div><span data-i18n id="labels-state" class="status-chip">À configurer</span></div>
           <p data-i18n id="labels-access" class="notice">Activez l’accès complet pour régler et utiliser l’imprimante d’étiquettes.</p>
           <form id="labels-settings-form"><fieldset id="labels-settings-fields" class="printer-settings-fields" disabled>
@@ -351,6 +389,15 @@
     <div id="photos-gallery" class="photos-gallery"></div><div id="photos-delete-confirm" class="notice" hidden><p data-i18n>Supprimer cette photo de la fiche ?</p><div class="card-actions"><button data-i18n id="photos-delete-yes" class="button danger" type="button">Confirmer la suppression</button><button data-i18n id="photos-delete-no" class="button secondary" type="button">Annuler</button></div></div>
     <div class="modal-footer"><button data-i18n id="photos-done" class="button secondary" type="button">Fermer</button></div></dialog>
   <dialog id="detail-dialog" class="modal"><div class="modal-header"><div><p data-i18n class="eyebrow">FICHE D’INVENTAIRE</p><h2 data-i18n id="detail-title">Bobine</h2></div><button data-i18n-attrs="aria-label" class="icon-button" type="button" data-close-dialog="detail-dialog" aria-label="Fermer le détail de la bobine">×</button></div><div id="detail-content"></div><form id="spool-quantity-form" class="spool-notes-form" hidden><h3 data-i18n>Quantité de filament restante</h3><p data-i18n class="fine-print">Indiquez le poids du filament seul, sans le poids de la bobine. La consommation sera recalculée à partir du poids net initial.</p><div class="form-grid"><label data-i18n class="field">Filament restant (g)<input id="spool-remaining" type="number" min="0" step="any" inputmode="decimal" required></label><label data-i18n class="field">Poids net initial réel (g)<input id="spool-initial-weight" type="number" min="0" step="any" inputmode="decimal"></label></div><p data-i18n class="fine-print">Renseignez le poids initial réel uniquement si vous le connaissez. Un champ vide conserve la référence actuelle.</p><p id="spool-remaining-reference" class="fine-print"></p><p id="spool-remaining-preview" class="fine-print" role="status"></p><p data-i18n class="fine-print">La correction est enregistrée dans l’inventaire. L’écriture RFID reste une action distincte. Une quantité nulle ne marque pas la bobine comme terminée.</p><div class="card-actions"><button data-i18n id="spool-remaining-save" class="button primary" type="submit">Enregistrer le restant</button><button data-i18n id="spool-remaining-reload" class="button secondary" type="button">Recharger la quantité</button></div><p id="spool-remaining-result" class="notice" role="status"></p></form><form id="spool-notes-form" class="spool-notes-form"><h3 data-i18n>Notes de cette bobine</h3><label data-i18n class="field">Notes personnelles<textarea id="spool-notes" rows="4" maxlength="16000" disabled></textarea></label><p data-i18n class="fine-print">Ces notes sont consultables via MCP et ne modifient pas le tag RFID.</p><div class="card-actions"><button data-i18n id="spool-notes-save" class="button primary" type="submit" disabled>Enregistrer les notes</button><button data-i18n id="spool-notes-reload" class="button secondary" type="button">Recharger les notes</button></div><p id="spool-notes-result" class="fine-print" role="status"></p></form><div id="detail-fields" class="field-tables"></div><div class="modal-footer"><button data-i18n class="button secondary" type="button" data-close-dialog="detail-dialog">Fermer</button></div></dialog>
+  <dialog id="matter-off-dialog" class="modal" aria-labelledby="matter-off-title" aria-describedby="matter-off-help">
+    <div class="modal-header"><h2 id="matter-off-title"></h2></div>
+    <p id="matter-off-help" data-i18n>Le Pi vérifiera à nouveau que l’imprimante est au repos et refroidie avant de couper la prise.</p>
+    <p id="matter-off-blocked" class="fine-print" role="status"></p>
+    <div class="modal-footer">
+      <button data-i18n class="button secondary" type="button" data-close-dialog="matter-off-dialog" autofocus>Annuler</button>
+      <button data-i18n id="matter-off-confirm" class="button danger" type="button" disabled>Confirmer l’arrêt</button>
+    </div>
+  </dialog>
   <dialog id="library-export-dialog" class="modal"><div class="modal-header"><h2 data-i18n>Exporter des modèles et favoris</h2><button data-i18n-attrs="aria-label" class="icon-button" type="button" data-close-dialog="library-export-dialog" aria-label="Fermer">×</button></div><p data-i18n>Sélectionnez les fiches à sauvegarder ou partager. Les bobines du stock et les identifiants de la station ne sont pas inclus.</p><div class="card-actions"><button data-i18n id="library-select-all" class="button secondary" type="button">Tout sélectionner</button><button data-i18n id="library-select-none" class="button secondary" type="button">Tout désélectionner</button></div><div id="library-export-items" class="transfer-list"></div><p id="library-export-result" class="fine-print" role="status"></p><div class="modal-footer"><button data-i18n class="button secondary" type="button" data-close-dialog="library-export-dialog">Annuler</button><button data-i18n id="library-export-download" class="button primary" type="button">Télécharger les fiches</button></div></dialog>
   <dialog id="library-import-dialog" class="modal"><div class="modal-header"><h2 data-i18n>Importer des modèles et favoris</h2><button data-i18n-attrs="aria-label" class="icon-button" type="button" data-close-dialog="library-import-dialog" aria-label="Fermer">×</button></div><label data-i18n class="field">Fichier de bibliothèque<input id="library-import-file" type="file" accept=".json,application/json"></label><p data-i18n class="fine-print">Les doublons ne sont jamais écrasés automatiquement. Choisissez de les ignorer, de les renommer ou de les remplacer. Les bobines déjà créées conservent leurs données.</p><button data-i18n id="library-import-preview" class="button secondary" type="button">Analyser le fichier</button><div id="library-import-items" class="transfer-list"></div><p id="library-import-result" class="fine-print" role="status"></p><div class="modal-footer"><button data-i18n class="button secondary" type="button" data-close-dialog="library-import-dialog">Annuler</button><button data-i18n id="library-import-confirm" class="button primary" type="button" disabled>Confirmer l’import</button></div></dialog>
   <dialog id="backup-restore-dialog" class="modal"><div class="modal-header"><h2 data-i18n>Remplacer les données par cette sauvegarde ?</h2><button data-i18n-attrs="aria-label" class="icon-button" type="button" data-close-dialog="backup-restore-dialog" aria-label="Annuler">×</button></div><div id="backup-restore-summary"></div><p data-i18n>Un point de retour conservera l’état actuel sur le Pi. Les données ajoutées après la sauvegarde seront retirées des parties restaurées. Les numéros déjà attribués ne seront pas réutilisés. Aucun tag RFID ne sera écrit.</p><p data-i18n>Après restauration de la configuration, vérifiez les appareils et les accès distants. Les sauvegardes planifiées resteront désactivées jusqu’à leur réactivation.</p><label data-i18n class="printer-check"><input id="backup-restore-ack" type="checkbox">Je confirme le remplacement des données indiquées.</label><p id="backup-restore-result" class="fine-print" role="status"></p><div class="modal-footer"><button data-i18n class="button secondary" type="button" data-close-dialog="backup-restore-dialog">Annuler</button><button data-i18n id="backup-restore-confirm" class="button danger" type="button" disabled>Restaurer les données</button></div></dialog>
