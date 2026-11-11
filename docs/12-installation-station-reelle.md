@@ -16,7 +16,7 @@ Brancher le lecteur en USB. Manipuler les nappes caméra et écran alimentation 
 
 ```sh
 sudo apt update
-sudo apt install --no-install-recommends python3 python3-venv python3-picamera2 python3-libcamera python3-numpy python3-pil firefox desktop-file-utils libglib2.0-bin pcscd libccid pcsc-tools python3-pyscard ffmpeg
+sudo apt install --no-install-recommends python3 python3-venv python3-picamera2 python3-libcamera python3-numpy python3-pil firefox desktop-file-utils libglib2.0-bin swayidle wlopm pcscd libccid pcsc-tools python3-pyscard ffmpeg
 sudo systemctl enable --now pcscd.socket
 lsusb -d 072f:2303
 dpkg-query -W pcscd libccid pcsc-tools python3-pyscard ffmpeg

@@ -44,7 +44,7 @@ SYSTEM_FILES = (
 PACKAGES = ("python3-venv", "python3-numpy", "python3-pil", "pcscd", "libccid", "pcsc-tools",
             "python3-pyscard", "ca-certificates", "ffmpeg")
 CAMERA_PACKAGES = ("python3-picamera2", "python3-libcamera")
-DESKTOP_PACKAGES = ("firefox", "desktop-file-utils", "libglib2.0-bin")
+DESKTOP_PACKAGES = ("firefox", "desktop-file-utils", "libglib2.0-bin", "swayidle", "wlopm")
 MATTER_UNIT = "opt-station-matter.service"
 
 

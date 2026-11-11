@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.27.0-rc.4](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.4)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.27.0-rc.5](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.5)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -11,6 +11,7 @@ La dernière version publiée est **[v0.27.0-rc.4](https://github.com/Cyril-E/OP
 - Modèles et favoris, création depuis RFID/QR/inventaire, modification, suppression et import/export.
 - Configuration du matériel, langues française/anglaise/espagnole/allemande, thèmes et niveaux d’accès réseau persistants.
 - Aperçu couleur de la caméra QR et réglages disponibles selon le capteur depuis Paramètres, avec enregistrement et réinitialisation. [Guide caméra](11-camera-qr.md)
+- Réglages du mode tactile et de la veille de l’écran du Pi, avec défilement au doigt et réveil au toucher. [Guide écran](10-ecran-tactile.md)
 - PrusaLink en lecture seule et jusqu’à quatre caméras d’imprimante.
 - Commandes facultatives de prises, relais et éclairages via un contrôleur Matter installé sur le Pi. [Guide Matter](41-appareils-matter.md)
 - HTTPS local, aide pour approuver le certificat, démarrage en plein écran et commandes d’alimentation du Pi.
@@ -124,6 +125,12 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 - **Caméra QR** : aperçu couleur et bouton **Afficher l’image et régler** dans Paramètres, réglages selon les capacités du capteur, enregistrement pour les scans/photos et réinitialisation.
 - **Validation sur le Pi avec l’IMX708** : aperçu couleur dans Paramètres et dans le scan QR, effet du réglage de saturation, enregistrement, retour aux valeurs par défaut, autofocus continu activé et libération de la caméra à la fermeture. Le cadrage et le décodage de vraies étiquettes à courte distance restent à qualifier sur le montage définitif. [Guide caméra](11-camera-qr.md)
 
+## Ajouts en v0.27.0-rc.5
+
+- **Mode tactile du Pi** : activation et désactivation depuis Paramètres, en conservant l’écran associé et sa calibration.
+- **Veille de l’écran** : choix de Jamais à une heure d’inactivité, délai conservé et inclus dans les sauvegardes, réveil au toucher ou par le bouton d’OPT Station. L’installation de l’affichage fournit les composants nécessaires.
+- **Validation sur le Pi le 11 novembre 2026** : commandes du tactile, défilement au doigt, extinction automatique et réveil depuis OPT Station. Le réveil au toucher est également confirmé par un essai utilisateur. Le délai final est enregistré sur **5 minutes**. [Guide écran](10-ecran-tactile.md)
+
 ## Pistes reportées après les retours de validation
 
 - **Aperçu QR** : améliorer la taille et la visibilité de l’image existante et qualifier le placement avec une caméra adaptée.
@@ -145,6 +152,6 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 ## Essais matériels complémentaires
 
 - Identification IA depuis une vraie étiquette photographiée avec la caméra de la station; l’essai API sur une étiquette de test ne qualifie pas ce parcours matériel complet.
-- Autofocus, QR à courte distance, écran tactile et autres profils matériels.
+- Autofocus et QR à courte distance, saisie tactile des formulaires et autres profils matériels.
 
 Les données de bobines ne doivent pas être remplacées par des valeurs supposées. Toute nouvelle intégration doit préserver identité, numéro, dates, notes, consommation connue et protections des tags.

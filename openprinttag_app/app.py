@@ -46,6 +46,8 @@ from .storage import ConflictError, Store, MAX_NOTES_LENGTH
 from .spool_qr import encode_spool
 from .labels import LabelPrinter
 from .power import LogindPower, PowerError, StationPower
+from .touchscreen import LabwcTouchscreen, TouchscreenError
+from .screen_sleep import ScreenSleep, ScreenSleepError, WaylandIdle
 from .matter import MatterAction, MatterControl, MatterError, MatterPairing, MatterSettings, socket_path as matter_socket_path
 from .mcp_server import MCPConfiguration, MCPTransport
 from .library_transfer import LibraryTransfer
@@ -104,6 +106,16 @@ class CameraImageSettings(Model):
     revision: StrictInt = Field(ge=0)
     model: str = Field(min_length=1, max_length=100)
     controls: dict[str, Any]
+
+
+class TouchscreenSettings(Model):
+    revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    enabled: StrictBool
+
+
+class ScreenSleepSettings(Model):
+    revision: StrictInt = Field(ge=0)
+    timeout_minutes: StrictInt = Field(ge=0, le=60)
 
 
 class Version(Model):
@@ -399,7 +411,7 @@ def blank(record):
 def create_app(settings: Settings | None = None, camera: CameraScanner | None = None, reader=None,
                printer_fetch=None, printer_capture=None, label_runner=None, power_backend=None, updates_fetch=None,
                prusament_fetch=None, prusa_product_fetch=None, assistant_fetch=None, chatgpt_fetch=None, connect_fetch=None,
-               update_installer=None, matter_socket=None):
+               update_installer=None, matter_socket=None, touchscreen_backend=None, screen_sleep_backend=None):
     settings = settings or Settings.from_env()
     https = HTTPSConfiguration.load(settings.https_config)
     if https.url:
@@ -416,6 +428,8 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         store.recover_pending_operations()
     previews: OrderedDict[str, Preview] = OrderedDict()
     camera = camera or CameraScanner(settings.camera_enabled, settings_path=settings.data_dir / "camera-settings.json")
+    touchscreen = touchscreen_backend or LabwcTouchscreen(enabled=settings.mode == "hardware")
+    screen_idle = ScreenSleep(settings.data_dir, screen_sleep_backend or WaylandIdle(enabled=settings.mode == "hardware"))
     printer_configuration = PrinterConfiguration(settings.data_dir)
     printer_monitor = PrusaLinkMonitor(printer_configuration, **({"fetch": printer_fetch} if printer_fetch else {}))
     printer_events = PrinterEvents(printer_monitor)
@@ -475,6 +489,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         app.state.connect_exporter = connect_exporter
         updates.reload()
         assistant.reload()
+        screen_idle.reload()
 
     backups = BackupManager(settings, store, maintenance,
                             busy=lambda: hardware_busy() or station_power.state()["pending"] or updater.pending(),
@@ -485,9 +500,11 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         backups.start()
         updates.start()
         connect_monitor.start()
+        screen_idle.start()
         try:
             yield
         finally:
+            screen_idle.close()
             backups.close()
             updates.close()
             connect_monitor.close()
@@ -516,6 +533,8 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     app.state.library_transfer = library_transfer
     app.state.updates = updates
     app.state.update_installer = updater
+    app.state.touchscreen = touchscreen
+    app.state.screen_sleep = screen_idle
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
 
     @app.middleware("http")
@@ -630,6 +649,14 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     async def power_handler(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
 
+    @app.exception_handler(TouchscreenError)
+    async def touchscreen_handler(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
+    @app.exception_handler(ScreenSleepError)
+    async def screen_sleep_handler(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
     @app.exception_handler(InstallError)
     async def install_handler(request, exc):
         return JSONResponse({'detail': str(exc)}, status_code=exc.status_code)
@@ -722,7 +749,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
         if not (STATIC / "index.html").exists():
             raise HTTPException(503, "Interface en cours de préparation.")
         markup = (STATIC / "index.html").read_text(encoding="utf-8")
-        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "connect-bulk.js", "notifications.js", "power.js", "matter.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
+        for name in ("translations.js", "translations-es.js", "translations-de.js", "i18n.js", "app.js", "printer.js", "connect.js", "connect-bulk.js", "notifications.js", "power.js", "matter.js", "mcp.js", "maintenance.js", "updates.js", "https.js", "assistant.js", "configuration.js", "camera-settings.js", "touchscreen.js", "screen-sleep.js", "photos.js", "inventory-filters.js", "theme.js", "style.css", "favicon.svg"):
             digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:16]
             markup = markup.replace(f'"/static/{name}"', f'"/static/{name}?v={digest}"')
         return HTMLResponse(markup)
@@ -762,6 +789,31 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
                 "inventory_notes_revision": store.inventory_notes()["revision"] if local_station(request) or network.mode != "disabled" else None,
                 "completed_spools_count": store.completed_count() if local_station(request) or network.mode != "disabled" else None,
                 "reader": reader.status(), "camera": camera.status(), "specification_commit": "060e420892d66c062c8af440c97701aab96bac79"}
+
+    @app.get("/api/configuration/touchscreen")
+    def touchscreen_configuration(request: Request):
+        require_station(request)
+        return touchscreen.snapshot()
+
+    @app.put("/api/configuration/touchscreen")
+    def save_touchscreen_configuration(request: Request, body: TouchscreenSettings):
+        require_station(request)
+        return touchscreen.save(body.revision, body.enabled)
+
+    @app.get("/api/configuration/screen")
+    def screen_sleep_configuration(request: Request):
+        require_station(request)
+        return screen_idle.snapshot()
+
+    @app.put("/api/configuration/screen")
+    def save_screen_sleep(request: Request, body: ScreenSleepSettings):
+        require_station(request)
+        return screen_idle.save(body.revision, body.timeout_minutes)
+
+    @app.post("/api/configuration/screen/wake")
+    def wake_screen(request: Request):
+        require_station(request)
+        return screen_idle.wake()
 
     @app.get("/api/system/power")
     def power_capabilities(request: Request):

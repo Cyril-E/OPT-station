@@ -1,5 +1,17 @@
 # Versions publiques
 
+## v0.27.0-rc.5 — 11 novembre 2026
+
+- Dans **Paramètres → Matériel détecté**, **Activer le mode tactile du Pi** permet de retrouver le défilement au doigt. L’enregistrement conserve la sortie vidéo et la calibration de chaque écran raccordé.
+- **Veille de l’écran** propose **Jamais**, puis **1, 2, 5, 10, 15, 30 ou 60 minutes** d’inactivité sur le Pi. Le Pi et les services d’OPT Station continuent de fonctionner lorsque l’écran est éteint.
+- Le toucher réveille l’écran. Le bouton **Réveiller l’écran** permet aussi de demander son réveil depuis OPT Station avec l’accès local ou complet.
+- Le délai est enregistré sur la station, repris au démarrage et inclus dans les sauvegardes de configuration. Le mode tactile reste dans les réglages du bureau du Pi. Les commandes sont disponibles en français, anglais, espagnol et allemand. [Guide écran et tactile](docs/10-ecran-tactile.md)
+- L’installation de l’affichage comprend les composants `swayidle` et `wlopm` nécessaires à la veille. Les nouveaux scripts sont versionnés pour leur actualisation après une mise à jour.
+
+**Essais validés sur le Raspberry Pi le 11 novembre 2026 :** activation et désactivation du mode tactile depuis Paramètres, défilement de l’inventaire au doigt, extinction réelle de l’écran par le minuteur et réveil depuis OPT Station. **Le réveil au toucher a également été confirmé par un essai utilisateur.** Le délai final est enregistré sur **5 minutes**. Les fichiers installés et servis en HTTPS ont été vérifiés ; l’inventaire, les réglages existants et le contrôleur Matter ont été conservés.
+
+Vérifications : **1 118 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, et contrôle de syntaxe JavaScript. L’archive complète et son SHA-256 accompagnent cette préversion.
+
 ## v0.27.0-rc.4 — 11 novembre 2026
 
 - **Aperçu QR en couleur.** L’image affichée conserve les couleurs du capteur ; la conversion en niveaux de gris sert uniquement au décodage du QR.

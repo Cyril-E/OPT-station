@@ -21,7 +21,7 @@ Le fichier complet conserve :
 
 Les sauvegardes Inventaire et Complète incluent les photos jointes aux bobines et aux modèles. Les anciennes sauvegardes sans photos restent restaurables; elles remplacent l’inventaire par son état sans photos.
 
-Les sauvegardes de configuration comprennent les identifiants PrusaLink et caméra, ainsi que les réglages d’image de la caméra QR depuis v0.27.0-rc.4. La clé privée utilisée pour les sauvegardes automatiques n’est jamais exportée. Les préférences de langue et de thème propres à un navigateur, Raspberry Pi OS, les fichiers système, le Wi-Fi, SSH, les services et les logiciels installés ne font pas partie de cette sauvegarde applicative. Les données de simulation et les données matérielles restent distinctes.
+Les sauvegardes de configuration comprennent les identifiants PrusaLink et caméra, ainsi que les réglages d’image de la caméra QR depuis v0.27.0-rc.4 et le délai de veille de l’écran depuis v0.27.0-rc.5. Le mode tactile appartient aux réglages du bureau du Pi, conservés séparément. La clé privée utilisée pour les sauvegardes automatiques n’est jamais exportée. Les préférences de langue et de thème propres à un navigateur, Raspberry Pi OS, les fichiers système, le Wi-Fi, SSH, les services et les logiciels installés ne font pas partie de cette sauvegarde applicative. Les données de simulation et les données matérielles restent distinctes.
 
 La limite est de **128 Mo pour le fichier** et **256 Mo pour son contenu décompressé**. Un dépassement produit une erreur explicite; aucune sauvegarde partielle n’est annoncée comme réussie.
 
