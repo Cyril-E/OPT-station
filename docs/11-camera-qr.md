@@ -32,3 +32,15 @@ L’image de diagnostic est locale; ne pas la joindre à un dépôt ou rapport s
 Dans **Écriture → Nouveau tag → Scanner avec la caméra**, l’aperçu aide au placement. L’utilisateur choisit explicitement le texte lu avec **Utiliser ce code**. L’arrêt ferme la capture; les images temporaires ne sont pas ajoutées automatiquement à l’inventaire. Les parcours de réception de stock et de création de modèle réutilisent le même mécanisme.
 
 La saisie ou le collage du code reste disponible si la capture n’est pas utilisable. Un résultat lu est analysé avant de préparer une fiche ou une écriture; il n’exécute pas d’instructions et ne déclenche pas une écriture NFC à lui seul.
+
+## Aperçu couleur et réglages dans Paramètres
+
+Depuis **v0.27.0-rc.4**, ouvrir **Paramètres → Matériel détecté → Caméra de lecture QR → Afficher l’image et régler** sur le Pi ou avec l’accès distant complet. L’aperçu couleur permet de vérifier le cadrage sans rechercher un QR. Il se termine après deux minutes ; **Relancer l’aperçu** redémarre la capture.
+
+Les commandes affichées correspondent aux capacités du capteur : **Luminosité**, **Contraste**, **Saturation**, **Netteté**, **Correction d’exposition** et **Mise au point automatique**. Un capteur à mise au point fixe ne propose pas la commande d’autofocus. **Appliquer les réglages** les enregistre sur la station et les applique à l’aperçu en cours, puis aux prochains scans et photos. **Réinitialiser l’image** restaure les valeurs par défaut ; l’autofocus continu est activé si le capteur le permet. Les réglages sont associés au modèle du capteur et inclus dans les sauvegardes de configuration.
+
+Fermer la fenêtre libère la caméra. Une capture QR ou une photo déjà en cours doit être terminée avant d’ouvrir cet aperçu. Les images temporaires ne deviennent pas des pièces jointes de l’inventaire.
+
+L’ancien aperçu QR utilisait uniquement la luminance de l’image et apparaissait en noir et blanc. Cette version affiche la capture en couleur et réserve les niveaux de gris au décodage des QR.
+
+**Validation matérielle le 11 novembre 2026 :** sur Raspberry Pi avec une IMX708, l’aperçu couleur dans Paramètres et dans le scan QR, l’effet réel de la saturation, l’enregistrement depuis l’interface, la réinitialisation rétablissant la couleur, l’activation de l’autofocus continu et la libération à la fermeture ont été vérifiés. Le cadrage et la lecture de vraies étiquettes à courte distance restent à qualifier sur le montage définitif.

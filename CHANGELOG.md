@@ -1,5 +1,16 @@
 # Versions publiques
 
+## v0.27.0-rc.4 — 11 novembre 2026
+
+- **Aperçu QR en couleur.** L’image affichée conserve les couleurs du capteur ; la conversion en niveaux de gris sert uniquement au décodage du QR.
+- Dans **Paramètres → Matériel détecté → Caméra de lecture QR**, le bouton **Afficher l’image et régler** ouvre un aperçu dédié. Les réglages proposés dépendent du capteur : luminosité, contraste, saturation, netteté, correction d’exposition et mise au point automatique.
+- **Appliquer les réglages** les enregistre sur la station pour les prochains scans et photos. **Réinitialiser l’image** rétablit les valeurs par défaut. Les réglages font partie des sauvegardes de configuration.
+- La capture d’aperçu se termine après deux minutes et peut être relancée. Fermer la fenêtre libère la caméra. Interface disponible dans les quatre langues. [Guide caméra](docs/11-camera-qr.md)
+
+**Essais validés sur le Raspberry Pi avec la caméra IMX708 le 11 novembre 2026 :** aperçu couleur dans Paramètres et pendant un scan QR, effet réel du réglage de saturation, enregistrement depuis l’interface, réinitialisation rétablissant la couleur, autofocus continu activé et libération de la caméra à la fermeture. La version installée et les fichiers servis en HTTPS ont été contrôlés ; l’inventaire et les réglages existants ont été conservés.
+
+Vérifications : **1 081 tests réussis sur Mac**, avec dix exclusions liées à l’environnement, et contrôle de syntaxe JavaScript. L’archive complète et son SHA-256 accompagnent cette préversion.
+
 ## v0.27.0-rc.3 — 7 novembre 2026
 
 - La commande GitHub installe par défaut le contrôleur Matter, Node.js et BlueZ sur Raspberry Pi OS 64 bits Trixie. Elle démarre le contrôleur, vérifie sa réponse sur la socket locale et configure le Bluetooth si un adaptateur est détecté. [Guide d’installation](docs/33-installation-une-commande.md)

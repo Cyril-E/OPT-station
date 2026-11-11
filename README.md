@@ -6,6 +6,7 @@
 
 - Lecture, préparation, écriture NFC et vérification par relecture, avec sauvegarde du contenu précédent.
 - Réception de bobines par QR, fiche produit prise en charge, modèle ou saisie manuelle.
+- Aperçu couleur de la caméra QR et réglages d’image selon le capteur, depuis Paramètres.
 - Numéros uniques B0000, B0001…, date d’entrée, notes et recherche dans l’inventaire.
 - États **En stock / En service** indépendants de l’identification QR/RFID, archives et compteur de bobines terminées.
 - Ajustement du filament restant depuis une fiche de bobine, avec aperçu de la consommation recalculée et référence de poids explicite.
@@ -25,7 +26,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-L’installation en une commande de la **v0.27.0-rc.3** ajoute le contrôleur Matter autonome aux composants installés sur Raspberry Pi OS 64 bits Trixie. Elle comprend aussi HTTPS, le démarrage en plein écran et le service de mise à jour. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de la version. [Préversion GitHub](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.3)
+La **v0.27.0-rc.4** ajoute l’aperçu couleur et les réglages de la caméra dans Paramètres, validés sur Raspberry Pi avec une IMX708. L’installation en une commande comprend le contrôleur Matter autonome, HTTPS, le démarrage en plein écran et le service de mise à jour sur Raspberry Pi OS 64 bits Trixie. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de la version. [Préversion GitHub](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.4)
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -34,6 +35,11 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.27.0-rc.4 — Aperçu couleur et réglages de la caméra](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.4)
+
+- Dans **Paramètres → Matériel détecté → Caméra de lecture QR**, **Afficher l’image et régler** ouvre l’aperçu couleur avec les réglages disponibles : luminosité, contraste, saturation, netteté, exposition et autofocus. Enregistrement et réinitialisation ont été vérifiés sur le Pi avec l’IMX708. [Guide caméra](docs/11-camera-qr.md)
+- L’aperçu du scan QR conserve désormais les couleurs du capteur.
 
 ### [v0.27.0-rc.3 — Installation du contrôleur Matter](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.3)
 

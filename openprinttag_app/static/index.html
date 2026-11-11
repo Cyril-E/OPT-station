@@ -22,6 +22,7 @@
   <script src="/static/https.js" defer></script>
   <script src="/static/assistant.js" defer></script>
   <script src="/static/configuration.js" defer></script>
+  <script src="/static/camera-settings.js" defer></script>
   <script src="/static/inventory-filters.js" defer></script>
   <script src="/static/photos.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -172,7 +173,7 @@
             <article id="configuration-hardware" data-configuration-section aria-labelledby="configuration-hardware-title" class="card"><div class="card-heading"><h2 id="configuration-hardware-title" data-i18n tabindex="-1">Matériel détecté</h2><span data-i18n id="configuration-mode-badge" class="status-chip">Connexion…</span></div>
               <p id="configuration-mode-note" class="fine-print"></p>
               <div class="device-row"><span class="device-icon" aria-hidden="true">◎</span><div class="device-info"><h3 data-i18n>Lecteur RFID / NFC</h3><strong data-i18n id="configuration-reader-name">Vérification…</strong><p id="configuration-reader-detail" class="fine-print"></p><details id="configuration-reader-technical" class="device-technical" hidden><summary data-i18n>Identifiant du lecteur</summary><p id="configuration-reader-id" class="mono"></p></details></div><span id="configuration-reader-state" class="status-chip">—</span></div>
-              <div class="device-row"><span class="device-icon" aria-hidden="true">▣</span><div class="device-info"><h3 data-i18n>Caméra de lecture QR</h3><strong data-i18n id="configuration-camera-name">Vérification…</strong><p id="configuration-camera-detail" class="fine-print"></p></div><span id="configuration-camera-state" class="status-chip">—</span></div>
+              <div class="device-row"><span class="device-icon" aria-hidden="true">▣</span><div class="device-info"><h3 data-i18n>Caméra de lecture QR</h3><strong data-i18n id="configuration-camera-name">Vérification…</strong><p id="configuration-camera-detail" class="fine-print"></p><button id="camera-settings-open" class="button secondary" type="button" disabled data-i18n>Afficher l’image et régler</button></div><span id="configuration-camera-state" class="status-chip">—</span></div>
               <p id="configuration-hardware-message" class="fine-print" role="status"></p>
             </article>
             <article id="configuration-appearance" data-configuration-section aria-labelledby="configuration-appearance-title" class="card"><div class="card-heading"><div><h2 id="configuration-appearance-title" data-i18n tabindex="-1">Apparence</h2><p data-i18n>Le thème est conservé pour ce navigateur.</p></div><span class="appearance-icon" aria-hidden="true">◐</span></div>
@@ -442,6 +443,20 @@
     </details>
     <p id="connect-export-result" class="notice" role="status"></p>
     <div class="modal-footer"><button data-i18n class="button secondary" type="button" data-close-dialog="connect-export-dialog">Fermer</button><button data-i18n id="connect-export-send" class="button primary" type="button" disabled>Envoyer cette bobine</button></div>
+  </dialog>
+  <dialog id="camera-settings-dialog" class="modal camera-modal" aria-labelledby="camera-settings-title">
+    <div class="modal-header"><h2 id="camera-settings-title" data-i18n>Image de la caméra</h2><button type="button" class="icon-button" data-close-dialog="camera-settings-dialog" aria-label="Fermer la caméra" data-i18n-attrs="aria-label">×</button></div>
+    <p id="camera-settings-message" class="notice" role="status"></p>
+    <div class="camera-view"><p id="camera-settings-placeholder" data-i18n>Ouverture de la caméra…</p><img id="camera-settings-image" alt="Aperçu de la caméra" data-i18n-attrs="alt" hidden></div>
+    <p class="fine-print" data-i18n>Les réglages disponibles sont ceux du capteur détecté. Ils sont conservés pour les scans et les photos.</p>
+    <form id="camera-settings-form">
+      <fieldset id="camera-settings-fields" class="printer-settings-fields" disabled><div id="camera-settings-controls" class="camera-settings-controls"></div></fieldset>
+      <div class="modal-footer camera-settings-actions">
+        <button class="button secondary" id="camera-settings-restart" type="button" disabled data-i18n>Relancer l’aperçu</button>
+        <button class="button secondary" id="camera-settings-reset" type="button" disabled data-i18n>Réinitialiser l’image</button>
+        <button class="button primary" id="camera-settings-save" type="submit" disabled data-i18n>Appliquer les réglages</button>
+      </div>
+    </form>
   </dialog>
 </body>
 </html>

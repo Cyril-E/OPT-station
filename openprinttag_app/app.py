@@ -100,6 +100,12 @@ class PowerConfirmation(PowerAction):
     confirmation_token: str = Field(min_length=8, max_length=100)
 
 
+class CameraImageSettings(Model):
+    revision: StrictInt = Field(ge=0)
+    model: str = Field(min_length=1, max_length=100)
+    controls: dict[str, Any]
+
+
 class Version(Model):
     version: StrictInt = Field(ge=1)
 
@@ -409,7 +415,7 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
     if settings.mode == "hardware":
         store.recover_pending_operations()
     previews: OrderedDict[str, Preview] = OrderedDict()
-    camera = camera or CameraScanner(settings.camera_enabled)
+    camera = camera or CameraScanner(settings.camera_enabled, settings_path=settings.data_dir / "camera-settings.json")
     printer_configuration = PrinterConfiguration(settings.data_dir)
     printer_monitor = PrusaLinkMonitor(printer_configuration, **({"fetch": printer_fetch} if printer_fetch else {}))
     printer_events = PrinterEvents(printer_monitor)
@@ -1587,6 +1593,21 @@ def create_app(settings: Settings | None = None, camera: CameraScanner | None = 
             except ValueError:
                 raise AssistantError("La photo est illisible.") from None
         return assistant.analyse(image, body.language)
+
+    @app.get("/api/configuration/camera")
+    def camera_image_settings(request: Request):
+        require_station(request)
+        return camera.image_settings()
+
+    @app.put("/api/configuration/camera")
+    def save_camera_image_settings(request: Request, body: CameraImageSettings):
+        require_station(request)
+        return camera.save_image_settings(body.revision, body.model, body.controls)
+
+    @app.post("/api/camera/previews")
+    def camera_live_preview(request: Request):
+        require_station(request)
+        return camera.start(kind="preview")
 
     @app.post("/api/camera/scans")
     def camera_start(request: Request):

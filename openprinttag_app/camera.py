@@ -7,6 +7,8 @@ private temporary directory, discarded at the next scan or on shutdown.
 from dataclasses import dataclass, field
 import importlib.util
 import json
+import math
+import os
 from pathlib import Path
 import secrets
 import subprocess
@@ -19,6 +21,68 @@ import time
 SCAN_SECONDS = 45
 RESULT_SECONDS = 180
 ACTIVE_STATES = {"starting", "scanning", "stopping"}
+IMAGE_CONTROLS = {
+    "Brightness": (0.0, 0.05, None),
+    "Contrast": (1.0, 0.1, 4.0),
+    "Saturation": (1.0, 0.1, 4.0),
+    "Sharpness": (1.0, 0.1, 4.0),
+    "ExposureValue": (0.0, 0.5, None),
+    "AfMode": (2, 1, None),
+}
+
+
+def image_controls(available):
+    result = []
+    for name, (default, step, limit) in IMAGE_CONTROLS.items():
+        if name not in available:
+            continue
+        low, high, _ = available[name]
+        if name == "AfMode" and not low <= 0 < 2 <= high:
+            continue
+        maximum = min(high, limit) if limit is not None else high
+        result.append({"name": name, "min": low, "max": maximum,
+                       "default": max(low, min(maximum, default)), "step": step})
+    return result
+
+
+def validate_image_controls(values, supported):
+    if not isinstance(values, dict) or len(values) > len(IMAGE_CONTROLS):
+        raise ValueError("Réglages caméra invalides.")
+    options = {item["name"]: item for item in supported}
+    for name, value in values.items():
+        option = options.get(name)
+        if (name not in IMAGE_CONTROLS or option is None or type(value) not in (int, float) or not math.isfinite(value)
+                or not option["min"] <= value <= option["max"]
+                or name == "AfMode" and (type(value) is not int or value not in (0, 2))):
+            raise ValueError("Réglage caméra indisponible ou hors limites.")
+    return dict(values)
+
+
+def validate_saved_image_settings(record):
+    if (not isinstance(record, dict) or set(record) != {"revision", "model", "controls"}
+            or type(record["revision"]) is not int or record["revision"] < 0
+            or not isinstance(record["model"], str) or not 1 <= len(record["model"]) <= 100
+            or not isinstance(record["controls"], dict)):
+        raise ValueError("Réglages caméra invalides.")
+    for name, value in record["controls"].items():
+        if (name not in IMAGE_CONTROLS or type(value) not in (int, float) or not math.isfinite(value)
+                or name == "AfMode" and (type(value) is not int or value not in (0, 2))):
+            raise ValueError("Réglages caméra invalides.")
+    return record
+
+
+def write_image_settings(path, record):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".camera-", delete=False) as output:
+            temporary = Path(output.name)
+            os.fchmod(output.fileno(), 0o600)
+            json.dump(record, output, allow_nan=False)
+        os.replace(temporary, path)
+    finally:
+        if temporary:
+            temporary.unlink(missing_ok=True)
 
 
 class CameraUnavailable(Exception):
@@ -34,6 +98,7 @@ class Scan:
     id: str
     temporary: tempfile.TemporaryDirectory
     kind: str = "qr"
+    seconds: float = SCAN_SECONDS
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     result: dict = field(default_factory=lambda: {"state": "starting", "message": "Ouverture de la caméra…", "frames": 0, "codes": []})
@@ -46,7 +111,7 @@ class Scan:
 
 
 class CameraScanner:
-    def __init__(self, enabled=False, *, scan_seconds=SCAN_SECONDS, hard_timeout=None):
+    def __init__(self, enabled=False, *, scan_seconds=SCAN_SECONDS, hard_timeout=None, settings_path=None):
         self.enabled = enabled
         self.scan_seconds = scan_seconds
         self.hard_timeout = hard_timeout if hard_timeout is not None else scan_seconds + 12
@@ -56,6 +121,66 @@ class CameraScanner:
         self._expiry: threading.Timer | None = None
         self._devices_cache = None
         self._devices_time = 0
+        self.settings_path = Path(settings_path) if settings_path is not None else None
+        self._image_record = {"revision": 0, "model": None, "controls": {}}
+        self._image_capabilities = None
+        self._image_time = 0
+
+    def _read_image_settings(self):
+        if self.settings_path is None:
+            return dict(self._image_record)
+        try:
+            record = json.loads(self.settings_path.read_text())
+        except FileNotFoundError:
+            return {"revision": 0, "model": None, "controls": {}}
+        except (OSError, ValueError):
+            raise CameraUnavailable("Les réglages de la caméra sont illisibles.") from None
+        try:
+            validate_saved_image_settings(record)
+        except ValueError:
+            raise CameraUnavailable("Les réglages de la caméra sont illisibles.") from None
+        return record
+
+    def image_settings(self):
+        if not self.status()["available"]:
+            raise CameraUnavailable(self.status()["message"])
+        with self._lock:
+            active = self._active(self._scan)
+            if active and self._image_capabilities is None:
+                raise CameraBusy("Une capture est en cours. Attendez sa fin pour ouvrir les réglages.")
+            if not active and (self._image_capabilities is None or time.monotonic() - self._image_time > 30):
+                try:
+                    probe = subprocess.run([sys.executable, "-m", "openprinttag_app.camera_worker", "--controls"],
+                                           stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=6, check=True)
+                    result = json.loads(probe.stdout)
+                    if not isinstance(result["model"], str) or not result["model"] or not isinstance(result["controls"], list):
+                        raise ValueError()
+                    validate_image_controls({item["name"]: item["default"] for item in result["controls"]}, result["controls"])
+                except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
+                    raise CameraUnavailable("Les réglages de la caméra sont indisponibles. Fermez les autres captures puis réessayez.") from None
+                self._image_capabilities, self._image_time = result, time.monotonic()
+            record = self._read_image_settings()
+            capabilities = self._image_capabilities
+            values = {item["name"]: item["default"] for item in capabilities["controls"]}
+            if record["model"] == capabilities["model"]:
+                values.update(validate_image_controls(record["controls"], capabilities["controls"]))
+            return {**capabilities, "revision": record["revision"], "values": values}
+
+    def save_image_settings(self, revision, model, controls):
+        with self._lock:
+            current = self.image_settings()
+            if current["revision"] != revision or current["model"] != model:
+                raise CameraBusy("La caméra ou ses réglages ont changé. Rouvrez l’aperçu.")
+            if self._active(self._scan) and self._scan.kind != "preview":
+                raise CameraBusy("Terminez le scan ou la photo avant de régler l’image.")
+            values = validate_image_controls(controls, current["controls"])
+            record = {"revision": revision + 1, "model": model, "controls": values}
+            if self.settings_path:
+                write_image_settings(self.settings_path, record)
+            self._image_record = record
+            if self._active(self._scan):
+                write_image_settings(self._scan.directory / "controls.json", record)
+            return self.image_settings()
 
     def devices(self, refresh=False):
         """Enumerate sensors without starting a capture or importing libcamera here."""
@@ -124,11 +249,13 @@ class CameraScanner:
     def _snapshot(self, scan):
         result = json.loads(json.dumps(scan.result))
         result.update(id=scan.id, active=self._active(scan),
-                      remaining_seconds=result.get("remaining_seconds", max(0, round(self.scan_seconds - (time.monotonic() - scan.started)))),
+                      remaining_seconds=result.get("remaining_seconds", max(0, round(scan.seconds - (time.monotonic() - scan.started)))),
                       preview_ready=(scan.directory / "preview.jpg").is_file())
         return result
 
     def start(self, kind="qr"):
+        if kind not in {"qr", "photo", "preview"}:
+            raise ValueError("Type de capture caméra invalide.")
         capabilities = self.status()
         if not capabilities["available"]:
             raise CameraUnavailable(capabilities["message"])
@@ -141,7 +268,9 @@ class CameraScanner:
                 self._expiry.cancel()
             if self._scan:
                 self._scan.temporary.cleanup()
-            scan = Scan(secrets.token_urlsafe(18), tempfile.TemporaryDirectory(prefix="openprinttag-qr-"), kind=kind)
+            scan = Scan(secrets.token_urlsafe(18), tempfile.TemporaryDirectory(prefix="openprinttag-qr-"), kind=kind,
+                        seconds=120 if kind == "preview" else self.scan_seconds)
+            write_image_settings(scan.directory / "controls.json", self._read_image_settings())
             self._scan = scan
             scan.thread = threading.Thread(target=self._run, args=(scan,), daemon=True, name="openprinttag-camera")
             scan.thread.start()
@@ -195,6 +324,8 @@ class CameraScanner:
             with (scan.directory / "capture.log").open("wb") as log:
                 command = ([sys.executable, "-m", "openprinttag_app.camera_worker", "--photo", str(scan.directory)]
                            if scan.kind == "photo" else self._command(scan.directory))
+                if scan.kind == "preview":
+                    command = [sys.executable, "-m", "openprinttag_app.camera_worker", "--preview", str(scan.directory), str(scan.seconds)]
                 process = subprocess.Popen(command, stdout=log, stderr=log,
                                            stdin=subprocess.DEVNULL, start_new_session=True)
                 while True:
@@ -203,7 +334,7 @@ class CameraScanner:
                         with self._lock:
                             scan.result = {"state": "cancelled", "message": "Scan arrêté.", "frames": scan.result.get("frames", 0), "codes": []}
                         break
-                    if time.monotonic() - scan.started > self.hard_timeout:
+                    if time.monotonic() - scan.started > (scan.seconds + 12 if scan.kind == "preview" else self.hard_timeout):
                         self._terminate(process)
                         with self._lock:
                             scan.result = {"state": "error", "message": "La caméra ne transmet pas d’image ou ne répond plus. Vérifiez son raccordement avant de réessayer.", "frames": scan.result.get("frames", 0), "codes": []}

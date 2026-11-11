@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import sys
 import time
+import json
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import pytest
@@ -229,3 +231,86 @@ def test_sensor_probe_timeout_keeps_configuration_available(monkeypatch, tmp_pat
         camera = response.json()["camera"]
         assert camera["detected"] is None and camera["model"] is None
         assert "indisponible" in camera["detection_message"]
+
+
+def prepare_image_settings(scanner, tmp_path):
+    from openprinttag_app.camera import image_controls
+    scanner.settings_path = tmp_path / "camera-settings.json"
+    scanner._image_capabilities = {"model": "imx708", "controls": image_controls({
+        "Saturation": (0.0, 32.0, 1.0), "Brightness": (-1.0, 1.0, 0.0), "AfMode": (0, 2, 0)})}
+    scanner._image_time = time.monotonic()
+
+
+def test_image_settings_validate_capabilities_persist_and_reject_stale_forms(scanner, tmp_path):
+    prepare_image_settings(scanner, tmp_path)
+    app = create_app(Settings(tmp_path / "data"), camera=scanner)
+    with TestClient(app, client=("127.0.0.1", 1234)) as client:
+        original = client.get("/api/configuration/camera").json()
+        assert original["values"] == {"Brightness": 0.0, "Saturation": 1.0, "AfMode": 2}
+        assert scanner._scan is None
+        body = {"revision": 0, "model": "imx708", "controls": {"Saturation": 0.5, "AfMode": 2}}
+        saved = client.put("/api/configuration/camera", json=body)
+        assert saved.status_code == 200 and saved.json()["revision"] == 1
+        assert scanner.settings_path.stat().st_mode & 0o777 == 0o600
+        assert client.put("/api/configuration/camera", json=body).status_code == 409
+        for invalid in ({"Saturation": -1}, {"Saturation": True}, {"Unknown": 1}, {"AfMode": 1}, {"AfMode": 2.0}):
+            assert client.put("/api/configuration/camera", json={**body, "revision": 1, "controls": invalid}).status_code == 422
+        reset = client.put("/api/configuration/camera", json={**body, "revision": 1, "controls": {}}).json()
+        assert reset["values"]["Saturation"] == 1.0
+        assert json.loads(scanner.settings_path.read_text())["controls"] == {}
+
+
+def test_image_settings_keep_sensor_profiles_separate_and_block_changes_during_qr(scanner, tmp_path):
+    prepare_image_settings(scanner, tmp_path)
+    scanner.settings_path.write_text(json.dumps({"revision": 3, "model": "old-sensor", "controls": {"Saturation": 0}}))
+    assert scanner.image_settings()["values"]["Saturation"] == 1.0
+    scanner.mode = "hang"
+    scanner.start()
+    with pytest.raises(CameraBusy, match="Terminez le scan"):
+        scanner.save_image_settings(3, "imx708", {"Saturation": 0})
+    assert json.loads(scanner.settings_path.read_text())["model"] == "old-sensor"
+
+
+def test_camera_image_endpoints_require_full_access(scanner, tmp_path):
+    prepare_image_settings(scanner, tmp_path)
+    with TestClient(create_app(Settings(tmp_path / "data"), camera=scanner), client=("192.0.2.60", 1234)) as client:
+        assert client.get("/api/configuration/camera").status_code == 403
+        assert client.put("/api/configuration/camera", json={"revision": 0, "model": "imx708", "controls": {}}).status_code == 403
+        assert client.post("/api/camera/previews", json={}).status_code == 403
+    assert scanner._scan is None
+
+
+def test_qr_worker_keeps_a_color_preview_and_decodes_grayscale(monkeypatch, tmp_path):
+    from PIL import Image
+    from openprinttag_app import camera_worker
+    frame = Image.new("RGB", (64, 48), (190, 30, 60))
+    captured = {}
+    class Camera:
+        camera_properties = {"Model": "imx708"}
+        camera_controls = {"AfMode": (0, 2, 0), "Saturation": (0.0, 32.0, 1.0)}
+        def __init__(self, index): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def create_still_configuration(self, **kwargs): return kwargs
+        def configure(self, config): captured["format"] = config["main"]["format"]
+        def set_controls(self, values): captured["controls"] = values
+        def start(self): pass
+        def stop(self): pass
+        def capture_request(self):
+            return SimpleNamespace(make_image=lambda stream: frame, release=lambda: None)
+    def decode(gray, **kwargs):
+        assert gray.ndim == 2
+        return [SimpleNamespace(text="camera-test")]
+    def grayscale_array(image):
+        assert image.mode == "L"
+        return SimpleNamespace(ndim=2)
+    monkeypatch.setitem(sys.modules, "numpy", SimpleNamespace(asarray=grayscale_array))
+    monkeypatch.setitem(sys.modules, "picamera2", SimpleNamespace(Picamera2=Camera))
+    monkeypatch.setitem(sys.modules, "zxingcpp", SimpleNamespace(read_barcodes=decode,
+        BarcodeFormat=SimpleNamespace(QRCode=1), TextMode=SimpleNamespace(Plain=1)))
+    monkeypatch.setattr(camera_worker.time, "sleep", lambda delay: None)
+    camera_worker.run(tmp_path, 1)
+    preview = Image.open(tmp_path / "preview.jpg")
+    assert preview.mode == "RGB" and preview.getpixel((10, 10))[0] > preview.getpixel((10, 10))[1] + 100
+    assert captured["format"] == "RGB888" and captured["controls"]["AfMode"] == 2
+    assert json.loads((tmp_path / "status.json").read_text())["state"] == "found"

@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.27.0-rc.3](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.3)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.27.0-rc.4](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.4)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -10,6 +10,7 @@ La dernière version publiée est **[v0.27.0-rc.3](https://github.com/Cyril-E/OP
 - QR complets pour les bobines emballées, étiquettes NIIMBOT et création/recréation du RFID depuis une fiche.
 - Modèles et favoris, création depuis RFID/QR/inventaire, modification, suppression et import/export.
 - Configuration du matériel, langues française/anglaise/espagnole/allemande, thèmes et niveaux d’accès réseau persistants.
+- Aperçu couleur de la caméra QR et réglages disponibles selon le capteur depuis Paramètres, avec enregistrement et réinitialisation. [Guide caméra](11-camera-qr.md)
 - PrusaLink en lecture seule et jusqu’à quatre caméras d’imprimante.
 - Commandes facultatives de prises, relais et éclairages via un contrôleur Matter installé sur le Pi. [Guide Matter](41-appareils-matter.md)
 - HTTPS local, aide pour approuver le certificat, démarrage en plein écran et commandes d’alimentation du Pi.
@@ -22,6 +23,8 @@ La dernière version publiée est **[v0.27.0-rc.3](https://github.com/Cyril-E/OP
 ## Suivi des demandes GitHub
 
 À chaque bilan, consulter les [issues ouvertes du projet](https://github.com/Cyril-E/OPT-station/issues?q=is%3Aissue%20is%3Aopen) et leurs derniers commentaires, en complément de cette feuille de route. Les demandes publiques font partie des évolutions à examiner. Vérifier leur état avant d’annoncer qu’un point est terminé.
+
+Aucune issue ouverte lors de la consultation du 11 novembre 2026.
 
 Demandes suivies le 1er novembre 2026; cette liste ne remplace pas une nouvelle consultation :
 
@@ -115,6 +118,11 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 ## Ajout en v0.27.0-rc.3
 
 - La commande GitHub installe et vérifie le serveur Matter avec les dépendances nécessaires. L’option `--no-matter` permet de passer cette étape. [Guide d’installation](33-installation-une-commande.md)
+
+## Ajouts en v0.27.0-rc.4
+
+- **Caméra QR** : aperçu couleur et bouton **Afficher l’image et régler** dans Paramètres, réglages selon les capacités du capteur, enregistrement pour les scans/photos et réinitialisation.
+- **Validation sur le Pi avec l’IMX708** : aperçu couleur dans Paramètres et dans le scan QR, effet du réglage de saturation, enregistrement, retour aux valeurs par défaut, autofocus continu activé et libération de la caméra à la fermeture. Le cadrage et le décodage de vraies étiquettes à courte distance restent à qualifier sur le montage définitif. [Guide caméra](11-camera-qr.md)
 
 ## Pistes reportées après les retours de validation
 
