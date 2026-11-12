@@ -83,7 +83,9 @@ Cet envoi depuis une fiche est explicite et individuel. La lecture automatique n
 
 ### Envoyer les bobines manquantes en groupe
 
-Depuis **v0.26.6**, avec l’accès complet, cliquer sur **Envoyer les bobines manquantes vers Prusa Connect** en haut de l’inventaire.
+Depuis **v0.26.6**, avec l’accès complet, cliquer sur **Envoyer les bobines manquantes vers Prusa Connect** dans l’inventaire. Depuis **v0.27.0-rc.6**, ce bouton est mis en évidence sur la même ligne que les vues **Production / Stock / Terminées / Tout**.
+
+Un compteur indique les bobines absentes de Connect. Le détail distingue les fiches absentes, prêtes à envoyer et à vérifier. Il couvre toutes les bobines actives, même si la liste affichée est filtrée. La vérification lit l’entrepôt à l’ouverture et après actualisation de l’inventaire, puis au plus une fois par minute lorsque cette page est visible. Une lecture indisponible donne un état à vérifier. Cette indication ouvre l’aperçu ; le transfert demande toujours une confirmation explicite.
 
 1. La station relit l’entrepôt et compare les identités de toutes les bobines actives, en stock ou en production. Les filtres de la page ne réduisent pas ce lot ; les bobines terminées ou retirées sont exclues.
 2. L’aperçu indique les bobines absentes, celles déjà présentes et celles qui nécessitent une correction. **Vérifier la fiche** ouvre le formulaire individuel avec les valeurs actuelles ; une quantité inconnue reste à renseigner.

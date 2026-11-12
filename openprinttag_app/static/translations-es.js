@@ -1,6 +1,13 @@
 "use strict";
 // Spanish UI messages. User data and canonical RFID values stay unchanged.
 window.OPT_ES = Object.freeze({
+  "Accès complet requis pour vérifier Prusa Connect.": "Se requiere acceso completo para comprobar Prusa Connect.",
+  "Vérification de l’entrepôt Prusa Connect…": "Comprobando el almacén de Prusa Connect…",
+  "Prusa Connect indisponible · présence des bobines à vérifier.": "Prusa Connect no disponible · hay que verificar la presencia de las bobinas.",
+  "Présence dans Prusa Connect à vérifier.": "Hay que verificar la presencia de las bobinas en Prusa Connect.",
+  "Aucune bobine active à envoyer.": "No hay bobinas activas para enviar.",
+  "Toutes les bobines actives sont présentes dans Prusa Connect.": "Todas las bobinas activas están presentes en Prusa Connect.",
+  "Absentes : {0} · Prêtes à envoyer : {1} · À vérifier : {2}": "Ausentes: {0} · Listas para enviar: {1} · Por revisar: {2}",
   "Envoyer les bobines manquantes vers Prusa Connect": "Enviar las bobinas que faltan a Prusa Connect",
   "Envoyer les bobines manquantes": "Enviar las bobinas que faltan",
   "La vérification concerne toutes les bobines actives, en stock ou en production, même si la liste est filtrée. Les bobines terminées sont exclues.": "La comprobación incluye todas las bobinas activas, en stock o en uso, aunque la lista esté filtrada. Se excluyen las bobinas terminadas.",

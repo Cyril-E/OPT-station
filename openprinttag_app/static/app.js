@@ -8,7 +8,7 @@
   const state = {
     status: null, schema: {main: [], aux: []}, currentTag: null,
     editorTag: null, editorMode: "create", preview: null, previewEpoch: 0, reuseConfirmed: false,
-    inventory: [], inventoryView: "all", inventoryBrands: new Set(), inventoryMaterials: new Set(), favorites: [], editingFavorite: null, deletingFavorite: null, lastRead: null,
+    inventory: [], inventoryView: "production", inventoryBrands: new Set(), inventoryMaterials: new Set(), favorites: [], editingFavorite: null, deletingFavorite: null, lastRead: null,
     activeTab: "inventory", toastTimer: null, sourceQR: null, sourceFavorite: null,
     cameraScan: null, cameraEpoch: 0, cameraTimer: null, cameraStarting: false,
     cameraFrame: null, cameraResults: null, qrEpoch: 0,
@@ -883,6 +883,7 @@
       renderReader();
     }
     renderInventory();
+    document.dispatchEvent(new CustomEvent("opt-station-inventory-loaded"));
     if ($("detail-dialog").open && state.detailItem) {
       const current = state.inventory.find((item) => item.id === state.detailItem.id);
       if (current) showDetail(current);

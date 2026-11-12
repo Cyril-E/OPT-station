@@ -27,7 +27,7 @@ Une valeur inconnue reste inconnue. Le poids nominal, le poids réellement mesur
 
 ## Version et état du projet
 
-La **v0.27.0-rc.5** ajoute les réglages du mode tactile et de la veille dans Paramètres, avec défilement au doigt, extinction automatique et réveil au toucher validés sur le Pi. L’installation en une commande comprend le contrôleur Matter autonome, HTTPS, le démarrage en plein écran et le service de mise à jour sur Raspberry Pi OS 64 bits Trixie. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de la version. [Préversion GitHub](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.5)
+La **v0.27.0-rc.6** améliore l’inventaire : vue Production par défaut, boutons réordonnés et compteur des bobines absentes de Prusa Connect. La synchronisation Connect et la reprise des suivis suspendus par d’anciennes corrections manuelles ont été vérifiées sur le Pi. L’installation en une commande comprend le contrôleur Matter autonome, HTTPS, le démarrage en plein écran et le service de mise à jour sur Raspberry Pi OS 64 bits Trixie. Les sources complètes et leur empreinte SHA-256 sont disponibles sur la page de la version. [Préversion GitHub](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.6)
 
 La qualification comprend les sauvegardes et restaurations avec ou sans mot de passe, les notes de version et leur cache, ainsi que les moteurs de langue et de notifications. La réinstallation réelle, le retour arrière, HTTPS et le kiosque sont validés sur une station existante. L’installation complète sur carte SD vierge reste à qualifier. Voir le [guide d’installation](docs/33-installation-une-commande.md) et le [journal des versions](CHANGELOG.md).
 
@@ -36,6 +36,12 @@ La [procédure HTTPS](docs/31-https-local.md) installe des certificats propres �
 La version comprend les [notifications Chrome](docs/32-notifications-imprimante.md) de fin d’impression et d’intervention, avec un onglet ouvert en arrière-plan et des réglages propres à chaque navigateur.
 
 ## Nouveautés
+
+### [v0.27.0-rc.6 — Inventaire et suivi Prusa Connect](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.6)
+
+- **Production** est la vue par défaut ; l’ordre devient **Production, Stock, Terminées, Tout**.
+- Le bouton d’envoi vers Prusa Connect est mis en évidence à côté des vues, avec un compteur automatique des bobines absentes et le détail des fiches prêtes ou à vérifier.
+- **Vérifié sur le Pi après une impression réelle** : B0078 actualisée à 73 g consommés / 927 g restants après reprise de son suivi. La reprise de 31 autres suivis a été contrôlée, avec quantités conservées et aucun blocage manuel restant. [Notes détaillées](CHANGELOG.md)
 
 ### [v0.27.0-rc.5 — Réglages du tactile et de la veille](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.5)
 

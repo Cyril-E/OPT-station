@@ -1,6 +1,6 @@
 # Fonctions et évolutions techniques
 
-La dernière version publiée est **[v0.27.0-rc.5](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.5)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
+La dernière version publiée est **[v0.27.0-rc.6](https://github.com/Cyril-E/OPT-station/releases/tag/v0.27.0-rc.6)**. Consulter les [notes de version](../CHANGELOG.md) et les [profils vérifiés](08-verification-prototype.md) pour les résultats et limites.
 
 ## Fonctions disponibles
 
@@ -25,7 +25,7 @@ La dernière version publiée est **[v0.27.0-rc.5](https://github.com/Cyril-E/OP
 
 À chaque bilan, consulter les [issues ouvertes du projet](https://github.com/Cyril-E/OPT-station/issues?q=is%3Aissue%20is%3Aopen) et leurs derniers commentaires, en complément de cette feuille de route. Les demandes publiques font partie des évolutions à examiner. Vérifier leur état avant d’annoncer qu’un point est terminé.
 
-Aucune issue ouverte lors de la consultation du 11 novembre 2026.
+Aucune issue ouverte lors de la consultation du 12 novembre 2026.
 
 Demandes suivies le 1er novembre 2026; cette liste ne remplace pas une nouvelle consultation :
 
@@ -130,6 +130,12 @@ La version **v0.21.0** réorganise le menu en Inventaire / Imprimante / Lecture 
 - **Mode tactile du Pi** : activation et désactivation depuis Paramètres, en conservant l’écran associé et sa calibration.
 - **Veille de l’écran** : choix de Jamais à une heure d’inactivité, délai conservé et inclus dans les sauvegardes, réveil au toucher ou par le bouton d’OPT Station. L’installation de l’affichage fournit les composants nécessaires.
 - **Validation sur le Pi le 11 novembre 2026** : commandes du tactile, défilement au doigt, extinction automatique et réveil depuis OPT Station. Le réveil au toucher est également confirmé par un essai utilisateur. Le délai final est enregistré sur **5 minutes**. [Guide écran](10-ecran-tactile.md)
+
+## Ajouts en v0.27.0-rc.6
+
+- **Inventaire** : Production sélectionnée par défaut, vues dans l’ordre Production / Stock / Terminées / Tout, titre simplifié et bouton Connect mis en évidence sur la même ligne.
+- **Compteur d’envoi Connect** : nombre de bobines absentes, détail des fiches prêtes et à vérifier, contrôle automatique de toutes les bobines actives avec l’accès complet. L’envoi reste une action explicite.
+- **Validation sur le Pi le 12 novembre 2026** : interface de l’inventaire, puis actualisation automatique de B0078 à 73 g consommés / 927 g restants après reprise d’une suspension manuelle. Reprise explicite de 31 autres suivis avec quantités concordantes conservées ; la collecte suivante ne signale plus de blocage manuel. La variation d’une autre bobine hors imprimante reste à qualifier. [Guide Connect](39-prusa-connect-et-entrepot.md)
 
 ## Pistes reportées après les retours de validation
 

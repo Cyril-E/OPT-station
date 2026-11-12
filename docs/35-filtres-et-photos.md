@@ -2,7 +2,7 @@
 
 ## Filtrer les bobines
 
-Dans **Inventaire → Vos bobines**, choisir **Tout**, **Stock**, **Production** ou **Terminées**. Tout réunit les bobines actives et terminées; les bobines simplement retirées ne réapparaissent pas. Stock et Production correspondent à l’utilisation de la fiche, indépendamment de son identification par QR ou RFID.
+Dans **Inventaire → Vos bobines**, choisir **Production**, **Stock**, **Terminées** ou **Tout**, dans cet ordre. Depuis **v0.27.0-rc.6**, **Production** est sélectionnée par défaut à l’ouverture. Tout réunit les bobines actives et terminées; les bobines simplement retirées ne réapparaissent pas. Stock et Production correspondent à l’utilisation de la fiche, indépendamment de son identification par QR ou RFID.
 
 Ouvrir **Marques** ou **Matières**, puis cocher une ou plusieurs valeurs. Les choix proviennent des bobines de l’inventaire, archives comprises. Plusieurs choix dans une même rubrique s’additionnent; les deux rubriques, l’état et la recherche se combinent. Une valeur non renseignée peut aussi être sélectionnée. **Effacer les filtres** efface la recherche et les sélections de marque/matière, en conservant la vue choisie. Les filtres restent actifs pendant les actualisations et les changements de langue du même onglet.
 

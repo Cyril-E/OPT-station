@@ -1,6 +1,13 @@
 "use strict";
 // English UI messages. Canonical field names and user data are never translated.
 window.OPT_EN = Object.freeze({
+  "Accès complet requis pour vérifier Prusa Connect.": "Full access is required to check Prusa Connect.",
+  "Vérification de l’entrepôt Prusa Connect…": "Checking the Prusa Connect warehouse…",
+  "Prusa Connect indisponible · présence des bobines à vérifier.": "Prusa Connect unavailable · spool presence needs checking.",
+  "Présence dans Prusa Connect à vérifier.": "Spool presence in Prusa Connect needs checking.",
+  "Aucune bobine active à envoyer.": "No active spools to send.",
+  "Toutes les bobines actives sont présentes dans Prusa Connect.": "All active spools are present in Prusa Connect.",
+  "Absentes : {0} · Prêtes à envoyer : {1} · À vérifier : {2}": "Missing: {0} · Ready to send: {1} · To review: {2}",
   "Envoyer les bobines manquantes vers Prusa Connect": "Send missing spools to Prusa Connect",
   "Envoyer les bobines manquantes": "Send missing spools",
   "La vérification concerne toutes les bobines actives, en stock ou en production, même si la liste est filtrée. Les bobines terminées sont exclues.": "The check covers all active spools, in stock or in use, even when the list is filtered. Finished spools are excluded.",

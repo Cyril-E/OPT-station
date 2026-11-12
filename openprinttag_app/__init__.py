@@ -1,4 +1,4 @@
 """OPT Station, lecteur-écrivain compatible avec le format OpenPrintTag."""
 
 APP_NAME = "OPT Station"
-__version__ = "0.27.0rc5"
+__version__ = "0.27.0rc6"

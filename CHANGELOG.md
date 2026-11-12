@@ -1,5 +1,19 @@
 # Versions publiques
 
+## v0.27.0-rc.6 — 12 novembre 2026
+
+- **Production par défaut** à l’ouverture de l’inventaire, avec les boutons dans l’ordre **Production → Stock → Terminées → Tout**.
+- Présentation simplifiée : retrait de « VOTRE STOCK, AU MÊME ENDROIT » et bouton **Envoyer les bobines manquantes vers Prusa Connect** aligné avec les vues de l’inventaire, avec une couleur qui le met en évidence.
+- Le bouton affiche le **nombre de bobines absentes**. Le détail distingue les fiches absentes, prêtes à envoyer et à vérifier. La vérification concerne toutes les bobines actives, même si la liste est filtrée.
+- Lecture automatique de l’entrepôt avec l’accès complet, à l’ouverture et après actualisation de l’inventaire, puis au plus une fois par minute lorsque l’inventaire est visible. Une erreur de connexion affiche un état à vérifier. L’envoi conserve son aperçu et sa confirmation explicite.
+- Messages disponibles en français, anglais, espagnol et allemand. [Guide inventaire](docs/35-filtres-et-photos.md) · [Guide Connect](docs/39-prusa-connect-et-entrepot.md).
+
+**Synchronisation Prusa Connect vérifiée sur le Raspberry Pi le 12 novembre 2026 :** après une impression réelle, la reprise du suivi de **B0078**, suspendu par une ancienne correction manuelle, a permis au collecteur automatique de passer de **4 g à 73 g consommés**, soit **927 g restants**. Les lectures suivantes ont confirmé le compteur à jour. Le suivi de **31 autres bobines** a été réactivé explicitement sur la station ; une nouvelle collecte a confirmé **aucun blocage manuel restant** sur les bobines actives, avec conservation de leurs quantités concordantes, des identités, données matériau, notes et états. Ces reprises utilisent le mécanisme existant ; les corrections manuelles restent prioritaires jusqu’à reprise explicite. Aucune écriture RFID n’a été effectuée pour ces vérifications.
+
+L’alignement des boutons, Production sélectionnée par défaut et le compteur Connect ont été contrôlés dans l’interface HTTPS du Pi. La variation automatique d’une bobine distincte, non chargée sur l’imprimante, reste une qualification séparée.
+
+Vérifications : **1 118 tests Python réussis sur Mac**, dix exclusions liées à l’environnement, **11 suites d’interface JavaScript réussies** et contrôle de syntaxe des 23 scripts. L’archive complète et son SHA-256 accompagnent cette préversion.
+
 ## v0.27.0-rc.5 — 11 novembre 2026
 
 - Dans **Paramètres → Matériel détecté**, **Activer le mode tactile du Pi** permet de retrouver le défilement au doigt. L’enregistrement conserve la sortie vidéo et la calibration de chaque écran raccordé.

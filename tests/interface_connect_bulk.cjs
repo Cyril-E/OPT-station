@@ -6,8 +6,9 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '../openprinttag_app/static');
 const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const events = {}, windowEvents = {}, elements = new Map(), answers = [], calls = [], dispatched = [];
+let now = 1000;
 class Element {
-  constructor(id) { this.id = id; this.events = {}; this.children = []; this.disabled = false; }
+  constructor(id) { this.id = id; this.events = {}; this.children = []; this.disabled = false; this.dataset = {}; }
   addEventListener(name, callback) { this.events[name] = callback; }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
@@ -18,6 +19,7 @@ class Element {
 for (const [, id] of markup.matchAll(/\bid="([^"]+)"/g)) elements.set(id, new Element(id));
 const get = suffix => elements.get('connect-bulk-' + suffix);
 const document = {
+  body: {dataset: {tab: 'printer'}}, hidden: false,
   getElementById(id) { assert.ok(elements.has(id), `Missing element ${id}`); return elements.get(id); },
   createElement: () => new Element(),
   addEventListener(name, callback) { events[name] = callback; },
@@ -28,7 +30,7 @@ const window = {addEventListener(name, callback) { windowEvents[name] = callback
   text: (element, value) => { element.textContent = value; }
 }};
 vm.runInNewContext(fs.readFileSync(path.join(root, 'connect-bulk.js'), 'utf8'), {
-  window, document, AbortController, Error, TypeError, SyntaxError, setTimeout, clearTimeout,
+  window, document, AbortController, Error, TypeError, SyntaxError, setTimeout, clearTimeout, Date: {now: () => now},
   CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
   async fetch(url, options) {
     calls.push({url, body:JSON.parse(options.body)});
@@ -42,9 +44,10 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 const click = async name => { get(name).events.click(); await tick(); };
 const emit = access => events['opt-station-status']({detail:{access}});
 const spool = (id, disposition = 'create', message) => ({id, name:'<b>' + id + '</b>', spool_number:id,
-  version:3, notes_revision:2, fingerprint:'f'.repeat(64), disposition, message});
+  version:3, notes_revision:2, fingerprint:'f'.repeat(64), disposition, message,
+  presence: disposition === 'present' ? 'present' : disposition === 'create' ? 'absent' : 'unknown'});
 function queuePreview(items) {
-  answers.push({body:{organization:'Test team', counts:{total:items.length, missing:items.filter(x => x.disposition === 'create').length,
+  answers.push({body:{organization:'Test team', counts:{total:items.length, missing:items.filter(x => x.presence === 'absent').length,
     ready:items.filter(x => x.disposition === 'create').length, present:items.filter(x => x.disposition === 'present').length,
     blocked:items.filter(x => x.disposition === 'blocked').length}, items}});
 }
@@ -111,6 +114,64 @@ const success = {body:{status:'created',created:true,verified:true,visible_in_co
   emit(true); queuePreview([]); await click('open');
   assert.equal(get('send').disabled, true);
   assert.match(get('result').textContent, /Aucune bobine prête/);
+  await click('close');
+
+  // The inventory indicator covers all active stock, including blocked records;
+  // it only reads Connect and never borrows the visible Production filter.
+  document.body.dataset.tab = 'inventory';
+  const indicatorStart = calls.length;
+  const blockedAbsent = {...spool('B0003', 'blocked'), presence:'absent'};
+  queuePreview([spool('B0000','present'), spool('B0001'), blockedAbsent, spool('B0004','blocked')]);
+  events['opt-station-inventory-loaded'](); await tick();
+  assert.equal(get('count').hidden, false);
+  assert.equal(get('count').textContent, '2');
+  assert.match(get('status').textContent, /Absentes : 2 · Prêtes à envoyer : 1 · À vérifier : 2/);
+  assert.equal(get('dialog').open, false);
+  assert.equal(calls.length, indicatorStart + 1);
+  emit(true); await tick(); assert.equal(calls.length, indicatorStart + 1); // Throttled background reads.
+
+  answers.push({error:new TypeError('offline')});
+  events['opt-station-inventory-loaded'](); await tick();
+  assert.equal(get('count').hidden, true);
+  assert.match(get('status').textContent, /indisponible/);
+  queuePreview([spool('B0004','blocked')]);
+  events['opt-station-inventory-loaded'](); await tick();
+  assert.match(get('status').textContent, /Absentes : 0 · Prêtes à envoyer : 0 · À vérifier : 1/);
+  assert.doesNotMatch(get('status').textContent, /Toutes les bobines/);
+
+  queuePreview([spool('B0000','present')]);
+  now += 60001; emit(true); await tick();
+  assert.equal(get('count').hidden, true);
+  assert.match(get('status').textContent, /Toutes les bobines actives sont présentes/);
+  const beforeHidden = calls.length;
+  document.hidden = true; now += 60001; emit(true); await tick();
+  assert.equal(calls.length, beforeHidden);
+  document.hidden = false; document.body.dataset.tab = 'printer'; emit(true); await tick();
+  assert.equal(calls.length, beforeHidden);
+
+  // Opening the dialog while a count is loading shares the read, but still
+  // requires an explicit click on Send before any export can happen.
+  document.body.dataset.tab = 'inventory';
+  const pendingItems = [spool('B0001')];
+  answers.push(new Promise(r => { resolve = r; }));
+  emit(true); await tick();
+  const duringRead = calls.length;
+  await click('open'); assert.equal(calls.length, duringRead);
+  resolve({body:{organization:'Test team', items:pendingItems, counts:{total:1,missing:1,ready:1,present:0,blocked:0}}});
+  await tick(); await tick();
+  assert.equal(get('send').disabled, false);
+  assert.equal(get('count').textContent, '1');
+  await click('close');
+  answers.push(new Promise(r => { resolve = r; }));
+  events['opt-station-inventory-loaded'](); await tick();
+  emit(false);
+  resolve({body:{items:pendingItems, counts:{total:1,missing:1,ready:1,present:0,blocked:0}}});
+  await tick(); await tick();
+  assert.equal(get('count').hidden, true); // A late reply cannot restore stale access or counts.
+  assert.match(get('status').textContent, /Accès complet requis/);
+  queuePreview([]); emit(true); await tick();
+  assert.match(get('status').textContent, /Aucune bobine active/);
+  assert.ok(calls.slice(indicatorStart).every(call => call.url === '/api/inventory/connect/preview'));
   assert.equal(answers.length, 0);
-  console.log('Bulk export: preview, explicit serial writes, concurrent presence, partial failure, stop, retry, access loss and safe text verified.');
+  console.log('Bulk export: inventory counts, unknown/error states, shared reads, explicit serial writes, stop, retry, access loss and safe text verified.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
